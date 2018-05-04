@@ -1,0 +1,82 @@
+DoAll
+        macro read docontour.sm
+        device postencap "cmd1.ps"
+
+        SetFig
+	data "M31_CAT"
+        read {m1 3 e1 4 d1 5 m2 6 e2 7 d2 8}
+	set c12 = m1-m2
+        points c12 m2
+
+        set xbin = -1,2.5,0.05
+        set ybin = 11,20,0.25
+        set contlevels = 0,2e6,5e2
+        ctype red lweight 4
+        plotbincontour xbin ybin c12 m2 contlevels
+	ctype black lweight 2
+
+	DoErrBars
+
+        device nodevice
+        !ps2pdf cmd1.ps cmd1.pdf
+
+DoErrBars
+        set e12 = sqrt(e1**2 + e2**2)
+        set d12 = sqrt(d1**2 + d2**2)
+
+        set mBin = 12,19,1
+
+        set dimen(err12s) = dimen(mBin)
+        set dimen(diff12s) = dimen(mBin)
+        set dimen(err2s) = dimen(mBin)
+        set dimen(diff2s) = dimen(mBin)
+
+        set j = 0
+
+        while {j < dimen(mBin)}  {
+                set e12t = e12*1 IF(m2<(mBin[j]+0.5)&m2>(mBin[j]-0.5))
+                set d12t = d12*1 IF(m2<(mBin[j]+0.5)&m2>(mBin[j]-0.5)&d1<10&d2<10)
+                set e2t  = e2*1 IF(m2<(mBin[j]+0.5)&m2>(mBin[j]-0.5))
+                set d2t  = d2*1 IF(m2<(mBin[j]+0.5)&m2>(mBin[j]-0.5)&d2<10)
+
+                stats e12t e12s tmp1 tmp2
+                stats d12t d12s tmp1 tmp2
+                stats e2t e2s tmp1 tmp2
+                stats d2t d2s tmp1 tmp2
+
+                set err12s[j] = $e12s
+                set diff12s[j] = $d12s
+                set err2s[j] = $e2s
+                set diff2s[j] = $d2s
+
+                # echo $e12s $d12s $e2s $d2s
+
+                set x = 2.1
+                set y = mBin[j]
+
+                error_x x y 2*$e12s
+                error_y x y 2*$e2s
+
+                set j = j+1
+        }
+
+SetFig
+        expand 2
+        limits -1 2.9 19.9 11
+        ctype black
+        lweight 2
+        define TeX_strings 1
+	window 1 1 1 1
+        xlabel m_{3.6}-m_{4.5}
+        ylabel m_{4.5}
+	toplabel M\,31
+	window 100 100 3:100 3:100        
+	box
+	expand 1.25 lweight 3
+	relocate -0.175 14 angle 90 ctype magenta label Foreground Stars 
+	relocate 0.25 14 angle 45 ctype magenta label AGB Stars 
+
+	angle 0 ctype black lweight 2
+
+        ptype 0 0
+        expand 0.6
