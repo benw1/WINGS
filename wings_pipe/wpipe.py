@@ -1,11 +1,18 @@
 #! /usr/bin/env python
-import time, os, sys
+import time, os, sys, json
 import numpy as np
 import pandas as pd
 from astropy import wcs
 from astropy.io import fits, ascii
 from astropy.table import Table
 
+def _to_dict(x):
+    '''x is any class instance'''
+    return x.__dict__
+
+def _to_json(x):
+    '''x is any class instance'''
+    return json.dumps(x.__dict__)
 
 def _update(x,y):
     '''x is any class instance, y is a dictionary'''
@@ -15,9 +22,14 @@ def _update(x,y):
         x.timestamp = time.time()
     return x
 
+class User():
+    def __init__(self,**params):
+        self.name = params['name']
+        self.user_id = params['user_id']
+        return None
 
 class Options():
-    def __init__(self,opts={'blah': 1}):
+    def __init__(self,**opts):
         if not isinstance(opts,dict):
             raise AssertionError('Did not get options dictonary')
         opts['timestamp'] = time.time()
@@ -25,7 +37,7 @@ class Options():
         return None
 
     @clsmethod
-    def update(cls,opts={'blah': 1}):
+    def update(cls,**opts):
         return _update(cls,opts)
         
     @staticmethod
@@ -38,9 +50,10 @@ class Options():
             return Options()
 
         
-class Pipeline(Options):
-    def __init__(self,user='any',pipeline_id=0,options=''):            
-        self.user = user
+class Pipeline(User,Options):
+    def __init__(self,user='any',pipeline_id=0,options=''):
+        if not isinstance(user,User): raise AssertionError('Did not get User instance')
+        self.user = User.__init__(user.name,user.user_id)
         self.pipeline_id = pipeline_id
         self.options = Options.myOptions(options)
         self.timestamp = time.time()
@@ -59,23 +72,22 @@ class Target(Pipeline):
         if isinstance(options,dict): self.options.update(options)
         return None
         
-class Configurations(Target):
-    def __init__(self,target='',description='',**params):
+class Configuration(Target):
+    def __init__(self,target='',description=''):
         if not isinstance(pipeline,Pipeline):
             raise AssertionError('Did not get Target instance')
         self.target = target
         self.description = description
         self.relativepath = str(relativepath)
-        self.params = params
         self.options = pipeline.options
         if isinstance(options,dict): self.options.update(options)
         return None
         
-class DataProduct(Configurations):
+class DataProduct(Configuration):
     def __init__(self,filename,relativepath,group,configuration,
                  data_type='',subtype='',suffix='',filtername='',
                  ra=0,dec=0,pointing_angle=0,options=''):
-    if not isinstance(configuration,Configurations):
+    if not isinstance(configuration,Configuration):
         raise AssertionError('Did not get Configurations instance')
 
     self.configuration = configuration
@@ -112,13 +124,22 @@ class DataProduct(Configurations):
     return None
 
 
-class Parameters:
-        
+class CopyState(DataProduct):
+
+
+class Parameters(Configuration):
     
-class Task:
+    
+class Task(Pipeline):
 
 
-class Mask:
+class Mask(Task):
 
 
-class Job:
+class Requirements(Task):
+    
+    
+class Job(Task,Configuration):
+
+
+class Event(Job):
