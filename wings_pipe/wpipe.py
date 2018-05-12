@@ -6,100 +6,119 @@ from astropy import wcs
 from astropy.io import fits, ascii
 from astropy.table import Table
 
-class Option(self,blah=1):
-    self.blah = blah
 
-class Target:
-    def __init__(self,pipeline,config,name='',relativepath=''):
+def _update(x,y):
+    '''x is any class instance, y is a dictionary'''
+    for key in y.keys:
+        x.__dict__[key] = y[key]
+    else:
+        x.timestamp = time.time()
+    return x
+
+
+class Options():
+    def __init__(self,opts={'blah': 1}):
+        if not isinstance(opts,dict):
+            raise AssertionError('Did not get options dictonary')
+        opts['timestamp'] = time.time()
+        self.__dict__ = opts
+        return None
+
+    @clsmethod
+    def update(cls,opts={'blah': 1}):
+        return _update(cls,opts)
+        
+    @staticmethod
+    def myOptions(options):
+        if isinstance(options,Options):
+            return options
+        elif isinstance(options,dict):
+            return Options(options)
+        else:
+            return Options()
+
+        
+class Pipeline(Options):
+    def __init__(self,user='any',pipeline_id=0,options=''):            
+        self.user = user
+        self.pipeline_id = pipeline_id
+        self.options = Options.myOptions(options)
+        self.timestamp = time.time()
+        return None
+        
+class Target(Pipeline):
+    def __init__(self,name='',relativepath='',pipeline='',options=''):
+        if not isinstance(name,str):
+            raise AssertionError('Did not get target name as string')
+        if not isinstance(pipeline,Pipeline):
+            raise AssertionError('Did not get Pipeline instance')                
         self.name = name
-        self.relativepath = relativepath
         self.pipeline = pipeline
-        self.pipeline_id = pipeline.id
-        self.configuration = config
-
-    def new():
-
-
-    def create():
-
-
-    def edit():
-
-
-    def destroy():
-
-
-    def newjob():
-
-
-    def startjob():
-
-    
-class Pipeline(user):
-
-class Configuration:
-    
-class DataProduct(Option):
-    def __init__(self,relativepath,filename,group,configuration,
+        self.relativepath = str(relativepath)
+        self.options = pipeline.options
+        if isinstance(options,dict): self.options.update(options)
+        return None
+        
+class Configurations(Target):
+    def __init__(self,target='',description='',**params):
+        if not isinstance(pipeline,Pipeline):
+            raise AssertionError('Did not get Target instance')
+        self.target = target
+        self.description = description
+        self.relativepath = str(relativepath)
+        self.params = params
+        self.options = pipeline.options
+        if isinstance(options,dict): self.options.update(options)
+        return None
+        
+class DataProduct(Configurations):
+    def __init__(self,filename,relativepath,group,configuration,
                  data_type='',subtype='',suffix='',filtername='',
-                 ra=0,dec=0,pointing_angle=0):
-    
-    self.relativepath = str(relativepath)
+                 ra=0,dec=0,pointing_angle=0,options=''):
+    if not isinstance(configuration,Configurations):
+        raise AssertionError('Did not get Configurations instance')
+
+    self.configuration = configuration
+
     self.filename = str(filename)
+
+    if '.' in filename:
+        _suffix = filename.split('.')[-1]
+        if _suffix in ['fits','txt','head','cl','py','pyc','pl',
+                'phot','png','jpg','ps','gz','dat','lst','sh']:
+            self.suffix = _suffix
+        else:
+            self.suffix = 'other'
+
+    if data_type=='':
+        self.data_type = str(self.suffix)
+
     self.subtype = str(subtype)
-    self.filtername = str(filtername)
-    self.ra = float(ra)
-    self.dec = float(dec)
-    self.pointing_angle = float(pointing_angle)
-    
     
     if group in ['proc','conf','log','raw']:
         self.group = str(group)
     else:
-        raise ValueError('Invalid group name')
+        self.group = str('other')
+    
+    self.filtername = str(filtername)
+    self.ra = float(ra)
+    self.dec = float(dec)
+    self.pointing_angle = float(pointing_angle)
 
-    if type(configuration) is Configuration:
-        self.configuration = configuration
-    else:
-        raise ValueError('Did not get Configuration object')
-
-    if '.' in filename:
-        _suffix = filename.split('.')[-1]
-        if _suffix in ['fits','txt','head','cl','py','pyc','pl','phot','png','jpg','ps','gz','dat','lst','sh']:
-            self.suffix	= _suffix
-        else:
-            self.suffix = 'other'
-
-    if data_type=='': 
-        self.data_type = str(self.suffix)
-
-
+    self.options = configuration.options
+    if isinstance(options,dict): self.options.update(options)
+    
     self.timestamp = time.time()
+    return None
 
-        
-    def new():
 
-    def create():
-
-    def delete():
-
-    def update():
-
-    def create_or_update():
-
-        
+class Parameters:
         
     
 class Task:
 
 
 class Mask:
-
-
-class Configuration:
-
-
-class Parameters:
 
 
 class Job:
