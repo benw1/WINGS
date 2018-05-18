@@ -22,6 +22,10 @@ def _update(x,y):
         x.timestamp = time.time()
     return x
 
+def _increment_option(**opt):
+    
+
+
 class User():
     def __init__(self,name='any',user_id=1):
         self.name = str(name)
@@ -51,11 +55,13 @@ class Options():
 
         
 class Pipeline(User,Options):
-    def __init__(self,user='',pipeline_id=1,software_root='',
+    def __init__(self,name='',pipeline_id=1,software_root='',
                  data_root='',pipe_root='',configuration_root='',
                  description='',state_id=0,options=''):
         if not isinstance(user,User): raise AssertionError('Did not get User instance')
-        User.__init__(user.name,user.user_id)
+        self.name = name
+        self.user = user
+        self.user_id = user.user_id
         self.pipeline_id = pipeline_id
         self.options = Options.myOptions(options)
         self.software_root = software_root
@@ -63,10 +69,20 @@ class Pipeline(User,Options):
         self.pipe_root = pipe_root
         self.configuration_root = configuration_root
         self.description = description
+        # self.state
         self.state_id = state_id
         self.timestamp = time.time()
         return None
+
+    def update(self):
+
+
+    def duplicate(self):
+
+
+    def delete(self):
         
+    
 class Target(Pipeline):
     def __init__(self,name='',target_id=1,relativepath='',pipeline='',options=''):
         if not isinstance(name,str):
@@ -169,7 +185,6 @@ class Parameters(Configuration):
         self.config_id = config.config_id
         self.target_id = config.target_id
         self.pipeline_id = config.pipeline_id
-        self.volatile = bool(volatile)
         self.timestamp = time.time()
         return None
 
@@ -190,20 +205,22 @@ class Task(Pipeline):
         self.pipeline = pipeline
         self.pipeline_id = pipeline.pipeline_id
         self.task_id = int(task_id)
-        self.flags = str(flags)
-        self.nruns = int(nruns)
-        self.run_time = float(run_time)
-        self.is_exclusive = bool(is_exclusive)
         self.options = pipeline.options
         if isinstance(options,dict): self.options.update(options)
         self.timestamp = time.time()
+
+
         
 class Mask(Task):
-    def __init__(self,task='',name='',value='',source='',optionflags=''):
+    def __init__(self,task='',source='',name='',value=''):
         if not isinstance(task,Task):
             raise AssertionError('Did not get Task instance')
-
-class TaskRequirements(Task):
+        if (not(source)|not(name)|not(value)):
+            raise AssertionError('Did not get source, name and value')
+        # 'source' has to be an existing task_name for this pipeline or wildcard
+        self.name = name
+        self.value = value
+        return None
 
 
 class Node(User):
@@ -216,8 +233,8 @@ class Job(Task,Configuration,Node):
                  options=''):
         
     
-
-
+class Event(self,job='',name='',value='',options=''):
+    # Masks & events get 'compared'
 
 
     
