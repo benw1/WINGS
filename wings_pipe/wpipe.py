@@ -1,4 +1,10 @@
 #! /usr/bin/env python
+'''
+Make things go upstream??
+
+'''
+
+
 import time, os, sys, json
 import numpy as np
 import pandas as pd
@@ -32,6 +38,9 @@ class User():
         self.user_id = int(user_id)
         return None
 
+    # create user
+    # delete user
+    
 class Node():
     def __init__(self,name='any',node_id=1,int_ip='',ext_ip=''):
         self.name = str(name)
@@ -39,6 +48,7 @@ class Node():
         self.int_ip = int_ip
         self.ext_ip = ext_ip
         return None
+
     
 class Options():
     def __init__(self,opts):
@@ -49,7 +59,7 @@ class Options():
         return None
 
     #@clsmethod
-    def update(cls,opts):
+    def add_or_update(cls,opts):
         return _update(cls,opts)
         
     #@staticmethod
@@ -81,7 +91,10 @@ class Pipeline(User,Options):
         self.state_id = state_id
         self.timestamp = time.time()
         return None
-'''
+
+    def create(self):
+        
+    
     def update(self):
 
 
@@ -90,7 +103,7 @@ class Pipeline(User,Options):
 
     def delete(self):
         
-'''
+
 class Target(Pipeline):
     def __init__(self,name='',target_id=1,relativepath='',pipeline='',options=''):
         if not isinstance(name,str):
@@ -105,7 +118,12 @@ class Target(Pipeline):
         self.options = pipeline.options
         if isinstance(options,dict): self.options.update(options)
         return None
-        
+
+    # create
+    # update
+    # duplicate
+
+    
 class Configuration(Target):
     def __init__(self,name='',relativepath='',description='',target='',
                  config_id =1,options=''):
@@ -125,7 +143,7 @@ class Configuration(Target):
 class DataProduct(Configuration):
     def __init__(self,filename='',relativepath='',group='',configuration='',
                  dp_id=1,data_type='',subtype='',suffix='',filtername='',
-                 ra=0,dec=0,pointing_angle=0,options=''):
+                 ra=0,dec=0,pointing_angle=0,options='',**tags):
         if not isinstance(configuration,Configuration):
             raise AssertionError('Did not get Configurations instance')
 
@@ -161,8 +179,10 @@ class DataProduct(Configuration):
 
         self.options = configuration.options
         if isinstance(options,dict): self.options.update(options)
+        self.tags = Options(tags) # meant to break
         self.timestamp = time.time()
         return None
+
 
 class CopyState(DataProduct,Node):
     def __init__(self,dp='',node='',state='any',state_id=0):
@@ -198,6 +218,11 @@ class Parameters(Configuration):
     def update(cls,params):
         return _update(cls,params)
 
+    # Initialize parameters by readingb in from file
+    # Add (or update) parameters
+    
+
+    
     
 class Task(Pipeline):
     def __init__(self,name='',task_id=1,flags='',
@@ -221,13 +246,15 @@ class Task(Pipeline):
         if not isinstance(mask,Mask): raise AssertionError('Did not get Mask instance')
         self.mask.append(mask)
 
-        
+
+''' Rename Mask to something else'''
 class Mask():
     def __init__(self,source='',name='',value=''):
         if not(source): raise AssertionError('Did not get source')
         if not(name): raise AssertionError('Did not get name')
         if not(value): raise AssertionError('Did not get value')
         # 'source' has to be an existing task_name for this pipeline or wildcard
+        self.source = source
         self.name = name
         self.value = value
         return None
@@ -247,3 +274,71 @@ class Event(self,job='',name='',value='',options=''):
     
 class Node(User):
 ''' 
+
+def get_dp(config,use_and=True,**kwargs):
+    if not isinstance(config,Configuration):
+        raise AssertionError('Did not get Configurations instance')
+    all_dp = '' # load all data products for the config_id given
+    
+    if use_and:
+        _dp = all_dp
+        for key in kwargs.keys:
+            _dp = _dp[_dp.key==kwargs[key]]
+    else:
+        _dp = []
+        for key in kwargs.keys:
+            _dp1 = all_dp[all_dp.key==kwargs[key]]
+            _dp.append(_dp1)
+        else:
+            pass # Remove duplicates
+    return _dp
+
+def get_unique_filters(config,dp_group):
+    '''
+    Return a list of all filters, non-repeatitive, that have been used
+    in a in data-product of the given group wihin given config
+    '''
+
+
+def get_path_for(config,filename='',group=''):
+    return config.target.pipeline.pipe_root+'/'+config.target.relativepath+'/'+group+'/'+filename
+
+
+def add_params(config):
+
+
+def get_params(config):
+
+
+def add_value(dp):
+    ''' Any key-value pair '''
+
+def set_value(dp):
+
+
+def increment(opt):
+    ''' 
+    Increment opt by 1 in DB and return incremented value
+    '''
+    opt += 1
+    return opt
+
+def create_event(job,name='',value='',options):
+
+
+def fire_event(event):
+    '''
+    Look into app/models/event.rb
+    First get event.job.task.pipeline
+    Then find all masks matching the event
+    Then start the associated tasks
+    '''
+    
+def get_option_value(X,opt):
+    return X.options[opt]
+
+def register_task():
+    
+
+
+
