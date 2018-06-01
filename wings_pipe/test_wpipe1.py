@@ -13,7 +13,9 @@ myDP = DataProduct(filename='test_file1.fits',relativepath='/Unknown',group='raw
                     configuration=myConfig,dp_id=41,filtername='H158')
 myNode = Node('local',10)
 dp_copy_state = CopyState(dp=myDP,node=myNode,state='initial',state_id=4)
+
 myParams = Parameters(config=myConfig,params={'x':20,'y':40,'z':'yada','C':11.243,'D':39.32,'test':False})
+
 myTask = Task(name='tag_image',task_id=11,pipeline=myPipe)
 myMask = Mask(source='someTask',name='someName',value=100)
 myTask.addMask(myMask)
@@ -27,3 +29,11 @@ print(to_dict(myTask.pipeline))
 print(to_dict(myTask.pipeline.options))
 
 print(to_dict(myTask.pipeline.user))
+
+######
+
+myDP.__dict__['sciType']='clf'
+
+print(myDP.sciType)
+
+

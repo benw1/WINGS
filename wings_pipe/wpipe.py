@@ -1,344 +1,317 @@
 #! /usr/bin/env python
-'''
-Make things go upstream??
-
-'''
-
-
-import time, os, sys, json
-import numpy as np
+import time
 import pandas as pd
-from astropy import wcs
-from astropy.io import fits, ascii
-from astropy.table import Table
+import numpy as np
 
-def to_dict(x):
-    '''x is any class instance'''
-    return x.__dict__
-
-def to_json(x):
-    '''x is any class instance'''
-    return json.dumps(x.__dict__)
-
-def _update(x,y):
-    '''x is any class instance, y is a dictionary'''
-    for key in y.keys:
-        x.__dict__[key] = y[key]
-    else:
-        x.timestamp = time.time()
+def update_time(x):
+    x.timestamp = pd.to_datetime(time.time(),unit='s')
     return x
-'''
-def increment(x):
-    return int(x)+1
-'''
 
 class User():
-    def __init__(self,name='any',user_id=1):
-        self.name = str(name)
-        self.user_id = int(user_id)
-        return None
-
-    # create user
-    # delete user
-    
-class Node():
-    def __init__(self,name='any',node_id=1,int_ip='',ext_ip=''):
-        self.name = str(name)
-        self.node_id = int(node_id)
-        self.int_ip = int_ip
-        self.ext_ip = ext_ip
-        return None
-
-    
-class Options():
-    def __init__(self,opts):
-        if not isinstance(opts,dict):
-            raise AssertionError('Did not get options dictonary')
-        self.__dict__ = opts
-        self.timestamp = time.time()
-        return None
-
-    #@clsmethod
-    def add_or_update(cls,opts):
-        return _update(cls,opts)
-        
-    #@staticmethod
-    def myOptions(options):
-        if isinstance(options,Options):
-            return options
-        elif isinstance(options,dict):
-            return Options(options)
-        else:
-            raise AssertionError('Did not get Options')
-
-        
-class Pipeline(User,Options):
-    def __init__(self,user='',name='',pipeline_id=1,software_root='',
-                 data_root='',pipe_root='',configuration_root='',
-                 description='',state_id=0,options=''):
-        if not isinstance(user,User): raise AssertionError('Did not get User instance')
-        self.name = name
-        self.user = user
-        self.user_id = user.user_id
-        self.pipeline_id = pipeline_id
-        self.options = Options.myOptions(options)
-        self.software_root = software_root
-        self.data_root = data_root
-        self.pipe_root = pipe_root
-        self.configuration_root = configuration_root
-        self.description = description
-        # self.state
-        self.state_id = state_id
-        self.timestamp = time.time()
+    def __init__(self,name='any',user_id=0):
+        self.name = np.array([str(name)])
+        self.user_id = np.array([int(user_id)])
+        self.timestamp = pd.to_datetime(time.time(),unit='s')
         return None
 
     def create(self):
-        
+        return update_time(pd.DataFrame(data=self.__dict__,columns=
+                ['user_id','name','timestamp']))
+
+class Node():
+    def __init__(self,name='any',node_id=0,int_ip='',ext_ip=''):
+        self.name = np.array([str(name)])
+        self.node_id = np.array([int(node_id)])
+        self.int_ip = np.array([str(int_ip)])
+        self.ext_ip = np.array([str(ext_ip)])
+        self.timestamp = pd.to_datetime(time.time(),unit='s')
+        return None
     
-    def update(self):
-
-
-    def duplicate(self):
-
-
-    def delete(self):
-        
-
-class Target(Pipeline):
-    def __init__(self,name='',target_id=1,relativepath='',pipeline='',options=''):
-        if not isinstance(name,str):
-            raise AssertionError('Did not get target name as string')
-        if not isinstance(pipeline,Pipeline):
-            raise AssertionError('Did not get Pipeline instance')                
-        self.name = name
-        self.relativepath = str(relativepath)
-        self.pipeline = pipeline
-        self.pipeline_id = pipeline.pipeline_id
-        self.target_id = int(target_id)
-        self.options = pipeline.options
-        if isinstance(options,dict): self.options.update(options)
+    def create(self):
+        return update_time(pd.DataFrame(data=self.__dict__,columns=
+                ['name','node_id','int_ip','ext_ip','timestamp']))
+    
+class Options():
+    def __init__(self,opts={'any':0}):
+        self.__dict__ = opts
         return None
 
-    # create
-    # update
-    # duplicate
-
+    def create(self,owner='any',owner_id=0):
+        name = np.array(list(self.__dict__.keys()))
+        value = np.array(list(self.__dict__.values()))
+        _df = pd.DataFrame(data=np.array([name,value]).T,columns=
+                ['name','value']).sort_values('name')
+        owner = np.repeat(str(owner),len(name))
+        owner_id = np.repeat(int(owner_id),len(name))
+        arrays = [owner,owner_id]
+        _df.index = pd.MultiIndex.from_arrays(arrays, names=('owner','owner_id'))
+        return _df
     
-class Configuration(Target):
-    def __init__(self,name='',relativepath='',description='',target='',
-                 config_id =1,options=''):
-        if not isinstance(target,Target):
-            raise AssertionError('Did not get Pipeline instance')
-        self.name = name
-        self.relativepath = str(relativepath)
-        self.target = target
-        self.target_id = target.target_id
-        self.pipeline_id = target.pipeline_id
-        self.config_id = int(config_id)
-        self.description = description
-        self.options = target.options
-        if isinstance(options,dict): self.options.update(options)
+    def add_or_update(opt1,opt2):
+        owner,owner_id = opt2.index[0]
+        dict1 = dict(zip(opt1.values[:,0],opt1.values[:,1]))
+        dict2 = dict(zip(opt2.values[:,0],opt2.values[:,1]))
+        for key in list(dict2.keys()):
+            dict1[key] = dict2[key]
+        return Options(dict1).create(owner,owner_id)
+        
+    def get_opt(opt,owner='any',owner_id=0):
+        _array = opt.sort_index(level=['owner','owner_id']).loc[str(owner),int(owner_id)].values
+        return dict(zip(_array[:,0],_array[:,1]))
+
+            
+class Pipeline():
+    def __init__(self,user=User().create(),name='any',pipeline_id=0,software_root='',
+                 data_root='',pipe_root='',config_root='',
+                 description='',state_id=0):
+        self.name = np.array([str(name)])
+        self.user_name = np.array([str(user.name[0])])           
+        self.user_id = np.array([int(user.user_id)])
+        self.pipeline_id = np.array([int(pipeline_id)])
+        self.software_root = np.array([str(software_root)])
+        self.data_root = np.array([str(data_root)])
+        self.pipe_root = np.array([str(pipe_root)])
+        self.config_root = np.array([str(config_root)])                                                                                                                                                             
+        self.state_id = np.array([int(state_id)])
+        self.description = np.array([str(description)])
+        self.timestamp = pd.to_datetime(time.time(),unit='s')
+        return None
+                                 
+    def create(self,options={'any':0},ret_opt=True):
+        _opt = Options(options).create('pipeline',int(self.pipeline_id))
+        _df = pd.DataFrame(data=self.__dict__,columns=['user_id','user_name',
+                 'name','pipeline_id','software_root=',
+                 'data_root','pipe_root','config_root=',
+                 'description','state_id','timestamp'])
+        _df.index = pd.MultiIndex.from_arrays(arrays=[np.array([str(self.user_name[0])]),
+                    np.array([int(self.pipeline_id)])], names=('user_name','pipeline_id'))
+        if ret_opt:
+            return update_time(_df), _opt
+        else:
+            return update_time(_df)
+
+class Target():
+    def __init__(self,name='any',target_id=0,relativepath='',
+                 pipeline=Pipeline().create(ret_opt=False)):               
+        self.name = np.array([str(name)])
+        self.relativepath = np.array([str(relativepath)])
+        self.pipeline_id = np.array([int(pipeline.pipeline_id)])
+        self.target_id = np.array([int(target_id)])
+        self.timestamp = pd.to_datetime(time.time(),unit='s')
+        return None
+
+    def create(self,options={'any':0},ret_opt=True):
+        _opt = Options(options).create('target',int(self.target_id))
+        _df = pd.DataFrame(data=self.__dict__,columns=
+                ['name','relativepath','pipeline_id','target_id','timestamp'])
+        _df.index = pd.MultiIndex.from_arrays(arrays=[np.array([int(self.pipeline_id)]),
+                    np.array([int(self.target_id)])], names=('pipeline_id','target_id'))
+        if ret_opt:
+            return update_time(_df), _opt
+        else:
+            return update_time(_df)        
+
+
+class Configuration():
+    def __init__(self,name='',relativepath='',description='',
+                 target=Target().create(ret_opt=False),
+                 config_id =1):
+        self.name = np.array([str(name)])
+        self.relativepath = np.array([str(relativepath)])
+        self.target_id = np.array([int(target.target_id)])
+        self.pipeline_id = np.array([int(target.pipeline_id)])
+        self.config_id = np.array([int(config_id)])
+        self.description = np.array([str(description)])
+        self.timestamp = pd.to_datetime(time.time(),unit='s')
         return None
         
-class DataProduct(Configuration):
-    def __init__(self,filename='',relativepath='',group='',configuration='',
-                 dp_id=1,data_type='',subtype='',suffix='',filtername='',
-                 ra=0,dec=0,pointing_angle=0,options='',**tags):
-        if not isinstance(configuration,Configuration):
-            raise AssertionError('Did not get Configurations instance')
+    def create(self,options={'any':0},ret_opt=True):
+        _opt = Options(options).create('config',int(self.config_id))
+        _df = pd.DataFrame(data=self.__dict__,columns=
+                ['name','relativepath','pipeline_id','target_id',
+                'config_id','description','timestamp'])
+        _df.index = pd.MultiIndex.from_arrays(arrays=[np.array([int(self.pipeline_id)]),
+                    np.array([int(self.target_id)]), np.array([int(self.config_id)])],
+                    names=('pipeline_id','target_id','config_id'))
+        if ret_opt:
+            return update_time(_df), _opt
+        else:
+            return update_time(_df)        
 
-        self.configuration = configuration
-        self.config_id = configuration.config_id
-        self.target_id = configuration.target_id
-        self.pipeline_id = configuration.pipeline_id
-        self.dp_id = dp_id
+class DataProduct():
+    def __init__(self,filename='any',relativepath='',group='',
+                 configuration=Configuration().create(ret_opt=False),
+                 dp_id=0,data_type='',subtype='',filtername='',
+                 ra=0,dec=0,pointing_angle=0,**tags):
+        self.config_id = np.array([int(configuration.config_id)])
+        self.target_id = np.array([int(configuration.target_id)])
+        self.pipeline_id = np.array([int(configuration.pipeline_id)])
+        self.dp_id = np.array([int(dp_id)])
 
-        self.filename = str(filename)
-        self.relativepath = str(relativepath)
+        self.filename = np.array([str(filename)])
+        self.relativepath = np.array([str(relativepath)])
 
         if '.' in filename:
             _suffix = filename.split('.')[-1]
-            if _suffix in ['fits','txt','head','cl','py','pyc','pl',
-                    'phot','png','jpg','ps','gz','dat','lst','sh']:
-                self.suffix = _suffix
-            else:
-                self.suffix = 'other'
-
-        if not(data_type): self.data_type = str(self.suffix)
-        self.subtype = str(subtype)
-
-        if group in ['proc','conf','log','raw']:
-            self.group = group
-        else:
-            self.group = str('other')
-
-        self.filtername = str(filtername)
-        self.ra = float(ra)
-        self.dec = float(dec)
-        self.pointing_angle = float(pointing_angle)
-
-        self.options = configuration.options
-        if isinstance(options,dict): self.options.update(options)
-        self.tags = Options(tags) # meant to break
-        self.timestamp = time.time()
-        return None
-
-
-class CopyState(DataProduct,Node):
-    def __init__(self,dp='',node='',state='any',state_id=0):
-        if not isinstance(dp,DataProduct):
-            raise AssertionError('Did not get DataProduct instance')
-        if not isinstance(node,Node):
-            raise AssertionError('Did not get Node instance')
-        self.state = state
-        self.dp = dp
-        self.dp_id = dp.dp_id
-        self.pipeline_id = dp.pipeline_id
-        self.target_id = dp.target_id
-        self.config_id = dp.config_id
-        self.node = node
-        self.node_id = node.node_id
-        return None
-    
-class Parameters(Configuration):
-    def __init__(self,config='',params='',volatile=0):
-        if not isinstance(config,Configuration):
-            raise AssertionError('Did not get Configurations instance')
-        if not isinstance(params,dict):
-            raise AssertionError('Did not get Parameters dictionary')
-        self.__dict__ = params
-        self.config = config
-        self.config_id = config.config_id
-        self.target_id = config.target_id
-        self.pipeline_id = config.pipeline_id
-        self.timestamp = time.time()
-        return None
-
-    #@clsmethod
-    def update(cls,params):
-        return _update(cls,params)
-
-    # Initialize parameters by readingb in from file
-    # Add (or update) parameters
-    
-
-    
-    
-class Task(Pipeline):
-    def __init__(self,name='',task_id=1,flags='',
-                 pipeline='',nruns=1,run_time=0,
-                 is_exclusive=0,mask=[],options=''):
-        if not isinstance(name,str):
-            raise AssertionError('Did not get target name as string')
-        if not isinstance(pipeline,Pipeline):
-            raise AssertionError('Did not get Pipeline instance')
-        self.name = name
-        self.pipeline = pipeline
-        self.pipeline_id = pipeline.pipeline_id
-        self.task_id = int(task_id)
-        self.options = pipeline.options
-        if isinstance(options,dict): self.options.update(options)
-        self.mask = mask
-        self.timestamp = time.time()
-        return None
-    
-    def addMask(self,mask=[]):
-        if not isinstance(mask,Mask): raise AssertionError('Did not get Mask instance')
-        self.mask.append(mask)
-
-
-''' Rename Mask to something else'''
-class Mask():
-    def __init__(self,source='',name='',value=''):
-        if not(source): raise AssertionError('Did not get source')
-        if not(name): raise AssertionError('Did not get name')
-        if not(value): raise AssertionError('Did not get value')
-        # 'source' has to be an existing task_name for this pipeline or wildcard
-        self.source = source
-        self.name = name
-        self.value = value
-        return None
-
-    
-'''
-class Job(Task,Configuration,Node):
-    def __init__(self,task='',config='',node='',
-                 state='',pid=1,starttime=1,endtime=2,
-                 options=''):
+        if _suffix not in ['fits','txt','head','cl',
+           'py','pyc','pl','phot','png','jpg','ps',
+           'gz','dat','lst','sh']:
+            _suffix = 'other'                                      
+        self.suffix = np.array([str(_suffix)])
         
-    
-class Event(self,job='',name='',value='',options=''):
-    # Masks & events get 'compared'
+        if not(data_type): data_type = _suffix
+        self.data_type = np.array([str(data_type)])
+        self.subtype = np.array([str(subtype)])
 
+        if group not in ['proc','conf','log','raw']:
+            group = 'other'
+        self.group = np.array([str('other')])
 
-    
-class Node(User):
-''' 
+        self.filtername = np.array([str(filtername)])
+        self.ra = np.array([float(ra)])
+        self.dec = np.array([float(dec)])
+        self.pointing_angle = np.array([float(pointing_angle)])
+        # self.tags = Options(tags) # meant to break
+        self.timestamp = pd.to_datetime(time.time(),unit='s')
+        return None
 
-def get_dp(config,use_and=True,**kwargs):
-    if not isinstance(config,Configuration):
-        raise AssertionError('Did not get Configurations instance')
-    all_dp = '' # load all data products for the config_id given
-    
-    if use_and:
-        _dp = all_dp
-        for key in kwargs.keys:
-            _dp = _dp[_dp.key==kwargs[key]]
-    else:
-        _dp = []
-        for key in kwargs.keys:
-            _dp1 = all_dp[all_dp.key==kwargs[key]]
-            _dp.append(_dp1)
+    def create(self,options={'any':0},ret_opt=True):
+        _opt = Options(options).create('data_product',int(self.dp_id))
+        _df = pd.DataFrame(data=self.__dict__,columns=
+                ['filename','relativepath','pipeline_id','target_id',
+                'config_id','dp_id','suffix','data_type',
+                'subtype','group','filtername','ra','dec',
+                 'pointing_angle','timestamp'])
+        _df.index = pd.MultiIndex.from_arrays(arrays=[np.array([int(self.pipeline_id)]),
+                    np.array([int(self.target_id)]), np.array([int(self.config_id)]),
+                    np.array([int(self.dp_id)])],
+                    names=('pipeline_id','target_id','config_id','dp_id'))
+        if ret_opt:
+            return update_time(_df), _opt
         else:
-            pass # Remove duplicates
-    return _dp
-
-def get_unique_filters(config,dp_group):
-    '''
-    Return a list of all filters, non-repeatitive, that have been used
-    in a in data-product of the given group wihin given config
-    '''
+            return update_time(_df)
 
 
-def get_path_for(config,filename='',group=''):
-    return config.target.pipeline.pipe_root+'/'+config.target.relativepath+'/'+group+'/'+filename
+class Parameters():
+    def __init__(self,params={'any':0}):
+        self.__dict__ = params
+        return None
+ 
+    def create(self,config=Configuration().create(ret_opt=False),ret_opt=True):
+        name = np.array(list(self.__dict__.keys()))
+        value = np.array(list(self.__dict__.values()))
+        _df = pd.DataFrame(data=np.array([name,value]).T,columns=
+                ['name','value'])
+        
+        _config_id = np.repeat(int(config.config_id),len(name))
+        _target_id = np.repeat(int(config.target_id),len(name))
+        _pipeline_id = np.repeat(int(config.pipeline_id),len(name))
+        arrays = [_pipeline_id,_target_id,_config_id]
+        _df.index= pd.MultiIndex.from_arrays(arrays,
+                     names=('pipeline_id','target_id','config_id'))
+        if ret_opt:
+            return update_time(_df), _opt
+        else:
+            return update_time(_df)
+        
+    def get_params(cls,config=Configuration().create(ret_opt=False)):
+        _config_id = int(config.config_id)
+        _target_id = int(config.target_id)
+        _pipeline_id = int(config.pipeline_id)
+        _array = cls.loc[_pipeline_id,_target_id,_config_id].values
+        return dict(zip(_array[:,0],_array[:,1]))
+        
+class Task():
+    def __init__(self,name='any',task_id=0,flags='',
+                 pipeline=Pipeline().create(ret_opt=False),
+                 nruns=0,run_time=0,
+                 is_exclusive=0):
+        self.name = np.array([str(name)])
+        self.pipeline_id = np.array([int(pipeline.pipeline_id)])
+        self.task_id = np.array([int(task_id)])
+        self.nruns = np.array([int(nruns)])
+        self.run_time = np.array([float(run_time)])
+        self.is_exclusive = np.array([bool(is_exclusive)])
+        # self.mask = mask
+        self.timestamp = pd.to_datetime(time.time(),unit='s')
+        return None
 
-
-def add_params(config):
-
-
-def get_params(config):
-
-
-def add_value(dp):
-    ''' Any key-value pair '''
-
-def set_value(dp):
-
-
-def increment(opt):
-    ''' 
-    Increment opt by 1 in DB and return incremented value
-    '''
-    opt += 1
-    return opt
-
-def create_event(job,name='',value='',options):
-
-
-def fire_event(event):
-    '''
-    Look into app/models/event.rb
-    First get event.job.task.pipeline
-    Then find all masks matching the event
-    Then start the associated tasks
-    '''
+    def create(self,options={'any':0},ret_opt=True):
+        _opt = Options(options).create('task',int(self.task_id))
+        _df = pd.DataFrame(data=self.__dict__,columns=
+                ['name','pipeline_id','task_id','nruns','run_time','is_exclusive','timestamp'])
+        _df.index = pd.MultiIndex.from_arrays(arrays=[np.array([int(self.pipeline_id)]),
+                    np.array([int(self.task_id)])], names=('pipeline_id','task_id'))
+        if ret_opt:
+            return update_time(_df), _opt
+        else:
+            return update_time(_df)
+        
+    def add_mask(task,source='any',name='any',value='0'):
+        return Mask(task,source,name,value).create()
+        
+        
+class Job():
+    def __init__(self,state='any',event_id=0,job_id=0,
+                 task=Task().create(ret_opt=False),
+                 config=Configuration().create(ret_opt=False),
+                 node=Node().create()):
+        self.state = np.array([str(state)])
+        self.job_id = np.array([int(job_id)])
+        self.event_id = np.array([int(event_id)])
+        self.task_id = np.array([int(task.task_id)])
+        self.config_id = np.array([int(config.config_id)])
+        self.node_id =  np.array([int(node.node_id)])
+        self.pipeline_id =  np.array([int(config.pipeline_id)])
+        self.starttime = pd.to_datetime(time.time(),unit='s')
+        self.endtime = pd.to_datetime(time.time(),unit='s')
+        self.timestamp = pd.to_datetime(time.time(),unit='s')
+        return None
     
-def get_option_value(X,opt):
-    return X.options[opt]
-
-def register_task():
+    def create(self,options={'any':0},ret_opt=True):
+        _opt = Options(options).create('job',int(self.job_id))
+        _df = pd.DataFrame(data=self.__dict__,columns=
+                ['state','event_id','pipeline_id','task_id',
+                'config_id','node_id','job_id','starttime',
+                 'endtime','timestamp'])
+        _df.index = update_time((pd.MultiIndex.from_arrays(arrays=
+                   [np.array([int(self.pipeline_id)]),
+                    np.array([int(self.task_id)]),
+                    np.array([int(self.config_id)]),
+                    np.array([int(self.event_id)]),
+                    np.array([int(self.job_id)])],
+                    names=('pipeline_id','task_id','config_id','event_id','job_id'))))
+        _df.endtime = _df.timestamp.copy()
+        if ret_opt:
+            return _df, _opt
+        else:
+            return _df        
+        
+class Event():
+    def __init__(self,job=Job().create(ret_opt=False),jargs='',name='',value=''):
+        ''' source' has to be an existing task_name for this pipeline or wildcard '''
+        self.job_id = np.array([int(job.job_id)])
+        self.jargs = np.array([str(jargs)])
+        self.name   = np.array([str(name)])
+        self.value  = np.array([str(value)])
+        return None
     
+    def create(self):
+        return pd.DataFrame(data=self.__dict__,columns=
+                ['job_id','source','name','value'])
+        
 
-
+class Mask():
+    def __init__(self,task=Task().create(ret_opt=False),source='',name='',value=''):
+        ''' source' has to be an existing task_name for this pipeline or wildcard '''
+        self.source = np.array([str(source)])
+        self.name   = np.array([str(name)])
+        self.value  = np.array([str(value)])
+        self.task_id = np.array([int(task.task_id)])
+        return None
+    
+    def create(self):
+        return pd.DataFrame(data=self.__dict__,columns=
+                ['task_id','source','name','value'])
+    
 
