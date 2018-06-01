@@ -80,8 +80,8 @@ class Pipeline():
     def create(self,options={'any':0},ret_opt=True):
         _opt = Options(options).create('pipeline',int(self.pipeline_id))
         _df = pd.DataFrame(data=self.__dict__,columns=['user_id','user_name',
-                 'name','pipeline_id','software_root=',
-                 'data_root','pipe_root','config_root=',
+                 'name','pipeline_id','software_root',
+                 'data_root','pipe_root','config_root',
                  'description','state_id','timestamp'])
         _df.index = pd.MultiIndex.from_arrays(arrays=[np.array([str(self.user_name[0])]),
                     np.array([int(self.pipeline_id)])], names=('user_name','pipeline_id'))
@@ -151,6 +151,7 @@ class DataProduct():
         self.filename = np.array([str(filename)])
         self.relativepath = np.array([str(relativepath)])
 
+        _suffix = ' '
         if '.' in filename:
             _suffix = filename.split('.')[-1]
         if _suffix not in ['fits','txt','head','cl',
@@ -298,7 +299,7 @@ class Event():
     
     def create(self):
         return pd.DataFrame(data=self.__dict__,columns=
-                ['job_id','source','name','value'])
+                ['job_id','jargs','name','value'])
         
 
 class Mask():
@@ -314,4 +315,30 @@ class Mask():
         return pd.DataFrame(data=self.__dict__,columns=
                 ['task_id','source','name','value'])
     
+
+def create_data_HDFstore(filepath='./data/wpipe_store.h5'):
+    myStore = pd.HDFStore(str(filepath),'w')
+    myStore['users'] = User().create()
+    myStore['nodes'] = Node().create()
+    myStore['options'] = Options().create()
+    myStore['pipelines'] = Pipeline().create(ret_opt=False)
+    myStore['targets'] = Target().create(ret_opt=False)
+    myStore['configurations'] = Configuration().create(ret_opt=False)
+    myStore['data_products'] = DataProduct().create(ret_opt=False)
+    myStore['parameters'] = Parameters().create(ret_opt=False)
+    myStore['tasks'] = Task().create(ret_opt=False)
+    myStore['jobs'] = Job().create(ret_opt=False)
+    myStore['masks'] = Mask().create()
+    myStore['events'] = Event().create()
+    return myStore.close()
+
+def to_data_HDFstore(stuff=Event().create(),
+            filepath='./data/wpipe_store.h5',key='events'):
+    if isinstance(stuff,pd.DataFrame):
+        return stuff.to_hdf(str(filepath),str(key))
+    else:
+        raise TypeError('Did not get Pandas DataFrame')
+        
+def from_data_HDFstore(filepath='./data/wpipe_store.h5',key='events'):
+    return pd.read_hdf(str(filepath),str(key))
 
