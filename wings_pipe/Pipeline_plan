@@ -1,0 +1,49 @@
+Make_targets -> finds catalogs and makes target for each
+   fires event for each catalog in each target
+   includes total number of catalogs in each target
+Process catalog
+   Each new catalog event starts this
+   processes catalog into proper STIPS input
+   increases the target's catalog option from Make_targets when done
+   When reaches total number of catalogs fires event for each STIPS run
+   includes total number of STIPS runs
+Run stips and tag output*
+   Runs the STIPS input catalog specified in event
+   Tags the output image
+   increases the target's stips_run option from process catalog
+   When reaches total number of stips runs, fires event for each band
+   includes total number of bands
+Astrodrizzle?*
+   Run some kind of code on stack in each band to identify bad pixels
+   not sure if we'll need this for an IR detector...
+   increment number of bands option frm run_stips
+   when reaches total number of filters, count all images in target, 
+   fire an event for each image
+   includes total number of images
+Prep image
+   run dolphot prep steps on the image specified by the event
+   tag data products
+   increment number of images option from astrodrizzle
+   when reaches total number of images, fire event
+Write DOLPHOT pars
+   write the dolphot parameter file for the target, including all images
+   tag parameter file
+   fire event
+Run DOLPHOT
+   run dolphot
+   tag data products
+   fire event
+Phot fits table
+   Use data products to generate a fits and/or hdf5 version of the phot file
+   tag product
+   fire event
+Cull photometry
+   Flag "bad" photometry in the catalog
+   tag data products
+   fire event
+Make cmds
+   Generate QA plots to assess success of run
+   tag products
+   fire event?
+Further Analysis?
+   Any next steps, if we can automate, such as looking for structures or dwarf galaxies, but these will likely require input from the rest of the team.
