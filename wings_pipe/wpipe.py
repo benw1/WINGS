@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 pd.set_option('io.hdf.default_format','table')
 
-path_to_store='./data/wpipe_store.h5'
+path_to_store='./h5data/wpipe_store.h5'
 
 def update_time(x):
     x.timestamp = pd.to_datetime(time.time(),unit='s')
@@ -56,7 +56,7 @@ class Store():
             if where=='all':
                 return myStore.select(str(key),columns=columns)
             else:
-                return myStore.select(str(key),str(where),columns=columns)
+                return myStore.select(str(key),columns=columns).query(str(where))
             
     def repack(self):
         filename = str(self.path)
@@ -127,6 +127,22 @@ class Options():
                           complevel=9,complib='blosc:blosclz')
         return _df
 
+'''
+    #needs work
+    def add_or_update(opt1,opt2,store=Store()):
+        owner,owner_id = opt2.index[0]
+        dict1 = dict(zip(opt1.values[:,0],opt1.values[:,1]))
+        dict2 = dict(zip(opt2.values[:,0],opt2.values[:,1]))
+        for key in list(dict2.keys()):
+            dict1[key] = dict2[key]
+        return Options(dict1).create(owner,owner_id)
+        
+    # needs work
+    def get_opt(opt,owner='any',owner_id=0,store=Store()):
+        
+        _array = opt.sort_index(level=['owner','owner_id']).loc[str(owner),int(owner_id)].values
+        return dict(zip(_array[:,0],_array[:,1]))
+'''
          
 class Pipeline():
     def __init__(self,user=User().new(),name='any',software_root='',
@@ -149,13 +165,9 @@ class Pipeline():
         _df.index = _df.pipeline_id
         return update_time(_df)
 
-    def create(self,options={'any':0},ret_opt=True,store=Store()):
-        _df = store.create('pipelines','pipeline_id',self)
-        _opt = Options(options).create('pipeline',int(_df.pipeline_id))        
-        if ret_opt:
-            return _df, _opt
-        else:
-            return _df
+    def create(self,store=Store()):
+        _df = store.create('pipelines','pipeline_id',self)       
+        return _df
 
         
 class Target():
@@ -215,7 +227,7 @@ class DataProduct():
     def __init__(self,filename='any',relativepath='',group='',
                  configuration=Configuration().new(),
                  data_type='',subtype='',filtername='',
-                 ra=0,dec=0,pointing_angle=0,**tags):
+                 ra=0,dec=0,pointing_angle=0):
         self.config_id = np.array([int(configuration.config_id)])
         self.target_id = np.array([int(configuration.target_id)])
         self.pipeline_id = np.array([int(configuration.pipeline_id)])
@@ -257,7 +269,7 @@ class DataProduct():
                     names=('pipelineID','targetID','configID','dpID'))
         return update_time(_df)
 
-    def create(self,options={'any':0},ret_opt=True,store=Store(),):
+    def create(self,options={'any':0},ret_opt=True,store=Store()):
         _df = store.create('data_products','dp_id',self)
         _opt = Options(options).create('data_product',int(self.dp_id))
         if ret_opt:
@@ -290,7 +302,15 @@ class Parameters():
             myStore.append('parameters',_df,min_itemsize=_min_itemsize(_df))
         return _df
 
-
+'''    
+    # needs work
+    def get_params(cls,config=Configuration().new()):
+        _config_id = int(config.config_id)
+        _target_id = int(config.target_id)
+        _pipeline_id = int(config.pipeline_id)
+        _array = cls.loc[_pipeline_id,_target_id,_config_id].values
+        return dict(zip(_array[:,0],_array[:,1]))
+'''    
 
 class Task():
     def __init__(self,name='any',flags='',
@@ -313,13 +333,9 @@ class Task():
                     np.array([int(self.task_id)])], names=('pipelineID','taskID'))
         return update_time(_df)
 
-    def create(self,options={'any':0},ret_opt=True,store=Store()):
+    def create(self,store=Store()):
         _df = store.create('tasks','task_id',self)
-        _opt = Options(options).create('task',int(self.task_id))
-        if ret_opt:
-            return _df, _opt
-        else:
-            return _df    
+        return _df    
         
     def add_mask(task,source='any',name='any',value='0'):
         return Mask(task,source,name,value).create()
@@ -397,5 +413,5 @@ class Mask():
         return update_time(_df)
     
     def create(self,store=Store()):
-        return store.create('masks','mask_id',self)
-
+        return store.create('masks','mask_id',self)   
+        
