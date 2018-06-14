@@ -6,6 +6,8 @@ pd.set_option('io.hdf.default_format','table')
 
 path_to_store='./h5data/wpipe_store.h5'
 
+path_to_store=os.path.abspath(path_to_store)
+
 def update_time(x):
     x.timestamp = pd.to_datetime(time.time(),unit='s')
     return x        
