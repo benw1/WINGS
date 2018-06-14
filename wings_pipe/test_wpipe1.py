@@ -2,17 +2,20 @@
 
 from wpipe import *
 
-_t = Store().new()
 
 myUser = User('rubab').create()
+
+myUser = User('ben').create()
+
+myUser = User('xoxo').create()
 
 myNode = Node('local').create()
 
 myOpt1 = {'a':1,'b':2,'c':'dah','d':500.3432}
 
-myPipe, pipeOpt = Pipeline(user=myUser,name='test_pipe',software_root='/usr/local/bin',
+myPipe = Pipeline(user=myUser,name='test_pipe',software_root='/usr/local/bin',
                  data_root='/usr/local/data',pipe_root='/usr/local/pipe',config_root='/usr/local/others',
-                 description='Testing pipeline').create(options=myOpt1)
+                 description='Testing pipeline').create()
 
 
 myTarget, targOpt = Target(name='test_target',relativepath='/targets',
@@ -25,7 +28,7 @@ myConfig, configOpt = Configuration(name='test_config',relativepath='/configs',
 myDP = DataProduct(filename='test_file.fits',relativepath='/Unknown',group='raw',
                     configuration=myConfig,filtername='H158').create(ret_opt=False)
 
-myTask = Task(name='tag_image',pipeline=myPipe).create(ret_opt=False)
+myTask = Task(name='tag_image',pipeline=myPipe).create()
 
 myMask = Task.add_mask(task=myTask,source='oneTask',name='aName',value=12)
 
@@ -49,12 +52,3 @@ myDP7 = DataProduct(filename='test_file79.fits',relativepath='/Unknown',group='r
                     configuration=myConfig,filtername='Z087').create(ret_opt=False)
 myDP8 = DataProduct(filename='test_file85.jpg',relativepath='/Unknown',group='proc',
                     configuration=myConfig,filtername='').create(ret_opt=False)
-
-print(Store().select('data_products'))
-
-print(Store().select('data_products').loc[1,1,:,5])
-
-print(Store().select('data_products','data_type=="fits" & filtername="H158"'))
-
-print(Store().select('data_products',columns=['relativepath','filename','filtername']))
-

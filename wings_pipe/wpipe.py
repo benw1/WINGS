@@ -4,9 +4,7 @@ import numpy as np
 import pandas as pd
 pd.set_option('io.hdf.default_format','table')
 
-path_to_store='./h5data/wpipe_store.h5'
-
-path_to_store=os.path.abspath(path_to_store)
+path_to_store='/Users/rubab/Work/WINGS/wings_pipe/h5data/wpipe_store.h5'
 
 def update_time(x):
     x.timestamp = pd.to_datetime(time.time(),unit='s')

@@ -271,7 +271,7 @@ def trim_index(x,xlo,xhi,y=[],ylo=[],yhi=[]):
     
 def parse_all():
     parser = argparse.ArgumentParser()
-    parser.add_argument('filenames', nargs='+',help='Photomtery fits tables list')
+    #parser.add_argument('filenames', nargs='+',help='Photomtery fits tables list')
     parser.add_argument('--FORMAT',   '-fmt', dest='fmt',  default='png',
                         help='Format of saved figures')
     parser.add_argument('--XMIN', '-x1', type=float, dest='xlim1', default=[],
