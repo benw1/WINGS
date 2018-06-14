@@ -1,5 +1,5 @@
 #! /usr/bin/env
-import time, subprocess, shlex
+import time, subprocess, os
 import numpy as np
 import pandas as pd
 pd.set_option('io.hdf.default_format','table')
