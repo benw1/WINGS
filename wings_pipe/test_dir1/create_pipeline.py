@@ -23,8 +23,8 @@ def createPipeline(user_name,pipe_tasks_path,description=''):
                                   stdout=subprocess.PIPE)
             _t = subprocess.call([''.join((softRoot,'/',_task)),'-R',
                                   '-p',str(int(myPipe.pipeline_id)),
-                                  '-n',str(_task)])
-            print(_t)
+                                  '-n',str(_task)],
+                                  stdout=subprocess.PIPE)
     return None
 
 def parse_all():
