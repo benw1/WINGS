@@ -11,19 +11,20 @@ def createPipeline(user_name,pipe_tasks_path,description=''):
     confRoot = pipeRoot+'/config'
     myPipe   = Pipeline(myUser,pipeName,softRoot,dataRoot,
                 pipeRoot,confRoot,description).create()
+
+    myPipe.to_json('pipe.conf',orient='records')
     
     _t = subprocess.call(['mkdir',softRoot,dataRoot,confRoot],stdout=subprocess.PIPE)
     
     taskList = os.listdir(pipe_tasks_path)
 
     for _task in taskList:
-        if '.py' in _task:
-            _t = subprocess.call(['cp',''.join((pipe_tasks_path,'/',_task)),
-                                  ''.join((softRoot,'/.'))],
-                                  stdout=subprocess.PIPE)
+        _t = subprocess.call(['cp',''.join((pipe_tasks_path,'/',_task)),
+                              ''.join((softRoot,'/.'))],
+                             stdout=subprocess.PIPE)
 
     for _task in taskList:
-        if _task!='wpipe.py':
+        if (('.py' in _task)&(_task!='wpipe.py')):
             _t = subprocess.call([''.join((softRoot,'/',_task)),'-R',
                                   '-p',str(int(myPipe.pipeline_id)),
                                   '-n',str(_task)],

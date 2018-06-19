@@ -1,14 +1,18 @@
-#! /usr/bin/env
-import time, subprocess, os
+#! /usr/bin/env python
+import time
 import numpy as np
 import pandas as pd
 pd.set_option('io.hdf.default_format','table')
 
-path_to_store='/Users/rubab/Work/WINGS/wings_pipe/h5data/wpipe_store.h5'
+path_to_store=os.path.abspath('/h5data/wpipe_store.h5')
 
 def update_time(x):
     x.timestamp = pd.to_datetime(time.time(),unit='s')
-    return x        
+    return x
+
+def increment(df,x):
+    df[x] = int(df[x])+1
+    return df
 
 def _min_itemsize(x):
     min_itemsize = {}
@@ -50,6 +54,11 @@ class Store():
                           complevel=9,complib='blosc:blosclz')
         return newStuff
         
+    def update(self,key,stuff):
+        with pd.HDFStore(str(self.path),'r+') as myStore:
+            myStore[key] = myStore[key].drop(index=stuff.index).append(stuff)
+        return None
+    
     
     def select(self,key='events',where='all',columns=None):
         with pd.HDFStore(str(self.path),'r') as myStore:
@@ -60,10 +69,10 @@ class Store():
             
     def repack(self):
         filename = str(self.path)
-        _t1 = ['cp', filename, './data/backup1.h5']
+        _t1 = ['cp', filename, './backup1.h5']
         _t2 = ['ptrepack', '--chunkshape=auto', '--propindexes', '--complevel=9',
-               '--complib=blosc', filename, './data/temp1.h5']
-        _t3 = ['mv', './data/temp1.h5', filename]
+               '--complib=blosc', filename, './temp1.h5']
+        _t3 = ['mv', './temp1.h5', filename]
         _t = subprocess.run(_t1, stdout=subprocess.PIPE)
         _t = subprocess.run(_t2, stdout=subprocess.PIPE)
         _t = subprocess.run(_t3, stdout=subprocess.PIPE)
@@ -127,29 +136,13 @@ class Options():
                           complevel=9,complib='blosc:blosclz')
         return _df
 
-'''
-    #needs work
-    def add_or_update(opt1,opt2,store=Store()):
-        owner,owner_id = opt2.index[0]
-        dict1 = dict(zip(opt1.values[:,0],opt1.values[:,1]))
-        dict2 = dict(zip(opt2.values[:,0],opt2.values[:,1]))
-        for key in list(dict2.keys()):
-            dict1[key] = dict2[key]
-        return Options(dict1).create(owner,owner_id)
-        
-    # needs work
-    def get_opt(opt,owner='any',owner_id=0,store=Store()):
-        
-        _array = opt.sort_index(level=['owner','owner_id']).loc[str(owner),int(owner_id)].values
-        return dict(zip(_array[:,0],_array[:,1]))
-'''
          
 class Pipeline():
     def __init__(self,user=User().new(),name='any',software_root='',
                  data_root='',pipe_root='',config_root='',
                  description=''):
         self.name = np.array([str(name)])
-        self.user_name = np.array([str(user.name)])           
+        self.user_name = np.array([str(user.name.values[0])])           
         self.user_id = np.array([int(user.user_id)])
         self.pipeline_id = np.array([int(0)])
         self.software_root = np.array([str(software_root)])
@@ -217,7 +210,7 @@ class Configuration():
         
     def create(self,options={'any':0},ret_opt=True,store=Store()):
         _df = store.create('configurations','config_id',self)
-        _opt = Options(options).create('config',int(self.config_id))
+        _opt = Options(options).create('config',int(_df.config_id))
         if ret_opt:
             return _df, _opt
         else:
@@ -271,7 +264,7 @@ class DataProduct():
 
     def create(self,options={'any':0},ret_opt=True,store=Store()):
         _df = store.create('data_products','dp_id',self)
-        _opt = Options(options).create('data_product',int(self.dp_id))
+        _opt = Options(options).create('data_product',int(_df.dp_id))
         if ret_opt:
             return _df, _opt
         else:
@@ -302,18 +295,9 @@ class Parameters():
             myStore.append('parameters',_df,min_itemsize=_min_itemsize(_df))
         return _df
 
-'''    
-    # needs work
-    def get_params(cls,config=Configuration().new()):
-        _config_id = int(config.config_id)
-        _target_id = int(config.target_id)
-        _pipeline_id = int(config.pipeline_id)
-        _array = cls.loc[_pipeline_id,_target_id,_config_id].values
-        return dict(zip(_array[:,0],_array[:,1]))
-'''    
 
 class Task():
-    def __init__(self,name='any',flags='',
+    def __init__(self,name='any',
                  pipeline=Pipeline().new(),
                  nruns=0,run_time=0,
                  is_exclusive=0):
@@ -323,7 +307,6 @@ class Task():
         self.nruns = np.array([int(nruns)])
         self.run_time = np.array([float(run_time)])
         self.is_exclusive = np.array([bool(is_exclusive)])
-        # self.mask = mask
         self.timestamp = pd.to_datetime(time.time(),unit='s')
         return None
 
@@ -339,6 +322,10 @@ class Task():
         
     def add_mask(task,source='any',name='any',value='0'):
         return Mask(task,source,name,value).create()
+    
+    def run_complete(task,store=Store()):
+        task = increment(task,'nruns')
+        return store.update('tasks',update_time(task))
         
         
 class Job():
@@ -372,7 +359,7 @@ class Job():
         
     def create(self,options={'any':0},ret_opt=True,store=Store()):
         _df = store.create('jobs','job_id',self)
-        _opt = Options(options).create('job',int(self.job_id))
+        _opt = Options(options).create('job',int(_df.job_id))
         if ret_opt:
             return _df, _opt
         else:
@@ -380,7 +367,6 @@ class Job():
         
 class Event():
     def __init__(self,job=Job().new(),jargs='',name='',value=''):
-        ''' source' has to be an existing task_name for this pipeline or wildcard '''
         self.job_id = np.array([int(job.job_id)])
         self.jargs = np.array([str(jargs)])
         self.name   = np.array([str(name)])
@@ -393,13 +379,17 @@ class Event():
         _df.index = _df.event_id
         return update_time(_df)
     
-    def create(self,store=Store()):
-        return store.create('events','event_id',self)
+    def create(self,options={'any':0},ret_opt=True,store=Store()):
+        _df = store.create('events','event_id',self)
+        _opt = Options(options).create('event',int(_df.event_id))
+        if ret_opt:
+            return _df, _opt
+        else:
+            return _df   
         
 
 class Mask():
     def __init__(self,task=Task().new(),source='',name='',value=''):
-        ''' source' has to be an existing task_name for this pipeline or wildcard '''
         self.source = np.array([str(source)])
         self.name   = np.array([str(name)])
         self.value  = np.array([str(value)])
