@@ -33,7 +33,7 @@ def create_target(target_name,data,configuation):
 	number = len(data) 
 	event = create_event("new_data")
         event.addOption("data_name", new_dat.getName())
-        event.addOption("total data", number)
+        event.addOption("total_data", number)
         event.fire()
 		
 if option -R:
