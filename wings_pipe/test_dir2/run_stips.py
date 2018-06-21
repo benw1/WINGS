@@ -10,6 +10,25 @@ def register(PID,task_name):
    return
 
 def run_stips(data,configuration,parent_job,total_in,processed):
+   filepath = data.getValue('path') #all data products should know their path
+   #run a stips simulation in the proc directory
+   #os.system("stips",filepath)
+   #find all of the products and tag them
+   #proc_dir = configuration.getProcDir() #configuration should know what its target's directories are
+   #new_files = glob(proc_dir, data.getValue('name'+'*')
+   #for i in range(len(new_files)):  #generate STIPS input for each filter in catalog
+   #    stips_dp = Source().createDataProduct(new file name, configuration, etc)	
+   #    stips_in_dp.addValue("dataType","STIPSOUTPUT") #tag as a stips input file
+   #
+   #    completed = previous_job.increment_option(processed) #increase the previous job's processed option and return the updated value
+   #
+   #    if completed == total_in:  #check if all process_catalog jobs are done for this target
+   #	   new_event = Source().Event.create("stips_complete") #create new_stips_input event
+   #       new_event.addOption("target_id", configuration.getTargetID())
+   #       new_event.addOption("total_stips_out", completed)
+   #       new_event.fire()
+        
+
    pass
    
     
