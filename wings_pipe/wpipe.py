@@ -8,6 +8,8 @@ path_to_store='/Users/ben/src/WINGS/wings_pipe/h5data/wpipe_store.h5'
 # path_to_store='/Users/rubab/Work/WINGS/wings_pipe/h5data/wpipe_store.h5'
 
 
+path_to_store=os.path.abspath('./h5data/wpipe_store.h5')
+
 def update_time(x):
     x.timestamp = pd.to_datetime(time.time(),unit='s')
     return x
@@ -149,7 +151,13 @@ class Options():
     def get(owner,owner_id,store=Store()):
         x = store.select('options').loc[str(owner)].loc[int(owner_id)]
         return dict(zip(x['name'].values,x['value'].values))
-         
+    
+    def addOption(owner,owner_id=,key,value,store=Store()):
+        _opt = Options.get(owner,int(owner_id))
+        _opt[key] = value
+        return store.update('options',Options(_opt).new(owner,int(owner_id)))
+
+    
 class Pipeline():
     def __init__(self,user=User().new(),name='any',software_root='',
                  data_root='',pipe_root='',config_root='',
@@ -333,6 +341,13 @@ class Parameters():
         x = store.select('parameters').loc[pipeline_id,target_id,config_id] 
         return dict(zip(x['name'].values,x['value'].values))
     
+    def addParam(config_id=0,key,value,store=Store()):
+        config_id = int(config_id)
+        _config = Configuration.get(config_id)
+        _params = Parameters.get(config_id)
+        _params[key] = value
+        return store.update('parameters',Parameters(_params).new(_config))
+    
     
 class Task():
     def __init__(self,name='any',
@@ -361,9 +376,10 @@ class Task():
     def add_mask(task,source='any',name='any',value='0',store=Store()):
         return Mask(task,source,name,value).create(store=store)
     
-    def run_complete(task,store=Store()):
-        task = increment(task,'nruns')
-        return store.update('tasks',update_time(task))
+    # Not used in this form
+    #def run_complete(task,store=Store()):
+    #    task = increment(task,'nruns')
+    #    return store.update('tasks',update_time(task))
         
     def get(task_id,store=Store()):
         x = store.select('tasks', 'task_id=='+str(task_id))
@@ -399,7 +415,7 @@ class Job():
         _df.endtime = _df.timestamp.copy()
         return _df
         
-    def create(self,options={'any':0},ret_opt=True,store=Store()):
+    def create(self,options={'completed':0},ret_opt=True,store=Store()):
         _df = store.create('jobs','job_id',self)
         _opt = Options(options).create('job',int(_df.job_id,store=store))
         if ret_opt:
@@ -442,9 +458,11 @@ class Event():
         return store.select('events').loc[int(event_id)]
     
     def run_complete(event_id=0,store=Store()):
-        eventOpt = Options.get('event',int(event_id))
-        eventOpt['completed'] = int(eventOpt['completed'])+1
-        return store.update('options',event_opt)
+        event = Event.get(int(event_id))
+        job_id = int(event.job.job_id)
+        jobOpt = Options.get('job',int(job_id))
+        jobOpt['completed'] = int(jobOpt['completed'])+1
+        return store.update('options',job_opt)
 
 class Mask():
     def __init__(self,task=Task().new(),source='',name='',value=''):

@@ -17,20 +17,19 @@ def register(PID,task_name):
    _t = Task.add_mask(myTask,'*','new_stips_input','*')
    return
 
-def run_stips(job_id,event_id,dp_id):
+def run_stips(job_id,event_id):
    myJob  = Job.get(job_id)
    myPipe = Pipeline.get(int(myJob.pipeline_id))
-
    catalogID = Options.get('event',event_id)['dp_id']
    catalogDP = DataProduct.get(int(cat_id))
    myTarget = Target.get(int(catalogDP.target_id))
-   myConfig = Target.get(int(catalogDP.config_id))
+   myConfig = Configuration.get(int(catalogDP.config_id))
    myParams = Configuration.getParam(int(myConfig.config_id))
 
    fileroot = str(catalogDP.relativepath)
-   filename = str(catalogDP.filename) # for example, Mixed_h15_shell_3Mpc_Z.tbl 
+   filename = str(catalogDP.filename)
    
-   filtroot = filename.split('_')[-1].split('.')[0]
+   filtroot = filename.split('_')[-1].split('.')[0] # Mixed_h15_shell_3Mpc_Z.tbl
    filtername = filtdict[filtroot]
 
    scene_general = {'ra': myParams['RA'],
@@ -49,9 +48,9 @@ def run_stips(job_id,event_id,dp_id):
    obm.nextObservation()
    source_count_catalogues = obm.addCatalogue(fileroot+filename)
    psf_file = obm.addError()
-   fits_file, mosaic_file, params = obm.finalize(mosaic=False)
+   fits_file, _mosaic_file, _params = obm.finalize(mosaic=False)
 
-   dp_opt = Configuration.getParams(myConfig) # Attach config params used tp run sim to the DP
+   dp_opt = Configuration.getParams(myConfig)
    
    _dp = DataProduct(filename=fits_file,
                      relativepath=fileroot,
@@ -60,11 +59,8 @@ def run_stips(job_id,event_id,dp_id):
                      ra=myParams['RA'], dec=myParams['DEC'],
                      configuration=myConfig)\
                      .create(options=dp_opt,ret_opt=False)
-        
-   Event.run_complete(Event.get(int(event_id)))
+   
 
-   _parent = Options.get('event',event_id)
-   to_run,completed = int(_parent['to_run']), int(_parent['completed'])
 
    if !(completed<to_run):
       all_dp = Store().select('data_products',
@@ -98,6 +94,9 @@ def parse_all():
                         help='Dataproduct ID')
     return parser.parse_args()
 
+   # placeholder for additional steps
+   print('done')
+
 if __name__ == '__main__':
    args = parse_all()
    if args.REG:
@@ -105,11 +104,13 @@ if __name__ == '__main__':
    else:
       job_id = int(args.job_id)
       event_id = int(args.event_id)
-      if len(do_id==1):
-         dp_id = int(args.dp_id)
-      else:
-         dp_id = 0
-      run_stips(job_id,event_id,dp_id)
-       
-   # placeholder for additional steps
-   print('done')
+      run_stips(job_id,event_id)
+      Event.run_complete(Event.get(int(event_id)))
+      event = Job.getEvent(myJob,'run_stips_completed')
+      Event.fire(event)
+      to_run = int(Options.get('event',event_id)['to_run'])
+      completed = int(Options.get('job',int(Event.get(event_id).job_id))['completed'])
+      if !(completed<to_run):    
+         event = Job.getEvent(myJob,'new_images',options={'to_run':1})
+         Event.fire(event)
+      
