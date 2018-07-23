@@ -36,12 +36,6 @@ if __name__ == '__main__':
    else:
       job_id = int(args.job_id)
       event_id = int(args.event_id)
-      do_something(job_id,event_id)
-      #Event.run_complete(Event.get(int(event_id)))
-      #event = Job.getEvent(myJob,'run_stips_completed')
-      #Event.fire(event)
-      to_run = int(Options.get('event',event_id)['to_run'])
-      completed = int(Options.get('job',int(Event.get(event_id).job_id))['completed'])
-      if !(completed<to_run):    
-         event = Job.getEvent(myJob,'new_images',options={'to_run':1})
-         Event.fire(event)
+      event = Event.get(event_id)
+      name = Options.get(event)['sub_branch']
+      print("Made it! Sub Branch is ",name)
