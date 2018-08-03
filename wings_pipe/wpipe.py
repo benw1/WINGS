@@ -7,9 +7,6 @@ pd.set_option('io.hdf.default_format','table')
 path_to_store='/Users/ben/src/WINGS/wings_pipe/h5data/wpipe_store.h5'
 # path_to_store='/Users/rubab/Work/WINGS/wings_pipe/h5data/wpipe_store.h5'
 
-
-path_to_store=os.path.abspath('./h5data/wpipe_store.h5')
-
 def update_time(x):
     x.timestamp = pd.to_datetime(time.time(),unit='s')
     return x
@@ -417,7 +414,7 @@ class Job():
         
     def create(self,options={'completed':0},ret_opt=True,store=Store()):
         _df = store.create('jobs','job_id',self)
-        _opt = Options(options).create('job',int(_df.job_id,store=store))
+        _opt = Options(options).create('job',int(_df.job_id),store=store)
         if ret_opt:
             return _df, _opt
         else:
