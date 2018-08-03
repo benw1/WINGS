@@ -152,7 +152,7 @@ class Options():
         x = store.select('options').loc[str(owner)].loc[int(owner_id)]
         return dict(zip(x['name'].values,x['value'].values))
     
-    def addOption(owner,owner_id=,key,value,store=Store()):
+    def addOption(owner,owner_id,key,value,store=Store()):
         _opt = Options.get(owner,int(owner_id))
         _opt[key] = value
         return store.update('options',Options(_opt).new(owner,int(owner_id)))
@@ -341,7 +341,7 @@ class Parameters():
         x = store.select('parameters').loc[pipeline_id,target_id,config_id] 
         return dict(zip(x['name'].values,x['value'].values))
     
-    def addParam(config_id=0,key,value,store=Store()):
+    def addParam(config_id,key,value,store=Store()):
         config_id = int(config_id)
         _config = Configuration.get(config_id)
         _params = Parameters.get(config_id)
