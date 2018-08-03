@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 import argparse,os,subprocess
 from wpipe import *
-from stips.observation_module import ObservationModule
+
 
 def register(PID,task_name):
    myPipe = Store().select('pipelines').loc[int(PID)]
@@ -26,8 +26,6 @@ def parse_all():
                         help='Dataproduct ID')
     return parser.parse_args()
 
-   # placeholder for additional steps
-   print('done')
 
 if __name__ == '__main__':
    args = parse_all()
@@ -47,7 +45,8 @@ if __name__ == '__main__':
       _completed_names = Options(options).create('job',int(job_id))
       for i in range(to_run1):
          event = Job.getEvent(myJob,'example1_done',options={'to_run':to_run1,'name':testname1})
-         Event.fire(event)
+         #Event.fire(event)
       for i in range(to_run2):
          event = Job.getEvent(myJob,'example1_done',options={'to_run':3,'name':testname2})
-         Event.fire(event)
+         #Event.fire(event)
+      print("got here")
