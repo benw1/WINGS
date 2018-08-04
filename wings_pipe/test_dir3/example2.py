@@ -1,13 +1,19 @@
 #! /usr/bin/env python
 import argparse,os,subprocess
 from wpipe import *
-
+import numpy as np
+import time
+#from stips.observation_module import ObservationModule
 
 def register(PID,task_name):
    myPipe = Store().select('pipelines').loc[int(PID)]
    myTask = Task(task_name,myPipe).create()
    _t = Task.add_mask(myTask,'*','start',task_name)
    _t = Task.add_mask(myTask,'*','new_stips_input','*')
+   return
+
+def do_something(job_id,event_id):
+   time.sleep(np.random.rand(1)*10.0)
    return
 
 def parse_all():
@@ -26,7 +32,7 @@ def parse_all():
                         help='Dataproduct ID')
     return parser.parse_args()
 
-
+ 
 if __name__ == '__main__':
    args = parse_all()
    if args.REG:
@@ -35,23 +41,21 @@ if __name__ == '__main__':
       job_id = int(args.job_id)
       event_id = int(args.event_id)
       myJob = Job.get(job_id)
-      to_run1 = 4
-      to_run2 = 3
-      testname1 = 'name1'
-      testname2 = 'name2'
-      comp_name1 = 'completed'+testname1
-      comp_name2 = 'completed'+testname2
-      options = {comp_name1:0, comp_name2:0}
-      #_completed_names = Options(options).create('job',int(job_id))
-      #_completed_name1 = Options.createorupdate('job',job_id,comp_name1,0)
-      #_completed_name2 = Options.createorupdate('job',job_id,comp_name2,0)
-      for i in range(to_run1):
-         event = Job.getEvent(myJob,'example1_done',options={'to_run':to_run1,'name':testname1})
-         _job = Job.create()
+      do_something(job_id,event_id)
+      event = Event.get(event_id)
+      #parent_job = event.getParentJob()
+      parent_job_id = event.job_id
+      name = Options.get('event',event_id)['name']
+      compname = 'completed'+name
+      update_option = int(Options.get('job',parent_job_id)[compname])
+      update_option = update_option+1
+      _update = Options.addOption('job',parent_job_id,compname,update_option)
+      #Event.run_complete(Event.get(int(event_id)))
+      #event = Job.getEvent(myJob,'run_stips_completed')
+      #Event.fire(event)
+      to_run = int(Options.get('event',event_id)['to_run'])
+      completed = update_option
+      if (completed>=to_run):    
+         event = Job.getEvent(myJob,'example2_done',options={'sub_branch':name})
          #Event.fire(event)
-         print("Event=",event.event_id,"; Job=",_job.job_id)
-      for i in range(to_run2):
-         event = Job.getEvent(myJob,'example1_done',options={'to_run':to_run2,'name':testname2})
-         _job = Job.create()
-         #Event.fire(event)
-         print("Event=",event.event_id,"; Job=",_job.job_id)
+         print('completed example2')
