@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 pd.set_option('io.hdf.default_format','table')
 
-path_to_store='/Users/ben/src/WINGS/wings_pipe/h5data/wpipe_store.h5'
-# path_to_store='/Users/rubab/Work/WINGS/wings_pipe/h5data/wpipe_store.h5'
+# path_to_store='/Users/ben/src/WINGS/wings_pipe/h5data/wpipe_store.h5'
+path_to_store='/Users/rubab/Work/WINGS/wings_pipe/h5data/wpipe_store.h5'
 
 def update_time(x):
     x.timestamp = pd.to_datetime(time.time(),unit='s')
@@ -147,7 +147,10 @@ class Options():
 
     def get(owner,owner_id,store=Store()):
         x = store.select('options').loc[str(owner)].loc[int(owner_id)]
-        return dict(zip(x['name'].values,x['value'].values))
+        if x.shape==(2,):
+            return dict(zip(x['name'],x['value']))
+        else:
+            return dict(zip(x['name'].values,x['value'].values))
     
     def addOption(owner,owner_id,key,value,store=Store()):
         _opt = Options.get(owner,int(owner_id))
@@ -199,7 +202,7 @@ class Target():
                     np.array([int(self.target_id)])], names=('pipelineID','targetID'))
         return update_time(_df) 
 
-    def create(self,options={'any':0},ret_opt=True,store=Store()):
+    def create(self,options={'any':0},ret_opt=False,store=Store()):
         _df = store.create('targets','target_id',self)
         _opt = Options(options).create('target',int(_df.target_id),store=store)
         if ret_opt:
@@ -232,7 +235,7 @@ class Configuration():
         return update_time(_df)        
 
         
-    def create(self,params={'any':0},ret_opt=True,store=Store()):
+    def create(self,params={'any':0},ret_opt=False,store=Store()):
         _df = store.create('configurations','config_id',self)
         _params = Parameters(params).create(_df,store=store)
         if ret_opt:
@@ -292,7 +295,7 @@ class DataProduct():
                     names=('pipelineID','targetID','configID','dpID'))
         return update_time(_df)
 
-    def create(self,options={'any':0},ret_opt=True,store=Store()):
+    def create(self,options={'any':0},ret_opt=False,store=Store()):
         _df = store.create('data_products','dp_id',self)
         _opt = Options(options).create('data_product',int(_df.dp_id),store=store)
         if ret_opt:
@@ -336,7 +339,10 @@ class Parameters():
         target_id = int(config.target_id)
         pipeline_id = int(config.pipeline_id)
         x = store.select('parameters').loc[pipeline_id,target_id,config_id] 
-        return dict(zip(x['name'].values,x['value'].values))
+        if x.shape==(2,):
+            return dict(zip(x['name'],x['value']))
+        else:
+            return dict(zip(x['name'].values,x['value'].values))
     
     def addParam(config_id,key,value,store=Store()):
         config_id = int(config_id)
@@ -372,11 +378,6 @@ class Task():
         
     def add_mask(task,source='any',name='any',value='0',store=Store()):
         return Mask(task,source,name,value).create(store=store)
-    
-    # Not used in this form
-    #def run_complete(task,store=Store()):
-    #    task = increment(task,'nruns')
-    #    return store.update('tasks',update_time(task))
         
     def get(task_id,store=Store()):
         x = store.select('tasks', 'task_id=='+str(task_id))
@@ -412,7 +413,7 @@ class Job():
         _df.endtime = _df.timestamp.copy()
         return _df
         
-    def create(self,options={'completed':0},ret_opt=True,store=Store()):
+    def create(self,options={'completed':0},ret_opt=False,store=Store()):
         _df = store.create('jobs','job_id',self)
         _opt = Options(options).create('job',int(_df.job_id),store=store)
         if ret_opt:
@@ -427,7 +428,7 @@ class Job():
     def getEvent(job,
                   name='any',value='0',jargs='0',
                   options={'any':0},store=Store()):
-        return Event(name,value,jargs,job).create(options=options,ret_opt=False,store=store)
+        return Event(name,value,jargs,job).create(options=options,store=store)
     
 class Event():
     def __init__(self,name='',value='',jargs='',job=Job().new()):
@@ -443,7 +444,7 @@ class Event():
         _df.index = _df.event_id
         return update_time(_df)
     
-    def create(self,options={'any':0},ret_opt=True,store=Store()):
+    def create(self,options={'any':0},ret_opt=False,store=Store()):
         _df = store.create('events','event_id',self)
         _opt = Options(options).create('event',int(_df.event_id),store=store)
         if ret_opt:
@@ -456,10 +457,10 @@ class Event():
     
     def run_complete(event_id=0,store=Store()):
         event = Event.get(int(event_id))
-        job_id = int(event.job.job_id)
+        job_id = int(event.job_id)
         jobOpt = Options.get('job',int(job_id))
         jobOpt['completed'] = int(jobOpt['completed'])+1
-        return store.update('options',job_opt)
+        return store.update('options',Options(jobOpt).new('job',job_id))
 
 class Mask():
     def __init__(self,task=Task().new(),source='',name='',value=''):

@@ -43,19 +43,19 @@ if __name__ == '__main__':
       myJob = Job.get(job_id)
       do_something(job_id,event_id)
       event = Event.get(event_id)
-      #parent_job = event.getParentJob()
-      parent_job_id = event.job_id
+      parent_job_id = int(event.job_id)
       name = Options.get('event',event_id)['name']
       compname = 'completed'+name
       update_option = int(Options.get('job',parent_job_id)[compname])
       update_option = update_option+1
       _update = Options.addOption('job',parent_job_id,compname,update_option)
-      #Event.run_complete(Event.get(int(event_id)))
-      #event = Job.getEvent(myJob,'run_stips_completed')
-      #Event.fire(event)
       to_run = int(Options.get('event',event_id)['to_run'])
       completed = update_option
-      if (completed>=to_run):    
+      if (completed>=to_run):
+         print(myJob)
+         print(name)
          event = Job.getEvent(myJob,'example2_done',options={'sub_branch':name})
+         _job  = Job().create()
          #Event.fire(event)
          print('completed example2')
+         print("Event=",int(event.event_id),"; Job=",int(_job.job_id))
