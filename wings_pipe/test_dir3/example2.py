@@ -13,7 +13,7 @@ def register(PID,task_name):
    return
 
 def do_something(job_id,event_id):
-   time.sleep(np.random.rand(1)*10.0)
+   time.sleep(np.random.rand(1)*1.0)
    return
 
 def parse_all():
@@ -52,8 +52,6 @@ if __name__ == '__main__':
       to_run = int(Options.get('event',event_id)['to_run'])
       completed = update_option
       if (completed>=to_run):
-         print(myJob)
-         print(name)
          event = Job.getEvent(myJob,'example2_done',options={'sub_branch':name})
          _job  = Job().create()
          #Event.fire(event)

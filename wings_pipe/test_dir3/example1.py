@@ -35,7 +35,7 @@ if __name__ == '__main__':
       job_id = int(args.job_id)
       event_id = int(args.event_id)
       myJob = Job.get(job_id)
-      to_run1 = 6
+      to_run1 = 4
       to_run2 = 3
       testname1 = 'name1'
       testname2 = 'name2'

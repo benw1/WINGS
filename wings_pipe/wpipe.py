@@ -4,8 +4,9 @@ import numpy as np
 import pandas as pd
 pd.set_option('io.hdf.default_format','table')
 
-# path_to_store='/Users/ben/src/WINGS/wings_pipe/h5data/wpipe_store.h5'
-path_to_store='/Users/rubab/Work/WINGS/wings_pipe/h5data/wpipe_store.h5'
+path_to_store='/Users/ben/src/WINGS/wings_pipe/h5data/wpipe_store.h5'
+# path_to_store='/Users/rubab/Work/WINGS/wings_pipe/h5data/wpipe_store.h5'
+
 
 def update_time(x):
     x.timestamp = pd.to_datetime(time.time(),unit='s')
@@ -56,6 +57,15 @@ class Store():
         return newStuff
         
     def update(self,key,stuff):
+        with pd.HDFStore(str(self.path),'r+') as myStore:
+            _t = myStore[key]
+            _t = _t.drop(index=stuff.index).append(stuff)
+            myStore.remove(key)
+            myStore.append(key,_t,min_itemsize=_min_itemsize(_t),
+                        complevel=9,complib='blosc:blosclz')
+        return None
+        
+    def update2(self,key,stuff):
         with pd.HDFStore(str(self.path),'r+') as myStore:
             myStore[key] = myStore[key].drop(index=stuff.index).append(stuff)
         return None
