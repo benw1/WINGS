@@ -41,17 +41,20 @@ if __name__ == '__main__':
       testname2 = 'name2'
       comp_name1 = 'completed'+testname1
       comp_name2 = 'completed'+testname2
+      
       options = {comp_name1:0, comp_name2:0}
 
       _opt = Options(options).create('job',job_id)
       
       for i in range(to_run1):
          event = Job.getEvent(myJob,'example1_done',options={'to_run':to_run1,'name':testname1})
-         _job = Job().create()
+         _job = Job(event_id=int(event.event_id)).create()
          #Event.fire(event)
          print("Event=",int(event.event_id),"; Job=",int(_job.job_id))
       for i in range(to_run2):
          event = Job.getEvent(myJob,'example1_done',options={'to_run':to_run2,'name':testname2})
-         _job = Job().create()
+         _job = Job(event_id=int(event.event_id)).create()
          #Event.fire(event)
          print("Event=",int(event.event_id),"; Job=",int(_job.job_id))
+
+      

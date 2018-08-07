@@ -4,9 +4,8 @@ import numpy as np
 import pandas as pd
 pd.set_option('io.hdf.default_format','table')
 
-path_to_store='/Users/ben/src/WINGS/wings_pipe/h5data/wpipe_store.h5'
-# path_to_store='/Users/rubab/Work/WINGS/wings_pipe/h5data/wpipe_store.h5'
-
+# path_to_store='/Users/ben/src/WINGS/wings_pipe/h5data/wpipe_store.h5'
+path_to_store='/Users/rubab/Work/WINGS/wings_pipe/h5data/wpipe_store.h5'
 
 def update_time(x):
     x.timestamp = pd.to_datetime(time.time(),unit='s')
@@ -64,12 +63,6 @@ class Store():
             myStore.append(key,_t,min_itemsize=_min_itemsize(_t),
                         complevel=9,complib='blosc:blosclz')
         return None
-        
-    def update2(self,key,stuff):
-        with pd.HDFStore(str(self.path),'r+') as myStore:
-            myStore[key] = myStore[key].drop(index=stuff.index).append(stuff)
-        return None
-    
     
     def select(self,key='events',where='all',columns=None):
         with pd.HDFStore(str(self.path),'r') as myStore:
@@ -158,7 +151,7 @@ class Options():
     def get(owner,owner_id,store=Store()):
         x = store.select('options').loc[str(owner)].loc[int(owner_id)]
         if x.shape==(2,):
-            return dict(zip(x['name'],x['value']))
+            return dict(zip([x['name']],[x['value']]))
         else:
             return dict(zip(x['name'].values,x['value'].values))
     
@@ -173,7 +166,7 @@ class Pipeline():
                  data_root='',pipe_root='',config_root='',
                  description=''):
         self.name = np.array([str(name)])
-        self.user_name = np.array([str(user.name.values[0])])           
+        self.user_name = np.array([str(user.name)])           
         self.user_id = np.array([int(user.user_id)])
         self.pipeline_id = np.array([int(0)])
         self.software_root = np.array([str(software_root)])
@@ -342,7 +335,6 @@ class Parameters():
             myStore.append('parameters',_df,min_itemsize=_min_itemsize(_df))
         return _df
 
-        
     def getParam(config_id=0,store=Store()):
         config_id = int(config_id)
         config = Configuration.get(int(config_id))
@@ -350,14 +342,14 @@ class Parameters():
         pipeline_id = int(config.pipeline_id)
         x = store.select('parameters').loc[pipeline_id,target_id,config_id] 
         if x.shape==(2,):
-            return dict(zip(x['name'],x['value']))
+            return dict(zip([x['name']],[x['value']]))
         else:
             return dict(zip(x['name'].values,x['value'].values))
     
     def addParam(config_id,key,value,store=Store()):
         config_id = int(config_id)
         _config = Configuration.get(config_id)
-        _params = Parameters.get(config_id)
+        _params = Parameters.getParam(config_id)
         _params[key] = value
         return store.update('parameters',Parameters(_params).new(_config))
     

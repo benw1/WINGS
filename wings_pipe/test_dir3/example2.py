@@ -53,7 +53,7 @@ if __name__ == '__main__':
       completed = update_option
       if (completed>=to_run):
          event = Job.getEvent(myJob,'example2_done',options={'sub_branch':name})
-         _job  = Job().create()
+         _job  = Job(event_id=int(event.event_id)).create()
          #Event.fire(event)
          print('completed example2')
          print("Event=",int(event.event_id),"; Job=",int(_job.job_id))
