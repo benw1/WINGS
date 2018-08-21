@@ -2,9 +2,6 @@
 import argparse,os,subprocess
 from wpipe import *
 
-
-
-
 def register(PID,task_name):
    myPipe = Store().select('pipelines').loc[int(PID)]
    myTask = Task(task_name,myPipe).create()
@@ -28,39 +25,16 @@ def parse_all():
                         help='Dataproduct ID')
     return parser.parse_args()
 
+    # placeholder for additional steps
+    print('done')
 
 if __name__ == '__main__':
    args = parse_all()
    if args.REG:
       _t = register(int(args.PID),str(args.task_name))
    else:
-      _job = Job().create()
-      _event = Job.getEvent(_job)
-      job_id = int(_job.job_id)
-      event_id = int(_event.event_id)
-      #job_id = int(args.job_id) #initial job makes its own job
-      #event_id = int(args.event_id) #initial job makes its own event
-      myJob = Job.get(job_id)
-      to_run1 = 4
-      to_run2 = 3
-      testname1 = 'name1'
-      testname2 = 'name2'
-      comp_name1 = 'completed'+testname1
-      comp_name2 = 'completed'+testname2
-      
-      options = {comp_name1:0, comp_name2:0}
-
-      _opt = Options(options).create('job',job_id)
-      
-      for i in range(to_run1):
-         event = Job.getEvent(myJob,'example1_done',options={'to_run':to_run1,'name':testname1})
-         _job = Job(event_id=int(event.event_id)).create()
-         #Event.fire(event)
-         print("Event=",int(event.event_id),"; Job=",int(_job.job_id))
-      for i in range(to_run2):
-         event = Job.getEvent(myJob,'example1_done',options={'to_run':to_run2,'name':testname2})
-         _job = Job(event_id=int(event.event_id)).create()
-         #Event.fire(event)
-         print("Event=",int(event.event_id),"; Job=",int(_job.job_id))
-
-      
+      job_id = int(args.job_id)
+      event_id = int(args.event_id)
+      event = Event.get(event_id)
+      name = Options.get('event',event_id)['sub_branch']
+      print("Made it! Sub Branch is ",name)
