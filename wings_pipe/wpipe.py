@@ -166,7 +166,7 @@ class Pipeline():
                  data_root='',pipe_root='',config_root='',
                  description=''):
         self.name = np.array([str(name)])
-        self.user_name = np.array([str(user.name)])           
+        self.user_name = np.array([str(user['name'])])           
         self.user_id = np.array([int(user.user_id)])
         self.pipeline_id = np.array([int(0)])
         self.software_root = np.array([str(software_root)])
