@@ -3,7 +3,7 @@ import argparse, os, subprocess
 from wpipe import *
 
 def createPipeline(user_name,pipe_tasks_path,description=''):
-    myUser   = Store().select('users',''.join(('name=="',str(user_name),'"')))
+    myUser   = User.get(user_name)
     pipeRoot = os.getcwd()
     pipeName = os.path.basename(pipeRoot)
     softRoot = pipeRoot+'/build'
@@ -25,6 +25,9 @@ def createPipeline(user_name,pipe_tasks_path,description=''):
 
     for _task in taskList:
         if (('.py' in _task)&(_task!='wpipe.py')):
+            #print([''.join((softRoot,'/',_task)),'-R',
+            #                      '-p',str(int(myPipe.pipeline_id)),
+            #                      '-n',str(_task)])
             _t = subprocess.call([''.join((softRoot,'/',_task)),'-R',
                                   '-p',str(int(myPipe.pipeline_id)),
                                   '-n',str(_task)],

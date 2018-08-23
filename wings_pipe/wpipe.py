@@ -484,3 +484,31 @@ class Mask():
     def get(mask_id,store=Store()):
         return store.select('masks').loc[int(mask_id)]
         
+def fire(event):
+    event_name = event['name'].values[0]
+    event_value = event['value'].values[0]
+    #print("HERE ",event['name'].values[0]," DONE")
+    parent_job = Job.get(int(event.job_id))
+    conf_id = int(parent_job.config_id)
+    configuration = Configuration.get(conf_id)
+    pipeline_id = parent_job.pipeline_id
+    #print(pipeline_id)
+    alltasks =  Store().select('tasks',where="pipeline_id=="+str(pipeline_id))
+    for i in range(alltasks.shape[0]):
+        task = alltasks.iloc[i]
+        task_id = task['task_id']
+        print(task_id)
+        m = Store().select('masks',where="task_id=="+str(task_id))
+        for j in range(m.shape[0]):
+            mask = m.iloc[j]
+            mask_name = mask['name']
+            mask_value = mask['value']
+    
+            print("HERE",event_name,mask_name,event_value,mask_value,"DONE",mask)
+            if (event_name == mask_name) & (event_value == mask_value):
+                taskname = task.name
+                newjob = Job(task=task,config=configuration).create() #need to give this a configuration
+                job_id = int(newjob.job_id)
+                event_id = int(event['event_id'].values[0])
+                #print(taskname,"-e",event_id,"-j",job_id)
+                #Submit(task,"-e",event_id,"-j",job_id) #pipeline should be able to run stuff and keep track if it completes
