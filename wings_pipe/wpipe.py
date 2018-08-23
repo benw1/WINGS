@@ -498,6 +498,7 @@ def Submit(task,job_id,event_id):
 def fire(event):
     event_name = event['name'].values[0]
     event_value = event['value'].values[0]
+    event_id = event['event_id'].values[0]
     #print("HERE ",event['name'].values[0]," DONE")
     parent_job = Job.get(int(event.job_id))
     conf_id = int(parent_job.config_id)
@@ -518,9 +519,34 @@ def fire(event):
             #print("HERE",event_name,mask_name,event_value,mask_value,"DONE3")
             if (event_name == mask_name) & ((event_value == mask_value) | (mask_value=='*')):
                 taskname = task['name']
-                newjob = Job(task=task,config=configuration).create() #need to give this a configuration
+                newjob = Job(task=task,config=configuration,event_id=event_id).create() #need to give this a configuration
                 job_id = int(newjob['job_id'].values[0])
                 event_id = int(event['event_id'].values[0])
                 print(taskname,"-e",event_id,"-j",job_id)
                 Submit(task,job_id,event_id) #pipeline should be able to run stuff and keep track if it completes
                 return
+
+def logprint(configuration,job,log_text):
+    target_id = configuration['target_id'].values[0]
+    pipeline_id = configuration['pipeline_id'].values[0]
+    print("T",target_id,"P",pipeline_id)
+    myPipe = Pipeline.get(pipeline_id)
+    myTarg = Target.get(target_id)
+    conf_name = configuration['name'].values[0]
+    targ_name = myTarg['name']
+    logpath = myPipe.data_root+'/'+targ_name+'/log_'+conf_name+'/'
+    job_id = job['job_id']
+    event_id = job['event_id']
+    task_id = job['task_id']
+    task = Task.get(task_id)
+    task_name = task['name']
+    logfile = task_name+'_j'+str(job_id)+'_e'+str(event_id)+'.log'
+    print(task_name,job_id,event_id,logpath)
+    try:
+     log = open(logpath+logfile, "a")
+    except:
+     log = open(logpath+logfile, "w")
+    log.write(log_text)
+    log.close()
+    
+    
