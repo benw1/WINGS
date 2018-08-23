@@ -9,7 +9,6 @@ def register(PID,task_name):
    myPipe = Store().select('pipelines').loc[int(PID)]
    myTask = Task(task_name,myPipe).create()
    _t = Task.add_mask(myTask,'*','start',task_name)
-   _t = Task.add_mask(myTask,'*','new_stips_input','*')
    return
 
 def parse_all():
@@ -34,7 +33,19 @@ if __name__ == '__main__':
    if args.REG:
       _t = register(int(args.PID),str(args.task_name))
    else:
-      _job = Job().create()
+      try:
+         print(args.PID)
+      except:
+         print("Need to define a pipeline ID")
+         exit
+      myPipe = Pipeline.get(args.PID)
+      myTarget = Target(name='start_targ', pipeline=myPipe).create()
+      myConfig = Configuration(name='test_config',target=myTarget).create()
+      params={'a':0,'x':12,'note':'testing this'}
+      myParams = Parameters(params).create(myConfig)
+      Parameters.addParam(int(myConfig.config_id),'annulus',12)
+      Parameters.addParam(int(myConfig.config_id),'delta_annulus',8)
+      _job = Job(config=myConfig).create()
       _event = Job.getEvent(_job)
       job_id = int(_job.job_id)
       event_id = int(_event.event_id)
@@ -57,14 +68,12 @@ if __name__ == '__main__':
          #print(event.event_id.values[0])
          #_job = Job(event_id=int(event.event_id)).create()
          #print("EXAM ",event['event_id'].values[0],"DONE")
-         #time.sleep(1.0)
          fire(event)
          #print("Event=",int(event.event_id),"; Job=",int(_job.job_id))
       for i in range(to_run2):
          event = Job.getEvent(myJob,'example1_done',options={'to_run':to_run2,'name':testname2})
          #_job = Job(event_id=int(event.event_id)).create()
-    
-         #fire(event)
+         fire(event)
          #print("Event=",int(event.event_id),"; Job=",int(_job.job_id))
 
       

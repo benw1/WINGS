@@ -483,7 +483,18 @@ class Mask():
     
     def get(mask_id,store=Store()):
         return store.select('masks').loc[int(mask_id)]
-        
+
+def Submit(task,job_id,event_id):
+    pid = task.pipeline_id
+    myPipe = Pipeline.get(pid)
+    swroot = myPipe.software_root
+    executable = swroot+'/'+task['name']
+    dataroot = myPipe.data_root
+    job = Job.get(int(job_id))
+    #subprocess.Popen([executable,'-e',str(event_id),'-j',str(job_id)],cwd=dataroot) # This line will work with an SQL backbone, but NOT hdf5, as 2 tasks running on the same hdf5 file will collide!
+    subprocess.run([executable,'-e',str(event_id),'-j',str(job_id)],cwd=dataroot)
+    return
+
 def fire(event):
     event_name = event['name'].values[0]
     event_value = event['value'].values[0]
@@ -497,18 +508,19 @@ def fire(event):
     for i in range(alltasks.shape[0]):
         task = alltasks.iloc[i]
         task_id = task['task_id']
-        print(task_id)
+        #print(task_id)
         m = Store().select('masks',where="task_id=="+str(task_id))
         for j in range(m.shape[0]):
             mask = m.iloc[j]
             mask_name = mask['name']
             mask_value = mask['value']
     
-            print("HERE",event_name,mask_name,event_value,mask_value,"DONE",mask)
-            if (event_name == mask_name) & (event_value == mask_value):
-                taskname = task.name
+            #print("HERE",event_name,mask_name,event_value,mask_value,"DONE3")
+            if (event_name == mask_name) & ((event_value == mask_value) | (mask_value=='*')):
+                taskname = task['name']
                 newjob = Job(task=task,config=configuration).create() #need to give this a configuration
-                job_id = int(newjob.job_id)
+                job_id = int(newjob['job_id'].values[0])
                 event_id = int(event['event_id'].values[0])
-                #print(taskname,"-e",event_id,"-j",job_id)
-                #Submit(task,"-e",event_id,"-j",job_id) #pipeline should be able to run stuff and keep track if it completes
+                print(taskname,"-e",event_id,"-j",job_id)
+                Submit(task,job_id,event_id) #pipeline should be able to run stuff and keep track if it completes
+                return

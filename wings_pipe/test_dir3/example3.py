@@ -6,7 +6,7 @@ def register(PID,task_name):
    myPipe = Store().select('pipelines').loc[int(PID)]
    myTask = Task(task_name,myPipe).create()
    _t = Task.add_mask(myTask,'*','start',task_name)
-   _t = Task.add_mask(myTask,'*','new_stips_input','*')
+   _t = Task.add_mask(myTask,'*','example2_done','*')
    return
 
 def parse_all():

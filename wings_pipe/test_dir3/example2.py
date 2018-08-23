@@ -9,7 +9,7 @@ def register(PID,task_name):
    myPipe = Store().select('pipelines').loc[int(PID)]
    myTask = Task(task_name,myPipe).create()
    _t = Task.add_mask(myTask,'*','start',task_name)
-   _t = Task.add_mask(myTask,'*','new_stips_input','*')
+   _t = Task.add_mask(myTask,'*','example1_done','*')
    return
 
 def do_something(job_id,event_id):
@@ -51,9 +51,10 @@ if __name__ == '__main__':
       _update = Options.addOption('job',parent_job_id,compname,update_option)
       to_run = int(Options.get('event',event_id)['to_run'])
       completed = update_option
+      #time.sleep(3.0)
       if (completed>=to_run):
          event = Job.getEvent(myJob,'example2_done',options={'sub_branch':name})
          _job  = Job(event_id=int(event.event_id)).create()
-         #Event.fire(event)
+         fire(event)
          print('completed example2')
          print("Event=",int(event.event_id),"; Job=",int(_job.job_id))
