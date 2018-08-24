@@ -25,9 +25,6 @@ def createPipeline(user_name,pipe_tasks_path,description=''):
 
     for _task in taskList:
         if (('.py' in _task)&(_task!='wpipe.py')):
-            #print([''.join((softRoot,'/',_task)),'-R',
-            #                      '-p',str(int(myPipe.pipeline_id)),
-            #                      '-n',str(_task)])
             _t = subprocess.call([''.join((softRoot,'/',_task)),'-R',
                                   '-p',str(int(myPipe.pipeline_id)),
                                   '-n',str(_task)],
