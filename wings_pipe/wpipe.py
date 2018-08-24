@@ -248,10 +248,10 @@ class Configuration():
         _params = Parameters(params).create(_df,store=store)
         
         if create_dir:
-            _t1 = ['mkdir', '-p', self.relativepath+'raw_'+str(self.name)]
-            _t2 = ['mkdir', '-p', self.relativepath+'conf_'+str(self.name)]
-            _t3 = ['mkdir', '-p', self.relativepath+'proc_'+str(self.name)]
-            _t4 = ['mkdir', '-p', self.relativepath+'log_'+str(self.name)]    
+            _t1 = ['mkdir', '-p', self.relativepath+'/raw_'+str(self.name)]
+            _t2 = ['mkdir', '-p', self.relativepath+'/conf_'+str(self.name)]
+            _t3 = ['mkdir', '-p', self.relativepath+'/proc_'+str(self.name)]
+            _t4 = ['mkdir', '-p', self.relativepath+'/log_'+str(self.name)]    
             _t = subprocess.run(_t1, stdout=subprocess.PIPE)
             _t = subprocess.run(_t2, stdout=subprocess.PIPE)
             _t = subprocess.run(_t3, stdout=subprocess.PIPE)
