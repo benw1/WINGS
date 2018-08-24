@@ -24,7 +24,7 @@ def run_stips(job_id,event_id,dp_id):
    catalogID = Options.get('event',event_id)['dp_id']
    catalogDP = DataProduct.get(int(cat_id))
    myTarget = Target.get(int(catalogDP.target_id))
-   myConfig = Target.get(int(catalogDP.config_id))
+   myConfig = Configuration.get(int(catalogDP.config_id))
    myParams = Configuration.getParam(int(myConfig.config_id))
 
    fileroot = str(catalogDP.relativepath)

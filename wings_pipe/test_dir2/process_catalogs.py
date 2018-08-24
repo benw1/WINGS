@@ -19,7 +19,7 @@ def process_catalog(job_id,event_id):
    catalogID = Options.get('event',event_id)['dp_id']
    catalogDP = DataProduct.get(int(cat_id))
    myTarget = Target.get(int(catalogDP.target_id))
-   myConfig = Target.get(int(catalogDP.config_id))
+   myConfig = Configuration.get(int(catalogDP.config_id))
    myParams = Parameters.getParam(int(myConfig.config_id))
    
    fileroot = str(catalogDP.relativepath)
@@ -50,7 +50,7 @@ def process_catalog(job_id,event_id):
    for j,filt in enumerate(filternames):
       outfile = starpre+'_'+filt[0]+'.tbl'
       flux    = wtips.get_counts(M[:,j],ZP_AB[j],dist=dist)
-      # This makes a stars only imput list
+      # This makes a stars only input list
       wtips.from_scratch(flux=flux, 
                          ra=RA,dec=DEC,
                          outfile=fileroot+outfile)
