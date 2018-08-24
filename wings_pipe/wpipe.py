@@ -190,12 +190,13 @@ class Pipeline():
         return store.select('pipelines').loc[int(pipeline_id)]    
         
 class Target():
-    def __init__(self,name='any',relativepath='',
+    def __init__(self,name='any',
                  pipeline=Pipeline().new()):               
         self.name = np.array([str(name)])
-        self.relativepath = np.array([str(relativepath)])
         self.pipeline_id = np.array([int(pipeline.pipeline_id)])
         self.target_id = np.array([int(0)])
+        myPipe = Pipeline.get(self.pipeline_id)
+        self.relativepath = np.array([str(myPipe.data_root)+'/'+str(self.name)])
         self.timestamp = pd.to_datetime(time.time(),unit='s')
         return None
 
@@ -205,9 +206,13 @@ class Target():
                     np.array([int(self.target_id)])], names=('pipelineID','targetID'))
         return update_time(_df) 
 
-    def create(self,options={'any':0},ret_opt=False,store=Store()):
+    def create(self,options={'any':0},ret_opt=False,create_dir=False,store=Store()):
         _df = store.create('targets','target_id',self)
         _opt = Options(options).create('target',int(_df.target_id),store=store)
+        
+        if create_dir:
+            _t = subprocess.run(['mkdir', '-p', str(self.relativepath)], stdout=subprocess.PIPE)
+        
         if ret_opt:
             return _df, _opt
         else:
@@ -219,14 +224,14 @@ class Target():
 
 
 class Configuration():
-    def __init__(self,name='',relativepath='',description='',
+    def __init__(self,name='',description='',
                  target=Target().new()):
         self.name = np.array([str(name)])
-        self.relativepath = np.array([str(relativepath)])
+        self.relativepath = np.array([str(target.relativepath)])
         self.target_id = np.array([int(target.target_id)])
         self.pipeline_id = np.array([int(target.pipeline_id)])
         self.config_id = np.array([int(0)])
-        self.description = np.array([str(description)])
+        self.description = np.array([str(description)])        
         self.timestamp = pd.to_datetime(time.time(),unit='s')
         return None
         
@@ -238,9 +243,20 @@ class Configuration():
         return update_time(_df)        
 
         
-    def create(self,params={'any':0},ret_opt=False,store=Store()):
+    def create(self,params={'any':0},create_dir=False,ret_opt=False,store=Store()):
         _df = store.create('configurations','config_id',self)
         _params = Parameters(params).create(_df,store=store)
+        
+        if create_dir:
+            _t1 = ['mkdir', '-p', self.relativepath+'raw_'+str(self.name)]
+            _t2 = ['mkdir', '-p', self.relativepath+'conf_'+str(self.name)]
+            _t3 = ['mkdir', '-p', self.relativepath+'proc_'+str(self.name)]
+            _t4 = ['mkdir', '-p', self.relativepath+'log_'+str(self.name)]    
+            _t = subprocess.run(_t1, stdout=subprocess.PIPE)
+            _t = subprocess.run(_t2, stdout=subprocess.PIPE)
+            _t = subprocess.run(_t3, stdout=subprocess.PIPE)
+            _t = subprocess.run(_t4, stdout=subprocess.PIPE)
+        
         if ret_opt:
             return _df, _params
         else:
@@ -548,5 +564,3 @@ def logprint(configuration,job,log_text):
      log = open(logpath+logfile, "w")
     log.write(log_text)
     log.close()
-    
-    
