@@ -41,6 +41,9 @@ if __name__ == '__main__':
       job_id = int(args.job_id)
       event_id = int(args.event_id)
       myJob = Job.get(job_id)
+      config_id = int(myJob.config_id)
+      myConf = Configuration.get(config_id)
+      logprint(myConf,myJob,"example 2 log")
       do_something(job_id,event_id)
       event = Event.get(event_id)
       parent_job_id = int(event.job_id)
@@ -50,6 +53,7 @@ if __name__ == '__main__':
       update_option = update_option+1
       _update = Options.addOption('job',parent_job_id,compname,update_option)
       to_run = int(Options.get('event',event_id)['to_run'])
+      logprint(myConf,myJob,'to run '+str(to_run))
       completed = update_option
       #time.sleep(3.0)
       if (completed>=to_run):

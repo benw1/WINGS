@@ -4,7 +4,6 @@ from wpipe import *
 import time
 
 
-
 def register(PID,task_name):
    myPipe = Store().select('pipelines').loc[int(PID)]
    myTask = Task(task_name,myPipe).create()
@@ -39,8 +38,10 @@ if __name__ == '__main__':
          print("Need to define a pipeline ID")
          exit
       myPipe = Pipeline.get(args.PID)
-      myTarget = Target(name='start_targ', pipeline=myPipe).create()
-      myConfig = Configuration(name='test_config',target=myTarget).create()
+      myTarget = Target(name='start_targ', pipeline=myPipe).create(create_dir=True)
+      _c = Configuration(name='test_config',target=myTarget).create(create_dir=True)
+      config_id = _c['config_id'].values[0]
+      myConfig = Configuration.get(config_id)
       params={'a':0,'x':12,'note':'testing this'}
       myParams = Parameters(params).create(myConfig)
       Parameters.addParam(int(myConfig.config_id),'annulus',12)
@@ -52,6 +53,7 @@ if __name__ == '__main__':
       #job_id = int(args.job_id) #initial job makes its own job
       #event_id = int(args.event_id) #initial job makes its own event
       myJob = Job.get(job_id)
+      logprint(myConfig,myJob,"test logging")
       to_run1 = 4
       to_run2 = 3
       testname1 = 'name1'
