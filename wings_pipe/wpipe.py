@@ -196,7 +196,7 @@ class Target():
         self.pipeline_id = np.array([int(pipeline.pipeline_id)])
         self.target_id = np.array([int(0)])
         myPipe = Pipeline.get(self.pipeline_id)
-        self.relativepath = np.array([str(myPipe.data_root)+'/'+str(self.name)])
+        self.relativepath = np.array([str(myPipe.data_root)+'/'+str(self.name[0])])
         self.timestamp = pd.to_datetime(time.time(),unit='s')
         return None
 
@@ -227,7 +227,7 @@ class Configuration():
     def __init__(self,name='',description='',
                  target=Target().new()):
         self.name = np.array([str(name)])
-        self.relativepath = np.array([str(target.relativepath)])
+        self.relativepath = np.array([str(target.relativepath[0])])
         self.target_id = np.array([int(target.target_id)])
         self.pipeline_id = np.array([int(target.pipeline_id)])
         self.config_id = np.array([int(0)])
@@ -248,10 +248,10 @@ class Configuration():
         _params = Parameters(params).create(_df,store=store)
         
         if create_dir:
-            _t1 = ['mkdir', '-p', self.relativepath+'/raw_'+str(self.name)]
-            _t2 = ['mkdir', '-p', self.relativepath+'/conf_'+str(self.name)]
-            _t3 = ['mkdir', '-p', self.relativepath+'/proc_'+str(self.name)]
-            _t4 = ['mkdir', '-p', self.relativepath+'/log_'+str(self.name)]    
+            _t1 = ['mkdir', '-p', str(self.relativepath[0])+'/raw_'+str(self.name[0])]
+            _t2 = ['mkdir', '-p', str(self.relativepath[0])+'/conf_'+str(self.name[0])]
+            _t3 = ['mkdir', '-p', str(self.relativepath[0])+'/proc_'+str(self.name[0])]
+            _t4 = ['mkdir', '-p', str(self.relativepath[0])+'/log_'+str(self.name[0])]
             _t = subprocess.run(_t1, stdout=subprocess.PIPE)
             _t = subprocess.run(_t2, stdout=subprocess.PIPE)
             _t = subprocess.run(_t3, stdout=subprocess.PIPE)
