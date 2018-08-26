@@ -211,7 +211,7 @@ class Target():
         _opt = Options(options).create('target',int(_df.target_id),store=store)
         
         if create_dir:
-            _t = subprocess.run(['mkdir', '-p', str(self.relativepath)], stdout=subprocess.PIPE)
+            _t = subprocess.run(['mkdir', '-p', str(self.relativepath[0])], stdout=subprocess.PIPE)
         
         if ret_opt:
             return _df, _opt
@@ -543,12 +543,12 @@ def fire(event):
                 return
 
 def logprint(configuration,job,log_text):
-    target_id = configuration['target_id'].values[0]
-    pipeline_id = configuration['pipeline_id'].values[0]
+    target_id = configuration['target_id']#.values[0]
+    pipeline_id = configuration['pipeline_id']#.values[0]
     print("T",target_id,"P",pipeline_id)
     myPipe = Pipeline.get(pipeline_id)
     myTarg = Target.get(target_id)
-    conf_name = configuration['name'].values[0]
+    conf_name = configuration['name']#.values[0]
     targ_name = myTarg['name']
     logpath = myPipe.data_root+'/'+targ_name+'/log_'+conf_name+'/'
     job_id = job['job_id']
