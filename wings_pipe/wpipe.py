@@ -228,6 +228,10 @@ class Configuration():
                  target=Target().new()):
         self.name = np.array([str(name)])
         self.relativepath = np.array([str(target.relativepath[0])])
+        #self.logpath = np.array([str(target.relativepath[0])+'/log_'+str(name)])
+        #self.confpath = np.array([str(target.relativepath[0])+'/conf_'+str(name)])
+        #self.rawpath = np.array([str(target.relativepath[0])+'/raw_'+str(name)])
+        #self.procpath = np.array([str(target.relativepath[0])+'/proc_'+str(name)])
         self.target_id = np.array([int(target.target_id)])
         self.pipeline_id = np.array([int(target.pipeline_id)])
         self.config_id = np.array([int(0)])
