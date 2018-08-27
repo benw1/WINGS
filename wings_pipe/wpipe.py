@@ -228,10 +228,10 @@ class Configuration():
                  target=Target().new()):
         self.name = np.array([str(name)])
         self.relativepath = np.array([str(target.relativepath[0])])
-        #self.logpath = np.array([str(target.relativepath[0])+'/log_'+str(name)])
-        #self.confpath = np.array([str(target.relativepath[0])+'/conf_'+str(name)])
-        #self.rawpath = np.array([str(target.relativepath[0])+'/raw_'+str(name)])
-        #self.procpath = np.array([str(target.relativepath[0])+'/proc_'+str(name)])
+        self.logpath = np.array([str(target.relativepath[0])+'/log_'+str(name)])
+        self.confpath = np.array([str(target.relativepath[0])+'/conf_'+str(name)])
+        self.rawpath = np.array([str(target.relativepath[0])+'/raw_'+str(name)])
+        self.procpath = np.array([str(target.relativepath[0])+'/proc_'+str(name)])
         self.target_id = np.array([int(target.target_id)])
         self.pipeline_id = np.array([int(target.pipeline_id)])
         self.config_id = np.array([int(0)])
@@ -252,14 +252,8 @@ class Configuration():
         _params = Parameters(params).create(_df,store=store)
         
         if create_dir:
-            _t1 = ['mkdir', '-p', str(self.relativepath[0])+'/raw_'+str(self.name[0])]
-            _t2 = ['mkdir', '-p', str(self.relativepath[0])+'/conf_'+str(self.name[0])]
-            _t3 = ['mkdir', '-p', str(self.relativepath[0])+'/proc_'+str(self.name[0])]
-            _t4 = ['mkdir', '-p', str(self.relativepath[0])+'/log_'+str(self.name[0])]
-            _t = subprocess.run(_t1, stdout=subprocess.PIPE)
-            _t = subprocess.run(_t2, stdout=subprocess.PIPE)
-            _t = subprocess.run(_t3, stdout=subprocess.PIPE)
-            _t = subprocess.run(_t4, stdout=subprocess.PIPE)
+            for _path in [self.rawpath[0],self.confpath[0],self.procpath[0],self.logpath[0]]:
+                _t = _t = subprocess.run(['mkdir', '-p', str(_path)], stdout=subprocess.PIPE)
         
         if ret_opt:
             return _df, _params
