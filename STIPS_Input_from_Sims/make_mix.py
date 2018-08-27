@@ -1,12 +1,12 @@
 #! /usr/bin/env python
 '''
 Read in stellar catalogs from simulations with Absolute AB mags and 
-background galaxy catlogs. Using the WingsTips lib, produce mixed list 
+background galaxy catlogs. Using the Wingtips lib, produce mixed list 
 of objects including stars and appropriate sampling of background 
 galaxies in STIPS input format
 '''
 
-from wingtips import WingTips as stips
+from wingtips import WingTips as wtips
 from wingtips import time, np, ascii
 
 filenames = ['h15.shell.1Mpc.in', 'h15.shell.3Mpc.in', 'h15.shell.5Mpc.in', 'h15.shell.10Mpc.in']
@@ -23,8 +23,8 @@ def make_stips():
             data['col1'], data['col2'], data['col3'], data['col4'],\
             data['col5'], data['col6'], data['col7']        
         M = np.array([M1,M2,M3,M4,M5]).T
-        temp = [stips.from_scratch(\
-                    flux=stips.get_counts(M[:,j],ZP_AB[j],dist=dist),\
+        temp = [wtips.from_scratch(\
+                    flux=wtips.get_counts(M[:,j],ZP_AB[j],dist=dist),\
                     ra=RA,dec=DEC,outfile=starpre+'_'+filt[0]+'.tbl')\
                 for j,filt in enumerate(filternames)]
     return None
@@ -35,9 +35,9 @@ def mix_stips(filternames=filternames,filenames=filenames,outprefix='Mixed'):
         starpre = '_'.join(infile.split('.')[:-1])
         radec = []
         for j,filt in enumerate(filternames):
-            stars = stips([starpre+'_'+filt[0]+'.tbl'])
+            stars = wtips([starpre+'_'+filt[0]+'.tbl'])
             if i==0:
-                galaxies.append(stips([filt+'.txt']))
+                galaxies.append(wtips([filt+'.txt']))
                 galaxies[j].flux_to_Sb()
             if len(radec)==0:
                 radec = galaxies[j].random_radec_for(stars)
