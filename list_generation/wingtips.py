@@ -1,0 +1,1 @@
+../STIPS_Input_from_Sims/wingtips.py
