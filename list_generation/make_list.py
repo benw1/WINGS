@@ -2,11 +2,12 @@
 import numpy as np
 from wingtips import WingTips as wtips
 
-area = 50000.0 # 2048x2048x0.11"  just use central 2048 pix 
 pix = 0.11 #arcsec per pixel
+imagesize = 2048.0 #just use central 2048 pix 
+area = imagesize**2  * pix**2
 pixarea = pix**2
-racent = 53.0
-deccent=-27.0
+racent = 325.65
+deccent=-27.21
 def read_match(file,cols):
     data = np.loadtxt(file)
     nstars = len(data[:,0])
@@ -54,16 +55,17 @@ def read_match(file,cols):
         print(10**(-0.1*np.float(i))," H(23-24) DENSITY = ",hden)
 
         M1, M2, M3, M4, M5 =  mydata[:,zcol], mydata[:,ycol], mydata[:,jcol], mydata[:,hcol],mydata[:,fcol]
-        radist = np.abs(1/((mytot_dens**0.5)*np.cos(deccent)))
-        decdist = 1/mytot_dens**0.5
+        radist = np.abs(1/((mytot_dens**0.5)*np.cos(deccent*3.14159/180.0)))/3600.0
+        decdist = (1/mytot_dens**0.5)/3600.0
+        print('RA',radist,'DEC',decdist)
         coordlist = np.arange(np.rint(np.float(len(M2))**0.5)+1)
         np.random.shuffle(coordlist)
         print(radist,decdist)
         ra = 0.0
         dec = 0.0
         for k in range(len(coordlist)):
-            ra = np.append(ra,radist*coordlist+racent-(pix*1024))
-            dec = np.append(dec,np.repeat(decdist*coordlist[k]+deccent-(pix*1024),len(coordlist)))
+            ra = np.append(ra,radist*coordlist+racent-(pix*1024.0/3600.0))
+            dec = np.append(dec,np.repeat(decdist*coordlist[k]+deccent-(pix*1024.0/3600.0),len(coordlist)))
         ra = ra[1:len(M1)+1]
         dec = dec[1:len(M1)+1]
         print(len(ra),len(M1))
