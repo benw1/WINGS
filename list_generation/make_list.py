@@ -72,7 +72,7 @@ def read_match(file,cols):
         M = np.array([M1,M2,M3,M4,M5]).T
         file1 = file.split('.')
         file2 = '.'.join(file1[0:len(file1)-1])
-        file3 = file2+str(hden)+'.'+file1[-1]
+        file3 = file2+str(np.around(hden,decimals=5))+'.'+file1[-1]
         write_stips(file3,ra,dec,M)
 
 def write_stips(infile,ra,dec,M):
@@ -106,7 +106,7 @@ def write_stips(infile,ra,dec,M):
                  '  ' + str(stars.center[1]) + ')\n' +
                  content)
           
-#read_match('wfirst_phot/fake_29.0.out',['X625','Z087','Y106','J129','H158','F184'])
+#read_match('wfirst_phot/fake_25.0.out',['X625','Z087','Y106','J129','H158','F184'])
 read_match('wfirst_phot/fake_test.out',['X625','Z087','Y106','J129','H158','F184'])
     
        
