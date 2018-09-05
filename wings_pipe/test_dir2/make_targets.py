@@ -26,17 +26,18 @@ def discover_targets(Pipe,config_file,data_dir):
       _params = json.load(open(config_file))[0]
       conffilename = config_file.split('/')[-1]
       confname = conffilename.split('.')[0]
-      conf = Configuration(name=confname,
-                              target=myTarget)\
-                              .create(params=_params,create_dir=True)
+      conf = Configuration(name=confname,target=myTarget).create(params=_params,create_dir=True)
       print('Target ',targ,' created with Configuration ',confname)
-      system('cp',config_file,conf.confpath+'/')
+       _t = subprocess.run(['cp',config_file,conf.confpath+'/'],stdout=subprocess.PIPE)
       _dp = DataProduct(filename=conffilename,relativepath=myPipe.config_root,group='conf',configuration=conf).create()
       targetfiles = get_target_files(data_dir,targ)
+      comp_name = 'completed'+targ
+      options = {comp_name:0}
+      _opt = Options(options).create('job',job_id)
       for files in targetfiles:
-         system('cp',files,conf.rawpath)
+         subprocess.run(['cp',files,conf.rawpath],stdout=subprocess.PIPE)
          _dp = DataProduct(filename=files,relativepath=conf.rawpath,group='raw',configuration=conf).create()
-         send(_dp,conf,myTarget,len(targetfiles),job_id)
+         send(_dp,conf,comp_name,len(targetfiles),myJob) #send catalog to next step
 
 def get_targ_list(data_dir):
    data  = os.listdir(data_dir)
@@ -53,20 +54,19 @@ def get_target_files(data_dir,targ):
    targfiles = glob.glob(data_dir+'/'+targ+'*')
    return targfiles
        
-def send(dp,conf,target,total,job_id):
-   filepath = _dp.relativepath+'/'+_dp.filename
+def send(dp,conf,comp_name,total,job):
+   filepath = _dp.relativepath+'/'+dp.filename
+   dpid = int(dp.dp_id)
    data = np.loadtxt(filepath)
    if 'type' in data[0,0]:
-      targname = target.name.values[0]
-      comp_name = 'completed'+targname
-      options = {comp_name:0}
-      _opt = Options(options).create('job',job_id)
-
-      event = Job.getEvent(myJob,'new_stips_catalog',options={'to_run':total,'completed':0})
-
-   # Not implemented yet
-   # return Event.fire(event)
-   return None
+      print('File ',filepath,' has type keyword, assuming STIPS-ready')
+      event = Job.getEvent(job,'new_stips_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name})
+      fire(event)
+   else:
+      print('File ',filepath,' does not have type keyword, assuming MATCH output')
+      event = Job.getEvent(job,'new_match_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name})
+      fire(event)
+   return 
    
     
 def parse_all():
