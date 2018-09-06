@@ -23,21 +23,25 @@ def discover_targets(Pipe,config_file,data_dir):
    myJob = Job.get(job_id)
    for targ in targlist:
       myTarget = Target(name=targ,pipeline=myPipe).create(create_dir=True)
+      #print("NAME",myTarget.name[0])
       _params = json.load(open(config_file))[0]
       conffilename = config_file.split('/')[-1]
       confname = conffilename.split('.')[0]
       conf = Configuration(name=confname,target=myTarget).create(params=_params,create_dir=True)
       print('Target ',targ,' created with Configuration ',confname)
-       _t = subprocess.run(['cp',config_file,conf.confpath+'/'],stdout=subprocess.PIPE)
+      _t = subprocess.run(['cp',config_file,conf.confpath.values[0]+'/'],stdout=subprocess.PIPE)
       _dp = DataProduct(filename=conffilename,relativepath=myPipe.config_root,group='conf',configuration=conf).create()
       targetfiles = get_target_files(data_dir,targ)
       comp_name = 'completed'+targ
       options = {comp_name:0}
       _opt = Options(options).create('job',job_id)
       for files in targetfiles:
-         subprocess.run(['cp',files,conf.rawpath],stdout=subprocess.PIPE)
-         _dp = DataProduct(filename=files,relativepath=conf.rawpath,group='raw',configuration=conf).create()
+         subprocess.run(['cp',files,conf.rawpath.values[0]],stdout=subprocess.PIPE)
+         filename = files.split('/')[-1]
+         _dp = DataProduct(filename=filename,relativepath=conf.rawpath.values[0],group='raw',configuration=conf).create()
+         testtarg =  Target.get(int(_dp.target_id))
          send(_dp,conf,comp_name,len(targetfiles),myJob) #send catalog to next step
+   return
 
 def get_targ_list(data_dir):
    data  = os.listdir(data_dir)
@@ -55,10 +59,11 @@ def get_target_files(data_dir,targ):
    return targfiles
        
 def send(dp,conf,comp_name,total,job):
-   filepath = _dp.relativepath+'/'+dp.filename
+   filepath = dp.relativepath[0]+'/'+dp.filename[0]
    dpid = int(dp.dp_id)
+   print('TEST',dp.filename[0],filepath)
    data = np.loadtxt(filepath)
-   if 'type' in data[0,0]:
+   if 'type' in str(data[0,0]):
       print('File ',filepath,' has type keyword, assuming STIPS-ready')
       event = Job.getEvent(job,'new_stips_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name})
       fire(event)
@@ -93,23 +98,13 @@ if __name__ == '__main__':
    if args.REG:
       _t = register(int(args.PID),str(args.task_name))
    else:
-      try:
-         print(args.PID)
-      except:
-         print("Need to define a pipeline ID")
-         exit
-      try:
-         print(args.config_file)
-      except:
-         print("Need to define a configuration file")
-         exit
-      try:
-         print(args.data_dir)
-      except:
-         print("Need to define a directory with input star lists")
-         exit
+      if args.PID is None:
+         exit("Need to define a pipeline ID")
+      if args.config_file is None:
+         exit("Need to define a configuration file")
+      if args.data_dir is None:
+         exit("Need to define a directory with input star lists")
       myPipe = Pipeline.get(args.PID)
-   
       discover_targets(myPipe,args.config_file,args.data_dir)
 
    # placeholder for additional steps
