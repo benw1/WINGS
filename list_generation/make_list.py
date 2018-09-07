@@ -1,13 +1,16 @@
 #! /usr/bin/env python
 import numpy as np
 from wingtips import WingTips as wtips
+import gc
 
 pix = 0.11 #arcsec per pixel
 imagesize = 2048.0 #just use central 2048 pix 
 area = imagesize**2  * pix**2
 pixarea = pix**2
-racent = 325.65
-deccent=-27.21
+#racent = 325.65
+#deccent=-27.21
+racent = 25.65
+deccent=-37.21
 def read_match(file,cols):
     data = np.loadtxt(file)
     nstars = len(data[:,0])
@@ -39,17 +42,19 @@ def read_match(file,cols):
     hkeep = h[htot_keep]
     htot = len(hkeep)
     max_den = np.float(htot)/area
+    del h
     print("MAX H(23-24) DENSITY = ",max_den)
 
-    for i in range(21):
+    for i in range(1,21):
         totstars = np.float(nstars) * 10**(-0.1*np.float(i)) 
-        allind = np.rint(np.arange(totstars) * np.float(nstars)/totstars)
+        allind = np.rint(np.arange(totstars-1) * np.float(nstars)/totstars)
         mydata = data[allind.astype(int),:]
         mytot = len(mydata[:,0])
         mytot_dens = mytot/area
         myh = mydata[:,hcol]
         mykeep =  (myh > 23.0) & (myh < 24.0)
         myhkeep = myh[mykeep]
+        del myh
         hden = np.float(len(myhkeep))/area
         print(10**(-0.1*np.float(i))," TOTAL DENSITY = ",mytot/area)
         print(10**(-0.1*np.float(i))," H(23-24) DENSITY = ",hden)
@@ -70,10 +75,13 @@ def read_match(file,cols):
         dec = dec[1:len(M1)+1]
         print(len(ra),len(M1))
         M = np.array([M1,M2,M3,M4,M5]).T
+        del M1,M2,M3,M4,M5
         file1 = file.split('.')
         file2 = '.'.join(file1[0:len(file1)-1])
         file3 = file2+str(np.around(hden,decimals=5))+'.'+file1[-1]
         write_stips(file3,ra,dec,M)
+        del M
+        gc.collect()
 
 def write_stips(infile,ra,dec,M):
     filternames   = ['Z087','Y106','J129','H158','F184']
@@ -86,6 +94,7 @@ def write_stips(infile,ra,dec,M):
         outfile = starpre+'_'+filt[0]+'.tbl'
         outfilename = outfile.split('/')[-1]
         flux    = wtips.get_counts(M[:,j],ZP_AB[j])
+        print(M[-1,j])
         print(flux,ra,dec)
         # This makes a stars only input list
         wtips.from_scratch(flux=flux,ra=ra,dec=dec,outfile=outfile)
@@ -105,8 +114,11 @@ def write_stips(infile,ra,dec,M):
                  '\\center = (' + str(stars.center[0]) +
                  '  ' + str(stars.center[1]) + ')\n' +
                  content)
-          
-#read_match('wfirst_phot/fake_25.0.out',['X625','Z087','Y106','J129','H158','F184'])
-read_match('wfirst_phot/fake_test.out',['X625','Z087','Y106','J129','H158','F184'])
+        f.close()
+        del stars
+        del galaxies
+        gc.collect()
+read_match('wfirst_phot/fake_25.0.out',['X625','Z087','Y106','J129','H158','F184'])
+#read_match('wfirst_phot/fake_test.out',['X625','Z087','Y106','J129','H158','F184'])
     
        

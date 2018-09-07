@@ -31,7 +31,7 @@ def process_match_catalog(job_id,event_id,dp_id):
    fileroot = myConfig.procpath+'/'
    procdp = DataProduct(filename=filename,relativepath=fileroot,group='proc',configuration=myConfig).create()
    #filternames = myParams[filternames]
-   filternames   = ['X625','Z087','Y106','J129','H158','F184']
+   filternames   = ['R062','Z087','Y106','J129','H158','F184']
    stips_files = read_match(procdp.relativepath[0]+'/'+procdp.filename[0],filternames,myConfig)
    comp_name = 'completed'+myTarget['name']
    options = {comp_name:0}
@@ -57,8 +57,8 @@ def read_match(filepath,cols,myConfig):
       if (col == 'H158'):
          print("H is column ",count)
          hcol = count
-      if (col == 'X625'):
-         print("X is column ",count)
+      if (col == 'R062'):
+         print("R is column ",count)
          xcol = count
       if (col == 'Y106'):
          print("Y is column ",count)
@@ -177,6 +177,5 @@ if __name__ == '__main__':
       event = Event.get(event_id)
       dp_id = Options.get('event',event_id)['dp_id']
       process_match_catalog(job_id,event_id,dp_id)
-       
-   # placeholder for additional steps
-   print('done')
+      
+   

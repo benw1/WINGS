@@ -543,7 +543,6 @@ def fire(event):
 def logprint(configuration,job,log_text):
     target_id = configuration['target_id']#.values[0]
     pipeline_id = configuration['pipeline_id']#.values[0]
-    print("T",target_id,"P",pipeline_id)
     myPipe = Pipeline.get(pipeline_id)
     myTarg = Target.get(target_id)
     conf_name = configuration['name']#.values[0]
@@ -555,7 +554,6 @@ def logprint(configuration,job,log_text):
     task = Task.get(task_id)
     task_name = task['name']
     logfile = task_name+'_j'+str(job_id)+'_e'+str(event_id)+'.log'
-    print(task_name,job_id,event_id,logpath)
     try:
      log = open(logpath+logfile, "a")
     except:

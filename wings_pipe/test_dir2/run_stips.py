@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 import argparse,os,subprocess
 from wpipe import *
-from stips.observation_module import ObservationModule
+#from stips.observation_module import ObservationModule #save for when ready
 
 filtdict = {'R':'R062',
             'Z':'Z087',
@@ -14,7 +14,7 @@ def register(PID,task_name):
    myPipe = Pipeline.get(PID)
    myTask = Task(task_name,myPipe).create()
    _t = Task.add_mask(myTask,'*','start',task_name)
-   _t = Task.add_mask(myTask,'*','new_stips_input','*')
+   _t = Task.add_mask(myTask,'*','new_stips_catalog','*')
    return
 
 def run_stips(job_id,event_id,dp_id):
@@ -22,10 +22,10 @@ def run_stips(job_id,event_id,dp_id):
    myPipe = Pipeline.get(int(myJob.pipeline_id))
 
    catalogID = Options.get('event',event_id)['dp_id']
-   catalogDP = DataProduct.get(int(cat_id))
+   catalogDP = DataProduct.get(int(catalogID))
    myTarget = Target.get(int(catalogDP.target_id))
    myConfig = Configuration.get(int(catalogDP.config_id))
-   myParams = Configuration.getParam(int(myConfig.config_id))
+   myParams = Parameters.getParam(int(myConfig.config_id))
 
    fileroot = str(catalogDP.relativepath)
    filename = str(catalogDP.filename) # for example, Mixed_h15_shell_3Mpc_Z.tbl 
@@ -33,55 +33,23 @@ def run_stips(job_id,event_id,dp_id):
    filtroot = filename.split('_')[-1].split('.')[0]
    filtername = filtdict[filtroot]
 
-   scene_general = {'ra': myParams['RA'],
-                    'dec': myParams['DEC'],
+   scene_general = {'ra': myParams['racent'],
+                    'dec': myParams['deccent'],
                     'pa': 0.0, 'seed': 1234}
 
    # We can pass all of these through configuration
-   obs = {'instrument': 'WFI', 'filters': [filtername], 'detectors': 1,
-          'distortion': False, 'oversample': 10,
-          'pupil_mask': '', 'background': 'avg',
-          'observations_id': dp_id, 'exp_time' 10000,
-          'offsets': [{'offset_id': 1, 'offset_centre': False,
-            'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
+   obs = {'instrument': 'WFI', 'filters': [filtername], 'detectors': 1,'distortion': False, 'oversample': 10,'pupil_mask': '', 'background': 'avg','observations_id': dp_id, 'exp_time': 10000,'offsets': [{'offset_id': 1, 'offset_centre': False,'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
    
-   obm = ObservationModule(obs, scene_general=scene_general)
-   obm.nextObservation()
-   source_count_catalogues = obm.addCatalogue(fileroot+filename)
-   psf_file = obm.addError()
-   fits_file, mosaic_file, params = obm.finalize(mosaic=False)
+   #obm = ObservationModule(obs, scene_general=scene_general)
+   #obm.nextObservation()
+   #source_count_catalogues = obm.addCatalogue(fileroot+filename)
+   #psf_file = obm.addError()
+   #fits_file, mosaic_file, params = obm.finalize(mosaic=False)
 
-   dp_opt = Configuration.getParams(myConfig) # Attach config params used tp run sim to the DP
+   #dp_opt = Configuration.getParams(myConfig) # Attach config params used tp run sim to the DP
    
-   _dp = DataProduct(filename=fits_file,
-                     relativepath=fileroot,
-                     group='proc',subtype='stips_image',
-                     filtername=filtername,
-                     ra=myParams['RA'], dec=myParams['DEC'],
-                     configuration=myConfig)\
-                     .create(options=dp_opt)
-        
-   Event.run_complete(Event.get(int(event_id)))
+   #_dp = DataProduct(filename=fits_file,relativepath=fileroot,group='proc',subtype='stips_image',filtername=filtername,ra=myParams['racent'], dec=myParams['deccent'],configuration=myConfig).create()
 
-   _parent = Options.get('event',event_id)
-   to_run,completed = int(_parent['to_run']), int(_parent['completed'])
-
-   if !(completed<to_run):
-      all_dp = Store().select('data_products',
-                              'config_id=='+str(int(myConfig.config_id)),
-                              'subtype=="stips_image"')['dp_id'].values
-      
-      event = Job.getEvent(myJob,'new_images',
-                           options={'dp_id': all_dp,
-                                    'to_run': len(all_dp),
-                                    'completed': 0})
-      #Event.fire(event)
-
-      event = Job.getEvent(myJob,'run_stips_completed')   
-      #Event.fire(event)
-      
-   return None
-    
 def parse_all():
     parser = argparse.ArgumentParser()
     parser.add_argument('--R','-R', dest='REG', action='store_true',
@@ -105,11 +73,30 @@ if __name__ == '__main__':
    else:
       job_id = int(args.job_id)
       event_id = int(args.event_id)
-      if len(do_id==1):
-         dp_id = int(args.dp_id)
-      else:
-         dp_id = 0
+      event = Event.get(event_id)
+      dp_id = Options.get('event',event_id)['dp_id']
       run_stips(job_id,event_id,dp_id)
-       
-   # placeholder for additional steps
-   print('done')
+      parent_job_id = int(event.job_id)
+      compname = Options.get('event',event_id)['name']
+      update_option = int(Options.get('job',parent_job_id)[compname])
+      update_option = update_option+1
+      _update = Options.addOption('job',parent_job_id,compname,update_option)
+      to_run = int(Options.get('event',event_id)['to_run'])
+      completed = update_option
+      thisjob = Job.get(job_id)
+      catalogID = Options.get('event',event_id)['dp_id']
+      catalogDP = DataProduct.get(int(catalogID))
+      thisconf = Configuration.get(int(catalogDP.config_id))
+      print(''.join(["Completed ",str(completed)," of ",str(to_run)]))
+      logprint(thisconf,thisjob,''.join(["Completed ",str(completed)," of ",str(to_run)]))
+      if (completed>=to_run):
+         logprint(thisconf,thisjob,''.join(["Completed ",str(completed)," and to run is ",str(to_run)," firing event"]))
+         DP = DataProduct.get(int(dp_id))
+         tid = int(DP.target_id)
+         newevent = Job.getEvent(thisjob,'stips_done',options={'target_id':tid})
+         _job  = Job(event_id=int(newevent.event_id)).create()
+         fire(newevent)
+         logprint(thisconf,thisjob,'completed STIPS')
+         logprint(thisconf,thisjob,''.join(["Event=",str(event.event_id),"; Job=",str(_job.job_id)]))
+
+   
