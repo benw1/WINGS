@@ -88,15 +88,14 @@ if __name__ == '__main__':
       catalogDP = DataProduct.get(int(catalogID))
       thisconf = Configuration.get(int(catalogDP.config_id))
       print(''.join(["Completed ",str(completed)," of ",str(to_run)]))
-      logprint(thisconf,thisjob,''.join(["Completed ",str(completed)," of ",str(to_run)]))
+      logprint(thisconf,thisjob,''.join(["Completed ",str(completed)," of ",str(to_run),"\n"]))
       if (completed>=to_run):
-         logprint(thisconf,thisjob,''.join(["Completed ",str(completed)," and to run is ",str(to_run)," firing event"]))
+         logprint(thisconf,thisjob,''.join(["Completed ",str(completed)," and to run is ",str(to_run)," firing event\n"]))
          DP = DataProduct.get(int(dp_id))
          tid = int(DP.target_id)
          newevent = Job.getEvent(thisjob,'stips_done',options={'target_id':tid})
-         _job  = Job(event_id=int(newevent.event_id)).create()
          fire(newevent)
-         logprint(thisconf,thisjob,'completed STIPS')
-         logprint(thisconf,thisjob,''.join(["Event=",str(event.event_id),"; Job=",str(_job.job_id)]))
+         logprint(thisconf,thisjob,'stips_done\n')
+         logprint(thisconf,thisjob,''.join(["Event= ",str(event.event_id)]))
 
    
