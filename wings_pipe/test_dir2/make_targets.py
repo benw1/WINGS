@@ -61,6 +61,7 @@ def get_target_files(data_dir,targ):
 def send(dp,conf,comp_name,total,job):
    filepath = dp.relativepath[0]+'/'+dp.filename[0]
    dpid = int(dp.dp_id)
+   confid = int(conf.config_id)
    print('TEST',dp.filename[0],filepath)
    data = np.loadtxt(filepath)
    if 'type' in str(data[0,0]):
@@ -69,7 +70,7 @@ def send(dp,conf,comp_name,total,job):
       fire(event)
    else:
       print('File ',filepath,' does not have type keyword, assuming MATCH output')
-      event = Job.getEvent(job,'new_match_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name})
+      event = Job.getEvent(job,'new_match_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name, 'config_id':confid})
       fire(event)
    return 
    

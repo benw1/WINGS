@@ -45,10 +45,10 @@ def run_stips(job_id,event_id,dp_id):
    #source_count_catalogues = obm.addCatalogue(fileroot+filename)
    #psf_file = obm.addError()
    #fits_file, mosaic_file, params = obm.finalize(mosaic=False)
-
-   #dp_opt = Configuration.getParams(myConfig) # Attach config params used tp run sim to the DP
+   fits_file=filtername+'test.fits'
+   dp_opt = Parameters.getParam(myConfig.config_id) # Attach config params used tp run sim to the DP
    
-   #_dp = DataProduct(filename=fits_file,relativepath=fileroot,group='proc',subtype='stips_image',filtername=filtername,ra=myParams['racent'], dec=myParams['deccent'],configuration=myConfig).create()
+   _dp = DataProduct(filename=fits_file,relativepath=fileroot,group='proc',subtype='stips_image',filtername=filtername,ra=myParams['racent'], dec=myParams['deccent'],configuration=myConfig).create()
 
 def parse_all():
     parser = argparse.ArgumentParser()
@@ -87,15 +87,27 @@ if __name__ == '__main__':
       catalogID = Options.get('event',event_id)['dp_id']
       catalogDP = DataProduct.get(int(catalogID))
       thisconf = Configuration.get(int(catalogDP.config_id))
+      myTarget = Target.get(int(thisconf.target_id))
       print(''.join(["Completed ",str(completed)," of ",str(to_run)]))
       logprint(thisconf,thisjob,''.join(["Completed ",str(completed)," of ",str(to_run),"\n"]))
       if (completed>=to_run):
          logprint(thisconf,thisjob,''.join(["Completed ",str(completed)," and to run is ",str(to_run)," firing event\n"]))
          DP = DataProduct.get(int(dp_id))
          tid = int(DP.target_id)
-         newevent = Job.getEvent(thisjob,'stips_done',options={'target_id':tid})
-         fire(newevent)
-         logprint(thisconf,thisjob,'stips_done\n')
-         logprint(thisconf,thisjob,''.join(["Event= ",str(event.event_id)]))
+         #image_dps = DataProduct.get({relativepath==config.procpath,subtype=='stips_image'})
+         path = thisconf.procpath
+         image_dps=Store().select('data_products', where='target_id=='+str(tid)+' & subtype=='+'"stips_image"')
+         comp_name = 'completed'+myTarget['name']
+         options = {comp_name:0}
+         _opt = Options(options).create('job',job_id)
+         total = len(image_dps)
+         #print(image_dps(0))
+         for index, dps in image_dps.iterrows():
+            print(dps)
+            dpid = int(dps.dp_id)
+            newevent = Job.getEvent(thisjob,'stips_done',options={'target_id':tid,'dp_id':dpid,'name':comp_name,'to_run':total})
+            fire(newevent)           
+            logprint(thisconf,thisjob,'stips_done\n')
+            logprint(thisconf,thisjob,''.join(["Event= ",str(event.event_id)]))
 
    

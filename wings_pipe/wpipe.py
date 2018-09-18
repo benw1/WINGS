@@ -515,7 +515,10 @@ def fire(event):
     event_id = event['event_id'].values[0]
     #print("HERE ",event['name'].values[0]," DONE")
     parent_job = Job.get(int(event.job_id))
-    conf_id = int(parent_job.config_id)
+    try:
+        conf_id = int(Options.get('event',event_id)['config_id'])
+    except:
+        conf_id = int(parent_job.config_id)
     configuration = Configuration.get(conf_id)
     pipeline_id = parent_job.pipeline_id
     #print(pipeline_id)
