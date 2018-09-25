@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 import argparse,os,subprocess
 from wpipe import *
+import random
 #from stips.observation_module import ObservationModule #save for when ready
 
 filtdict = {'R':'R062',
@@ -17,6 +18,45 @@ def register(PID,task_name):
    _t = Task.add_mask(myTask,'*','new_stips_catalog','*')
    return
 
+def hyak_stips(job_id,event_id,dp_id,stips_script):
+   myJob  = Job.get(job_id)
+   myPipe = Pipeline.get(int(myJob.pipeline_id))
+
+   catalogID = Options.get('event',event_id)['dp_id']
+   catalogDP = DataProduct.get(int(catalogID))
+   myTarget = Target.get(int(catalogDP.target_id))
+   myConfig = Configuration.get(int(catalogDP.config_id))
+   myParams = Parameters.getParam(int(myConfig.config_id))
+
+   fileroot = str(catalogDP.relativepath)
+   filename = str(catalogDP.filename) # for example, Mixed_h15_shell_3Mpc_Z.tbl 
+   
+   filtroot = filename.split('_')[-1].split('.')[0]
+   filtername = filtdict[filtroot]
+   slurmfile = stips_script+'.slurm'
+   with open(slurmfile, 'w') as f:
+      f.write('#!/bin/bash' + '\n'+
+              '## Job Name' + '\n'+
+              '#SBATCH --job-name=M31-B17-WEST_fake1' + '\n'+
+              '## Allocation Definition ' + '\n'+
+              '#SBATCH --account=astro' + '\n'+
+              '#SBATCH --partition=astro' + '\n'+
+              '## Resources' + '\n'+
+              '## Nodes' + '\n'+
+              '#SBATCH --ntasks=1' + '\n'+
+              '## Walltime (3 hours)' + '\n'+
+              '#SBATCH --time=100:00:00' + '\n'+
+              '## Memory per node' + '\n'+
+              '#SBATCH --mem=10G' + '\n'+
+              '## Specify the working directory for this job' + '\n'+
+              '#SBATCH --workdir='+myConfig.procpath + '\n'+
+              '##turn on e-mail notification' + '\n'+
+              '#SBATCH --mail-type=ALL' + '\n'+
+              '#SBATCH --mail-user=benw1@uw.edu' + '\n'+
+              'source activate forSTIPS'+'\n'+
+              'python2.7 ./'+stips_script)
+      #subprocess.run(['sbatch',slurmfile],cwd=myConfig.procpath)
+
 def run_stips(job_id,event_id,dp_id):
    myJob  = Job.get(job_id)
    myPipe = Pipeline.get(int(myJob.pipeline_id))
@@ -32,23 +72,22 @@ def run_stips(job_id,event_id,dp_id):
    
    filtroot = filename.split('_')[-1].split('.')[0]
    filtername = filtdict[filtroot]
-
-   scene_general = {'ra': myParams['racent'],
-                    'dec': myParams['deccent'],
-                    'pa': 0.0, 'seed': 1234}
-
-   # We can pass all of these through configuration
-   obs = {'instrument': 'WFI', 'filters': [filtername], 'detectors': 1,'distortion': False, 'oversample': 10,'pupil_mask': '', 'background': 'avg','observations_id': dp_id, 'exp_time': 10000,'offsets': [{'offset_id': 1, 'offset_centre': False,'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
+   stips_script = myConfig.confpath+'/run_stips_'+str(random.randint(10000,99999))+'.py'
+   with open(stips_script, 'w') as f:
+      f.write('from stips.observation_module import ObservationModule'+'\n'+
+              'scene_general = {\'ra\': '+myParams['racent']+',\'dec\': '+myParams['deccent']+',\'pa\': 0.0, \'seed\': 1234}'+'\n'+
+              'obs = {\'instrument\': \'WFI\', \'filters]\': ['+filtername+'], \'detectors\': 1,\'distortion\': False, \'oversample\': 10,\'pupil_mask\': \'\', \'background\': \'avg\',\'observations_id\': '+dp_id+', \'exp_time\': '+myParams['exptime']+',\'offsets\': [{\'offset_id\': 1, \'offset_centre\': False,\'offset_ra\': 0.0, \'offset_dec\': 0.0, \'offset_pa\': 0.0}]}'+'\n'+
    
-   #obm = ObservationModule(obs, scene_general=scene_general)
-   #obm.nextObservation()
-   #source_count_catalogues = obm.addCatalogue(fileroot+filename)
-   #psf_file = obm.addError()
-   #fits_file, mosaic_file, params = obm.finalize(mosaic=False)
-   fits_file=filtername+'test.fits'
-   dp_opt = Parameters.getParam(myConfig.config_id) # Attach config params used tp run sim to the DP
+              'obm = ObservationModule(obs, scene_general=scene_general)'+'\n'+
+              'obm.nextObservation()'+'\n'+
+              'source_count_catalogues = obm.addCatalogue(fileroot+filename)'+'\n'+
+              'psf_file = obm.addError()'+'\n'+
+              'fits_file, mosaic_file, params = obm.finalize(mosaic=False)'+'\n'+
+              'fits_file='+'\n'+filtername+'test.fits'+'\n')
+   hyak_stips(job_id,event_id,dp_id,stips_script)
+   #dp_opt = Parameters.getParam(myConfig.config_id) # Attach config params used tp run sim to the DP
    
-   _dp = DataProduct(filename=fits_file,relativepath=fileroot,group='proc',subtype='stips_image',filtername=filtername,ra=myParams['racent'], dec=myParams['deccent'],configuration=myConfig).create()
+   #_dp = DataProduct(filename=fits_file,relativepath=fileroot,group='proc',subtype='stips_image',filtername=filtername,ra=myParams['racent'], dec=myParams['deccent'],configuration=myConfig).create()
 
 def parse_all():
     parser = argparse.ArgumentParser()
