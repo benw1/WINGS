@@ -1,10 +1,12 @@
 #! /usr/bin/env python
 import numpy as np
+import argparse,os,subprocess
 from wingtips import WingTips as wtips
 import gc
 
 pix = 0.11 #arcsec per pixel
-imagesize = 2048.0 #just use central 2048 pix 
+#imagesize = 2048.0 #just use central 2048 pix 
+imagesize = 4096.0 #use full image 
 area = imagesize**2  * pix**2
 pixarea = pix**2
 #racent = 325.65
@@ -44,7 +46,6 @@ def read_match(file,cols):
     max_den = np.float(htot)/area
     del h
     print("MAX H(23-24) DENSITY = ",max_den)
-
     for i in range(1,21):
         totstars = np.float(nstars) * 10**(-0.1*np.float(i)) 
         allind = np.rint(np.arange(totstars-1) * np.float(nstars)/totstars)
@@ -62,28 +63,46 @@ def read_match(file,cols):
         M1, M2, M3, M4, M5 =  mydata[:,zcol], mydata[:,ycol], mydata[:,jcol], mydata[:,hcol],mydata[:,fcol]
         radist = np.abs(1/((mytot_dens**0.5)*np.cos(deccent*3.14159/180.0)))/3600.0
         decdist = (1/mytot_dens**0.5)/3600.0
-        print('RA',radist,'DEC',decdist)
+        #print('RA',radist,'DEC',decdist)
         coordlist = np.arange(np.rint(np.float(len(M2))**0.5)+1)
         np.random.shuffle(coordlist)
-        print(radist,decdist)
+        #print(radist,decdist)
         ra = 0.0
         dec = 0.0
         for k in range(len(coordlist)):
-            ra = np.append(ra,radist*coordlist+racent-(pix*1024.0/3600.0))
-            dec = np.append(dec,np.repeat(decdist*coordlist[k]+deccent-(pix*1024.0/3600.0),len(coordlist)))
+            ra = np.append(ra,radist*coordlist+racent-(pix*imagesize/7200.0))
+            dec = np.append(dec,np.repeat(decdist*coordlist[k]+deccent-(pix*imagesize/7200.0),len(coordlist)))
         ra = ra[1:len(M1)+1]
         dec = dec[1:len(M1)+1]
         print(len(ra),len(M1))
+        print("MIN AND MAX RA AND DEC ARE: ",np.min(ra),np.max(ra),np.min(dec),np.max(dec))
         M = np.array([M1,M2,M3,M4,M5]).T
         del M1,M2,M3,M4,M5
         file1 = file.split('.')
         file2 = '.'.join(file1[0:len(file1)-1])
         file3 = file2+str(np.around(hden,decimals=5))+'.'+file1[-1]
-        write_stips(file3,ra,dec,M)
+        if i==1:
+            galradec = getgalradec(file3,ra,dec,M)
+        write_stips(file3,ra,dec,M,galradec)
         del M
         gc.collect()
 
-def write_stips(infile,ra,dec,M):
+def getgalradec(infile,ra,dec,M):
+    filt = 'Z087'
+    ZP_AB = np.array([26.365,26.357,26.320,26.367,25.913])
+    fileroot=infile
+    starpre = '_'.join(infile.split('.')[:-1])
+    filedir = infile.split('/')[0]+'/'
+    outfile = starpre+'_'+filt+'.tbl'
+    outfilename = outfile.split('/')[-1]
+    flux    = wtips.get_counts(M[:,0],ZP_AB[0])
+    wtips.from_scratch(flux=flux,ra=ra,dec=dec,outfile=outfile)
+    stars = wtips([outfile])
+    galaxies = wtips([filedir+filt+'.txt']) # this file will be provided pre-made
+    radec = galaxies.random_radec_for(stars)
+    return radec
+    
+def write_stips(infile,ra,dec,M,galradec):
     filternames   = ['Z087','Y106','J129','H158','F184']
     ZP_AB = np.array([26.365,26.357,26.320,26.367,25.913])
     fileroot=infile
@@ -95,14 +114,14 @@ def write_stips(infile,ra,dec,M):
         outfilename = outfile.split('/')[-1]
         flux    = wtips.get_counts(M[:,j],ZP_AB[j])
         print(M[-1,j])
-        print(flux,ra,dec)
+        #print(flux,ra,dec)
         # This makes a stars only input list
         wtips.from_scratch(flux=flux,ra=ra,dec=dec,outfile=outfile)
         stars = wtips([outfile])
+        subprocess.run(['gzip',outfile], stdout=subprocess.PIPE)
         galaxies = wtips([filedir+filt+'.txt']) # this file will be provided pre-made
         galaxies.flux_to_Sb()                             # galaxy flux to surface brightness
-        radec = galaxies.random_radec_for(stars)          # random RA DEC across star field
-        galaxies.replace_radec(radec)                     # distribute galaxies across starfield
+        galaxies.replace_radec(galradec)                     # distribute galaxies across starfield
         stars.merge_with(galaxies)                        # merge stars and galaxies list
         outfile = filedir+'Mixed'+'_'+outfilename
         stars.write_stips(outfile,ipac=True)
@@ -115,10 +134,11 @@ def write_stips(infile,ra,dec,M):
                  '  ' + str(stars.center[1]) + ')\n' +
                  content)
         f.close()
+        subprocess.run(['gzip',outfile], stdout=subprocess.PIPE)
         del stars
         del galaxies
         gc.collect()
-read_match('wfirst_phot/fake_25.0.out',['X625','Z087','Y106','J129','H158','F184'])
-#read_match('wfirst_phot/fake_test.out',['X625','Z087','Y106','J129','H158','F184'])
+#read_match('wfirst_phot/fake_25.5.out',['X625','Z087','Y106','J129','H158','F184'])
+read_match('wfirst_phot/fake_test.out',['X625','Z087','Y106','J129','H158','F184'])
     
        
