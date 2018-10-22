@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 import argparse,os,subprocess
 from wpipe import *
-import random
 #from stips.observation_module import ObservationModule #save for when ready
 
 filtdict = {'R':'R062',
@@ -45,7 +44,7 @@ def hyak_stips(job_id,event_id,dp_id,stips_script):
               '## Nodes' + '\n'+
               '#SBATCH --ntasks=1' + '\n'+
               '## Walltime (3 hours)' + '\n'+
-              '#SBATCH --time=100:00:00' + '\n'+
+              '#SBATCH --time=10:00:00' + '\n'+
               '## Memory per node' + '\n'+
               '#SBATCH --mem=10G' + '\n'+
               '## Specify the working directory for this job' + '\n'+
@@ -54,14 +53,14 @@ def hyak_stips(job_id,event_id,dp_id,stips_script):
               '#SBATCH --mail-type=ALL' + '\n'+
               '#SBATCH --mail-user=benw1@uw.edu' + '\n'+
               'source activate forSTIPS'+'\n'+
-              'python2.7 ./'+stips_script)
+              'python2.7 '+stips_script)
       #subprocess.run(['sbatch',slurmfile],cwd=myConfig.procpath)
 
-def run_stips(job_id,event_id,dp_id):
+def run_stips(job_id,event_id,dp_id,run_id):
    myJob  = Job.get(job_id)
    myPipe = Pipeline.get(int(myJob.pipeline_id))
 
-   catalogID = Options.get('event',event_id)['dp_id']
+   catalogID = dp_id
    catalogDP = DataProduct.get(int(catalogID))
    myTarget = Target.get(int(catalogDP.target_id))
    myConfig = Configuration.get(int(catalogDP.config_id))
@@ -72,18 +71,9 @@ def run_stips(job_id,event_id,dp_id):
    
    filtroot = filename.split('_')[-1].split('.')[0]
    filtername = filtdict[filtroot]
-   stips_script = myConfig.confpath+'/run_stips_'+str(random.randint(10000,99999))+'.py'
+   stips_script = myConfig.confpath+'/run_stips_'+str(dp_id)+'.py'
    with open(stips_script, 'w') as f:
-      f.write('from stips.observation_module import ObservationModule'+'\n'+
-              'scene_general = {\'ra\': '+myParams['racent']+',\'dec\': '+myParams['deccent']+',\'pa\': 0.0, \'seed\': 1234}'+'\n'+
-              'obs = {\'instrument\': \'WFI\', \'filters]\': ['+filtername+'], \'detectors\': 1,\'distortion\': False, \'oversample\': 10,\'pupil_mask\': \'\', \'background\': \'avg\',\'observations_id\': '+dp_id+', \'exp_time\': '+myParams['exptime']+',\'offsets\': [{\'offset_id\': 1, \'offset_centre\': False,\'offset_ra\': 0.0, \'offset_dec\': 0.0, \'offset_pa\': 0.0}]}'+'\n'+
-   
-              'obm = ObservationModule(obs, scene_general=scene_general)'+'\n'+
-              'obm.nextObservation()'+'\n'+
-              'source_count_catalogues = obm.addCatalogue(fileroot+filename)'+'\n'+
-              'psf_file = obm.addError()'+'\n'+
-              'fits_file, mosaic_file, params = obm.finalize(mosaic=False)'+'\n'+
-              'fits_file='+'\n'+filtername+'test.fits'+'\n')
+      f.write('from stips.observation_module import ObservationModule'+'\n'+'with open(filename) as myfile:'+'\n'+'   head = [next(myfile) for x in xrange(3)]'+'\n'+'pos = head[2].split(\' \')'+'\n'+'crud,ra = pos[2].split(\'(\')'+'\n'+'dec,crud =  pos[4].split(\')\')'+'\n'+'print \"Running \",filename,ra,dec'+'\n'+'print(\"SEED \",seed)'+'\n'+'scene_general = {\'ra\': '+myParams['racent']+',\'dec\': '+myParams['deccent']+',\'pa\': 0.0, \'seed\': 1234}'+'\n'+'obs = {\'instrument\': \'WFI\', \'filters]\': ['+filtername+'], \'detectors\': 1,\'distortion\': False, \'oversample\': '+myParams['oversample']+',\'pupil_mask\': \'\', \'background\': \'avg\',\'observations_id\': '+str(dp_id)+', \'exp_time\': '+myParams['exptime']+',\'offsets\': [{\'offset_id\': '+str(run_id)+', \'offset_centre\': False,\'offset_ra\': 0.0, \'offset_dec\': 0.0, \'offset_pa\': 0.0}]}'+'\n'+'obm = ObservationModule(obs, scene_general=scene_general)'+'\n'+'obm.nextObservation()'+'\n'+'source_count_catalogues = obm.addCatalogue('+fileroot+filename+')'+'\n'+'psf_file = obm.addError()'+'\n'+'fits_file, mosaic_file, params = obm.finalize(mosaic=False)'+'\n')
    hyak_stips(job_id,event_id,dp_id,stips_script)
    #dp_opt = Parameters.getParam(myConfig.config_id) # Attach config params used tp run sim to the DP
    
@@ -114,10 +104,10 @@ if __name__ == '__main__':
       event_id = int(args.event_id)
       event = Event.get(event_id)
       dp_id = Options.get('event',event_id)['dp_id']
-      run_stips(job_id,event_id,dp_id)
       parent_job_id = int(event.job_id)
       compname = Options.get('event',event_id)['name']
       update_option = int(Options.get('job',parent_job_id)[compname])
+      run_stips(job_id,event_id,dp_id,update_option)
       update_option = update_option+1
       _update = Options.addOption('job',parent_job_id,compname,update_option)
       to_run = int(Options.get('event',event_id)['to_run'])

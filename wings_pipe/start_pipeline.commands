@@ -1,4 +1,4 @@
-~/src/WINGS/wings_pipe/test_dir1/create_pipeline.py -u ben -c /Users/ben/Wpipelines/src/ -d "test_dir2 pipeline"
+~/src/WINGS/wings_pipe/test_dir1/create_pipeline.py -u ben -c /Users/ben/src/WINGS/wings_pipe/test_dir2 -d "test_dir2 pipeline"
 cp ~/src/WINGS/wings_pipe/test_dir2/config/default.conf .
 build/make_targets.py --P 18 --C /Users/ben/Wpipelines/testpipe2/default.conf --T ~/Wpipelines/test_targets
 

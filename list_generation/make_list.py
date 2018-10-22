@@ -15,6 +15,8 @@ racent = 25.65
 deccent=-37.21
 def read_match(file,cols):
     data = np.loadtxt(file)
+    np.random.shuffle(data)
+    print(data[5:10,:])
     nstars = len(data[:,0])
     tot_dens = np.float(nstars)/area
     print("MAX TOTAL DENSITY = ",tot_dens)
@@ -46,7 +48,7 @@ def read_match(file,cols):
     max_den = np.float(htot)/area
     del h
     print("MAX H(23-24) DENSITY = ",max_den)
-    for i in range(1,21):
+    for i in range(1,2):
         totstars = np.float(nstars) * 10**(-0.1*np.float(i)) 
         allind = np.rint(np.arange(totstars-1) * np.float(nstars)/totstars)
         mydata = data[allind.astype(int),:]
