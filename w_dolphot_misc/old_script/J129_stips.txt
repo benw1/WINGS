@@ -1,0 +1,1 @@
+../data/J129_stips.txt
