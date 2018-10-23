@@ -1,5 +1,5 @@
-~/src/WINGS/wings_pipe/test_dir1/create_pipeline.py -u ben -c /Users/ben/src/WINGS/wings_pipe/test_dir2 -d "test_dir2 pipeline"
-cp ~/src/WINGS/wings_pipe/test_dir2/config/default.conf .
-build/make_targets.py --P 18 --C /Users/ben/Wpipelines/testpipe2/default.conf --T ~/Wpipelines/test_targets
+~/data/WINGS/wings_pipe/test_dir1/create_pipeline.py -u ben -c ~/data/WINGS/wings_pipe/test_dir2 -d "test_dir2 pipeline"
+cp ~/data/WINGS/wings_pipe/test_dir2/config/default.conf .
+build/make_targets.py --P 18 --C ~/data/Wpipelines/testpipe1/default.conf --T ~/data/Wpipelines/test_targets
 
 
