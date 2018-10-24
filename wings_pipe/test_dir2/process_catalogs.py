@@ -107,13 +107,30 @@ def read_match(filepath,cols,myConfig):
    file2 = '.'.join(file1[0:len(file1)-1])
    file3 = myConfig.procpath+'/'+file2+str(np.around(hden,decimals=5))+'.'+file1[-1]
    #print("STIPS",file3)
-   stips_lists = write_stips(file3,ra,dec,M,background)
+   galradec = getgalradec(file3,ra,dec,M,background)
+   stips_lists = write_stips(file3,ra,dec,M,background,galradec)
    del M
    gc.collect()
    stips_in = np.append(stips_in,stips_lists)
    return stips_in
 
-def write_stips(infile,ra,dec,M,background):
+def getgalradec(infile,ra,dec,M,background):
+    filt = 'Z087'
+    ZP_AB = np.array([26.365,26.357,26.320,26.367,25.913])
+    fileroot=infile
+    starpre = '_'.join(infile.split('.')[:-1])
+    filedir = background+'/'
+    outfile = starpre+'_'+filt+'.tbl'
+    outfilename = outfile.split('/')[-1]
+    flux    = wtips.get_counts(M[:,0],ZP_AB[0])
+    wtips.from_scratch(flux=flux,ra=ra,dec=dec,outfile=outfile)
+    stars = wtips([outfile])
+    galaxies = wtips([filedir+filt+'.txt']) # this file will be provided pre-made
+    radec = galaxies.random_radec_for(stars)
+    return radec
+
+
+def write_stips(infile,ra,dec,M,background,galradec):
    filternames   = ['Z087','Y106','J129','H158','F184']
    ZP_AB = np.array([26.365,26.357,26.320,26.367,25.913])
    fileroot=infile
@@ -130,8 +147,7 @@ def write_stips(infile,ra,dec,M,background):
       stars = wtips([outfile])
       galaxies = wtips([background+'/'+filt+'.txt']) # this file will be provided pre-made
       galaxies.flux_to_Sb()                             # galaxy flux to surface brightness
-      radec = galaxies.random_radec_for(stars)          # random RA DEC across star field
-      galaxies.replace_radec(radec)                     # distribute galaxies across starfield
+      galaxies.replace_radec(galradec)                     # distribute galaxies across starfield
       stars.merge_with(galaxies)                        # merge stars and galaxies list
       outfile = filedir+'Mixed'+'_'+outfilename
       mixedfilename = 'Mixed'+'_'+outfilename
