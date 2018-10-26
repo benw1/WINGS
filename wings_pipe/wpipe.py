@@ -506,8 +506,49 @@ def Submit(task,job_id,event_id):
     dataroot = myPipe.data_root
     job = Job.get(int(job_id))
     #subprocess.Popen([executable,'-e',str(event_id),'-j',str(job_id)],cwd=dataroot) # This line will work with an SQL backbone, but NOT hdf5, as 2 tasks running on the same hdf5 file will collide!
-    subprocess.run([executable,'-e',str(event_id),'-j',str(job_id)],cwd=dataroot)
+    #subprocess.run([executable,'-e',str(event_id),'-j',str(job_id)],cwd=dataroot)
+    #Let's send stuff to slurm
+    hyak(task,job_id,event_id)
     return
+
+def hyak(task,job_id,event_id):
+    myJob  = Job.get(job_id)
+    myPipe = Pipeline.get(int(myJob.pipeline_id))
+    swroot = myPipe.software_root
+    executable = swroot+'/'+task['name']
+    dataroot = myPipe.data_root
+
+    catalogID = Options.get('event',event_id)['dp_id']
+    catalogDP = DataProduct.get(int(catalogID))
+    myTarget = Target.get(int(catalogDP.target_id))
+    myConfig = Configuration.get(int(catalogDP.config_id))
+    myParams = Parameters.getParam(int(myConfig.config_id))
+
+    slurmfile = myConfig.procpath+'/'+task['name']+'_'+str(job_id)+'.slurm'
+    #print(event_id,job_id,executable,type(executable))
+    eidstr = str(event_id)
+    jidstr = str(job_id)
+    print(type(event_id),type(job_id),type(eidstr),type(jidstr))
+    with open(slurmfile, 'w') as f:
+        f.write('#!/bin/bash' + '\n'+
+              '## Job Name' + '\n'+
+              '#SBATCH --job-name='+jidstr+'\n'+
+              '## Allocation Definition ' + '\n'+
+              '#SBATCH --account=astro' + '\n'+
+              '#SBATCH --partition=astro' + '\n'+
+              '## Resources' + '\n'+
+              '## Nodes' + '\n'+
+              '#SBATCH --ntasks=1' + '\n'+
+              '## Walltime (10 hours)' + '\n'+
+              '#SBATCH --time=10:00:00' + '\n'+
+              '## Memory per node' + '\n'+
+              '#SBATCH --mem=10G' + '\n'+
+              '## Specify the working directory for this job' + '\n'+
+              '#SBATCH --workdir='+myConfig.procpath + '\n'+
+              'source activate forSTIPS3'+'\n'+
+              executable+' \-e '+eidstr+' \-j '+jidstr)
+    subprocess.run(['sbatch',slurmfile],cwd=myConfig.procpath)
+    
 
 def fire(event):
     event_name = event['name'].values[0]

@@ -45,9 +45,11 @@ def process_match_catalog(job_id,event_id,dp_id):
 
 def read_match(filepath,cols,myConfig):
    data = np.loadtxt(filepath)
+   np.random.shuffle(data)
    nstars = len(data[:,0])
    myParams = Parameters.getParam(int(myConfig.config_id))
    area = float(myParams["area"])
+   imagesize = float(myParams["imagesize"])
    background = myParams["background_dir"]
    tot_dens = np.float(nstars)/area
    print("MAX TOTAL DENSITY = ",tot_dens)
@@ -95,8 +97,8 @@ def read_match(filepath,cols,myConfig):
    ra = 0.0
    dec = 0.0
    for k in range(len(coordlist)):
-      ra = np.append(ra,radist*coordlist+racent-(pix*1024.0/3600.0))
-      dec = np.append(dec,np.repeat(decdist*coordlist[k]+deccent-(pix*1024.0/3600.0),len(coordlist)))
+      ra = np.append(ra,radist*coordlist+racent-(pix*imagesize/7200.0))
+      dec = np.append(dec,np.repeat(decdist*coordlist[k]+deccent-(pix*imagesize/7200.0),len(coordlist)))
    ra = ra[1:len(M1)+1]
    dec = dec[1:len(M1)+1]
    #print(len(ra),len(M1))
