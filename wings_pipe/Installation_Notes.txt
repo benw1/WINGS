@@ -1,0 +1,33 @@
+install miniconda3
+install STIPS env:
+conda config --add channels http://ssb.stsci.edu/astroconda
+conda create -n forSTIPS3 python=3.6 astropy=1.3.2 numpy=1.12.1 scipy=0.18.1 photutils=0.3.2 pysynphot=0.9.8.5 webbpsf=0.6 poppy=0.6.1
+export PYSYN_CDBS="/local/tmp/Work/bin/grp/hst/cdbs"
+source activate forSTIPS3
+pip install "esutil==0.6.0"
+pip install "pandeia.engine==1.0"
+pip install "montage-wrapper==0.9.8"
+pip install "jwst_backgrounds==1.1.1"
+export pandeia_refdata="/local/tmp/Work/bin/pandeia_data-1.0"
+cd /local/tmp/Work
+git clone https://github.com/spacetelescope/STScI-STIPS-UI.git
+export stips_data="/local/tmp/Work/STScI-STIPS-UI/sim_input/stips_data"
+git clone https://github.com/spacetelescope/STScI-STIPS.git
+cd STScI-STIPS
+git checkout square_pixel_fix
+python setup.py install
+
+To make it work without internet:
+
+
+Download everything from http://archive.stsci.edu/archive_news/2017/08-Aug/index.html#article1
+Put all of the numbered files (0000, 0001, .., 1966) into a directory named 'remote_cache'
+Put a file named VERSION into remote_cache. This file is not included in the downloads for some reason, but can be found at https://archive.stsci.edu/missions/jwst/simulations/straylight/sl_cache/VERSION
+Put 'remote_cache' into a directory named 'background'. Put 'background' into your stips_data directory at the root level
+In stips_data/background, put a directory named 'jbt_refdata'. In that directory, put a copy of the contents of the 'refdata' directory from the jwst_backgrounds python package.
+
+To make it work with the pipeline:
+
+source activate forSTIPS3
+conda install pandas
+conda install pytables
