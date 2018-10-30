@@ -524,11 +524,11 @@ def hyak(task,job_id,event_id):
     myConfig = Configuration.get(int(catalogDP.config_id))
     myParams = Parameters.getParam(int(myConfig.config_id))
 
-    slurmfile = myConfig.procpath+'/'+task['name']+'_'+str(job_id)+'.slurm'
+    slurmfile = myConfig.confpath+'/'+task['name']+'_'+str(job_id)+'.slurm'
     #print(event_id,job_id,executable,type(executable))
     eidstr = str(event_id)
     jidstr = str(job_id)
-    print(type(event_id),type(job_id),type(eidstr),type(jidstr))
+    print("Submitting ",slurmfile)
     with open(slurmfile, 'w') as f:
         f.write('#!/bin/bash' + '\n'+
               '## Job Name' + '\n'+
@@ -547,7 +547,7 @@ def hyak(task,job_id,event_id):
               '#SBATCH --workdir='+myConfig.procpath + '\n'+
               'source activate forSTIPS3'+'\n'+
               executable+' \-e '+eidstr+' \-j '+jidstr)
-    subprocess.run(['sbatch',slurmfile],cwd=myConfig.procpath)
+    subprocess.run(['sbatch',slurmfile],cwd=myConfig.confpath)
     
 
 def fire(event):

@@ -1,0 +1,77 @@
+#! /usr/bin/env python
+import argparse,os,subprocess
+from wpipe import *
+from wingtips import WingTips as wtips
+from wingtips import time, np, ascii
+import gc
+
+
+def register(PID,task_name):
+   myPipe = Pipeline.get(PID)
+   myTask = Task(task_name,myPipe).create()
+   _t = Task.add_mask(myTask,'*','start',task_name)
+   _t = Task.add_mask(myTask,'*','make_input_list','*')
+   return
+
+
+def write_stips(infile,ra,dec,M,background,galradec,filt,ZP_AP,starpre,filedir):
+   fileroot=infile
+   outfiles = []
+        
+   outfile = starpre+'_'+filt+'.tbl'
+   outfilename = outfile.split('/')[-1]
+   flux    = wtips.get_counts(M,ZP_AB)
+   # This makes a stars only input list
+   wtips.from_scratch(flux=flux,ra=ra,dec=dec,outfile=outfile)
+   stars = wtips([outfile])
+   galaxies = wtips([background+'/'+filt+'.txt']) # this file will be provided pre-made
+   galaxies.flux_to_Sb()                             # galaxy flux to surface brightness
+   galaxies.replace_radec(galradec)                     # distribute galaxies across starfield
+   stars.merge_with(galaxies)                        # merge stars and galaxies list
+   outfile = filedir+'Mixed'+'_'+outfilename
+   mixedfilename = 'Mixed'+'_'+outfilename
+   stars.write_stips(outfile,ipac=True)
+   with open(outfile, 'r+') as f:
+      content = f.read()
+      f.seek(0, 0)
+      f.write('\\type = internal' + '\n'  +
+              '\\filter = ' + str(filt) +'\n' + 
+              '\\center = (' + str(stars.center[0]) +
+            '  ' + str(stars.center[1]) + ')\n' +
+              content)
+   f.close()
+   del stars
+   del galaxies
+   gc.collect()
+   outfiles = np.append(outfiles,mixedfilename)
+   return outfiles
+    
+def parse_all():
+   parser = argparse.ArgumentParser()
+   parser.add_argument('--R','-R', dest='REG', action='store_true',
+                       help='Specify to Register')
+   parser.add_argument('--P','-p',type=int,  dest='PID',
+                       help='Pipeline ID')
+   parser.add_argument('--N','-n',type=str,  dest='task_name',
+                       help='Name of Task to be Registered')
+   parser.add_argument('--E','-e',type=int,  dest='event_id',
+                       help='Event ID')
+   parser.add_argument('--J','-j',type=int,  dest='job_id',
+                       help='Job ID')
+   parser.add_argument('--DP','-dp',type=int,  dest='dp_id',
+                       help='Dataproduct ID')
+   return parser.parse_args()
+
+if __name__ == '__main__':
+   args = parse_all()
+   if args.REG:
+      _t = register(int(args.PID),str(args.task_name))
+   else:
+      job_id = int(args.job_id)
+      event_id = int(args.event_id)
+      event = Event.get(event_id)
+      dp_id = Options.get('event',event_id)['dp_id']
+      
+      write_stips(infile,ra,dec,M,background,galradec,filt,ZP_AP,starpre,filedir):
+      
+   
