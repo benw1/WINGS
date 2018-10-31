@@ -50,8 +50,6 @@ def hyak_stips(job_id,event_id,dp_id,stips_script):
               '## Specify the working directory for this job' + '\n'+
               '#SBATCH --workdir='+myConfig.procpath + '\n'+
               '##turn on e-mail notification' + '\n'+
-              '#SBATCH --mail-type=ALL' + '\n'+
-              '#SBATCH --mail-user=benw1@uw.edu' + '\n'+
               'source activate forSTIPS'+'\n'+
               'python2.7 '+stips_script)
    subprocess.run(['sbatch',slurmfile],cwd=myConfig.procpath)
