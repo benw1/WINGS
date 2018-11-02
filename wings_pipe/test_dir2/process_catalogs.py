@@ -31,17 +31,20 @@ def process_match_catalog(job_id,event_id,dp_id):
    procdp = DataProduct(filename=filename,relativepath=fileroot,group='proc',configuration=myConfig).create()
    #filternames = myParams[filternames]
    filternames   = ['R062','Z087','Y106','J129','H158','F184']
-   stips_files = read_match(procdp.relativepath[0]+'/'+procdp.filename[0],filternames,myConfig,myJob)
+   stips_files,filters = read_match(procdp.relativepath[0]+'/'+procdp.filename[0],filternames,myConfig,myJob)
    comp_name = 'completed'+myTarget['name']
    options = {comp_name:0}
    _opt = Options(options).create('job',job_id)
    total = len(stips_files)
+   i=0
    for stips_cat in stips_files:
-      _dp = DataProduct(filename=stips_cat,relativepath=myConfig.procpath,group='proc',configuration=myConfig).create()
+      filtname = filters[i]
+      _dp = DataProduct(filename=stips_cat,relativepath=myConfig.procpath,group='proc',filtername=filtname,subtype='stips_input_catalog',configuration=myConfig).create()
       dpid = int(_dp.dp_id)
       event = Job.getEvent(myJob,'new_stips_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name})
       logprint(myConfig,myJob,''.join(["Firing event ",str(event['event_id'].item()),"  new_stips_catalog"]))
       fire(event)
+      i += 1
 
 def read_match(filepath,cols,myConfig,myJob):
    data = np.loadtxt(filepath)
@@ -83,6 +86,7 @@ def read_match(filepath,cols,myConfig,myJob):
    logprint(myConfig,myJob,''.join(["H(23-24) DENSITY = ",str(hden)]))
 
    stips_in = []
+   filters = []
  
    M1, M2, M3, M4, M5 =  data[:,zcol], data[:,ycol], data[:,jcol], data[:,hcol],data[:,fcol]
    racent = float(myParams['racent'])
@@ -110,11 +114,11 @@ def read_match(filepath,cols,myConfig,myJob):
    file3 = myConfig.procpath+'/'+file2+str(np.around(hden,decimals=5))+'.'+file1[-1]
    #print("STIPS",file3)
    galradec = getgalradec(file3,ra,dec,M,background)
-   stips_lists = write_stips(file3,ra,dec,M,background,galradec,racent,deccent)
+   stips_lists, filters = write_stips(file3,ra,dec,M,background,galradec,racent,deccent)
    del M
    gc.collect()
    stips_in = np.append(stips_in,stips_lists)
-   return stips_in
+   return stips_in,filters
 
 def getgalradec(infile,ra,dec,M,background):
     filt = 'Z087'
@@ -139,6 +143,7 @@ def write_stips(infile,ra,dec,M,background,galradec,racent,deccent):
    starpre = '_'.join(infile.split('.')[:-1])
    filedir = '/'.join(infile.split('/')[:-1])+'/'
    outfiles = []
+   filters = []
    for j,filt in enumerate(filternames):
         
       outfile = starpre+'_'+filt[0]+'.tbl'
@@ -167,14 +172,53 @@ def write_stips(infile,ra,dec,M,background,galradec,racent,deccent):
       del galaxies
       gc.collect()
       outfiles = np.append(outfiles,mixedfilename)
-   return outfiles
-    
+      filters = np.append(filters,str(filt))
+   return outfiles,filters
+   
+def link_stips_catalogs(myConfig):
+   target_id = myConfig.target_id
+   pid = myConfig.pipeline_id
+   myTarget = Target.get(int(target_id))
+   allConf = Store().select('configurations').loc[pid,target_id,:,:]
+   defConfig1 = allConf[allConf['name']=='default']
+   print("DEF CONF ",defConfig1['config_id'][0])
+   defConfig = Configuration.get(int(defConfig1['config_id'][0]))
+   myDP = Store().select('data_products').loc[defConfig.pipeline_id,defConfig.target_id,defConfig.config_id,:] 
+   stips_input = myDP[myDP['subtype']=='stips_input_catalog']
+   print(stips_input)
+   total = len(stips_input)
+   _job = Job(config=myConfig).create() #need to create dummy job to keep track of events
+   job_id = int(_job.job_id)
+   myJob = Job.get(job_id)
+   comp_name = 'completed'+myTarget['name']
+   options = {comp_name:0}
+   _opt = Options(options).create('job',job_id)
+   print("DPS0 :",stips_input['dp_id'][0])
+   for i in range(len(stips_input)):
+      print("DP ",stips_input['dp_id'][i])
+      dp = DataProduct.get(int(stips_input['dp_id'][i]))
+      filename = dp['filename']
+      filtname = dp['filtername']
+      path = dp['relativepath']
+      cat = path+'/'+filename
+      newfile = myConfig.procpath+'/'+filename
+      os.symlink(cat,newfile)
+      _dp = DataProduct(filename=filename,relativepath=myConfig.procpath,group='proc',subtype='stips_input_catalog',filtername=filtname,configuration=myConfig).create()
+      dpid = int(_dp.dp_id)
+      event = Job.getEvent(myJob,'new_stips_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name})
+      logprint(myConfig,myJob,''.join(["Firing event ",str(event['event_id'].item()),"  new_stips_catalog"]))
+      fire(event)
+
+      
+
 def parse_all():
    parser = argparse.ArgumentParser()
    parser.add_argument('--R','-R', dest='REG', action='store_true',
                        help='Specify to Register')
    parser.add_argument('--P','-p',type=int,  dest='PID',
                        help='Pipeline ID')
+   parser.add_argument('--C','-c',type=int,  dest='config_id',
+                       help='Configuration ID')
    parser.add_argument('--N','-n',type=str,  dest='task_name',
                        help='Name of Task to be Registered')
    parser.add_argument('--E','-e',type=int,  dest='event_id',
@@ -189,11 +233,16 @@ if __name__ == '__main__':
    args = parse_all()
    if args.REG:
       _t = register(int(args.PID),str(args.task_name))
+   elif args.config_id:
+      myConfig = Configuration.get(int(args.config_id))
+      link_stips_catalogs(myConfig)
    else:
       job_id = int(args.job_id)
       event_id = int(args.event_id)
       event = Event.get(event_id)
       dp_id = Options.get('event',event_id)['dp_id']
       process_match_catalog(job_id,event_id,dp_id)
+      
+
       
    

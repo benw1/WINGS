@@ -50,8 +50,8 @@ def hyak_stips(job_id,event_id,dp_id,stips_script):
               '## Specify the working directory for this job' + '\n'+
               '#SBATCH --workdir='+myConfig.procpath + '\n'+
               '##turn on e-mail notification' + '\n'+
-              'source activate forSTIPS'+'\n'+
-              'python2.7 '+stips_script)
+              'source activate forSTIPS3'+'\n'+
+              'python '+stips_script)
    subprocess.run(['sbatch',slurmfile],cwd=myConfig.procpath)
 
 def run_stips(job_id,event_id,dp_id,run_id):
@@ -72,7 +72,7 @@ def run_stips(job_id,event_id,dp_id,run_id):
    stips_script = myConfig.confpath+'/run_stips_'+str(dp_id)+'.py'
    with open(stips_script, 'w') as f:
       f.write('from stips.observation_module import ObservationModule'+'\n'+'import numpy as np\nfilename = \''+fileroot+'/'+filename+'\'\n'+'seed = np.random.randint(9999)+1000'+'\n'
-'with open(filename) as myfile:'+'\n'+'   head = [next(myfile) for x in xrange(3)]'+'\n'+'pos = head[2].split(\' \')'+'\n'+'crud,ra = pos[2].split(\'(\')'+'\n'+'dec,crud =  pos[4].split(\')\')'+'\n'+'print \"Running \",filename,ra,dec'+'\n'+'print(\"SEED \",seed)'+'\n'+'scene_general = {\'ra\': '+myParams['racent']+',\'dec\': '+myParams['deccent']+',\'pa\': 0.0, \'seed\': seed}'+'\n'+'obs = {\'instrument\': \'WFI\', \'filters\': [\''+filtername+'\'], \'detectors\': 1,\'distortion\': False, \'oversample\': '+myParams['oversample']+',\'pupil_mask\': \'\', \'background\': \'avg\',\'observations_id\': '+str(dp_id)+', \'exptime\': '+myParams['exptime']+',\'offsets\': [{\'offset_id\': '+str(run_id)+', \'offset_centre\': False,\'offset_ra\': 0.0, \'offset_dec\': 0.0, \'offset_pa\': 0.0}]}'+'\n'+'obm = ObservationModule(obs, scene_general=scene_general)'+'\n'+'obm.nextObservation()'+'\n'+'source_count_catalogues = obm.addCatalogue(str(filename))'+'\n'+'psf_file = obm.addError()'+'\n'+'fits_file, mosaic_file, params = obm.finalize(mosaic=False)'+'\n')
+'with open(filename) as myfile:'+'\n'+'   head = [next(myfile) for x in range(3)]'+'\n'+'pos = head[2].split(\' \')'+'\n'+'crud,ra = pos[2].split(\'(\')'+'\n'+'dec,crud =  pos[4].split(\')\')'+'\n'+'print(\"Running \",filename,ra,dec)'+'\n'+'print(\"SEED \",seed)'+'\n'+'scene_general = {\'ra\': '+myParams['racent']+',\'dec\': '+myParams['deccent']+',\'pa\': 0.0, \'seed\': seed}'+'\n'+'obs = {\'instrument\': \'WFI\', \'filters\': [\''+filtername+'\'], \'detectors\': 1,\'distortion\': False, \'oversample\': '+myParams['oversample']+',\'pupil_mask\': \'\', \'background\': \'avg\',\'observations_id\': '+str(dp_id)+', \'exptime\': '+myParams['exptime']+',\'offsets\': [{\'offset_id\': '+str(run_id)+', \'offset_centre\': False,\'offset_ra\': 0.0, \'offset_dec\': 0.0, \'offset_pa\': 0.0}]}'+'\n'+'obm = ObservationModule(obs, scene_general=scene_general)'+'\n'+'obm.nextObservation()'+'\n'+'source_count_catalogues = obm.addCatalogue(str(filename))'+'\n'+'psf_file = obm.addError()'+'\n'+'fits_file, mosaic_file, params = obm.finalize(mosaic=False)'+'\n')
    hyak_stips(job_id,event_id,dp_id,stips_script)
    #dp_opt = Parameters.getParam(myConfig.config_id) # Attach config params used tp run sim to the DP
    
