@@ -10,9 +10,73 @@ def register(PID,task_name):
    return
 
 def write_dolphot_pars(target,config,thisjob):
-   logprint(thisconf,thisjob,''.join(["Could write dolphot pars now","\n"]))
-                     
-   
+   logprint(config,thisjob,''.join(["Could write dolphot pars now","\n"]))
+   parfile_name = target.name+".param"
+   parfile_path = config.confpath+'/'+parfile_name
+   myDP = Store().select('data_products').loc[myConfig.pipeline_id,myConfig.target_id,myConfig.config_id,:]
+   datadp = myDP[myDP['subtype']=='dolphot_data']
+   datadpid = datadp.dp_id.loc()
+   nimg = len(datadpid)
+   myParams = Parameters.Param(int(config.config_id))
+   refimage = myParams['refimage']
+   with open(parfile_path, 'w') as d:
+      d.write("Nimg = "+nimg+"\n"+
+      "img0_file = "+refimage+"\n")
+      i=0
+      for dpid in datadpid:
+         i += 1
+	 dp = DataProduct.get(dpid)
+	 filename = dp.filename
+         d.write("img"+i+"_file = "+filename+"\n")
+      d.write("img_shift = 0 0\n"+
+      "img_xform = 1 0 0\n"+
+      "img_RAper = 5\n"+
+      "img_RChi  = 2\n"+
+      "img_RSky  = 15 35\n"+
+      "img_RPSF  = 13\n"+
+      "img_apsky = 15 35\n"+
+
+      "RCentroid = 1           #centroid box size (int>0)\n"+
+      "SigFind = 3.0           #sigma detection threshold (flt)\n"+
+      "SigFindMult = 0.85      #Multiple for quick-and-dirty photometry (flt>0)\n"+
+      "SigFinal = 3.5          #sigma output threshold (flt)\n"+
+      "MaxIT = 25              #maximum iterations (int>0)\n"+
+      "PSFPhot = 1             #photometry type (int/0=aper,1=psf,2=wtd-psf)\n"+
+      "PSFPhotIt = 1           #number of iterations in PSF-fitting photometry (int>=0)\n"+
+      "FitSky = 2              #fit sky? (int/0=no,1=yes,2=small,3=with-phot)\n"+
+      "SkipSky = 2             #spacing for sky measurement (int>0)\n"+
+      "SkySig = 2.25           #sigma clipping for sky (flt>=1)\n"+
+      "NegSky = 1              #allow negative sky values? (0=no,1=yes)\n"+
+      "NoiseMult = 0.1        #noise multiple in imgadd (flt)\n"+
+      "FSat = 0.999            #fraction of saturate limit (flt)\n"+
+      "PosStep = 0.1           #search step for position iterations (flt)\n"+
+      "dPosMax = 2.5           #maximum single-step in position iterations (flt)\n"+
+      "RCombine = 1.5          #minimum separation for two stars for cleaning (flt)\n"+
+      "SigPSF = 10             #min S/N for psf parameter fits (flt)\n"+
+      "UseWCS = 2              #use WCS info in alignment (int 0=no, 1=shift/rotate/scale, 2=full)\n"+
+      "Align = 3               #align images? (int 0=no,1=const,2=lin,3=cube)\n"+
+      "AlignOnly = 0           #exit after alignment\n"+
+      "SubResRef = 1           #subpixel resolution for reference image (int>0)\n"+
+      "SecondPass = 3          #second pass finding stars (int 0=no,1=yes)\n"+
+      "SearchMode = 1          #algorithm for astrometry (0=max SNR/chi, 1=max SNR)\n"+
+      "Force1 = 0              #force type 1/2 (stars)? (int 0=no,1=yes)\n"+
+      "PSFres = 0              #make PSF residual image? (int 0=no,1=yes)\n"+
+      "ApCor = 1               #find/make aperture corrections? (int 0=no,1=yes)\n"+
+      "FakeStars =             #file with fake star input data\n"+
+      "FakeOut =               #file with fake star output data (default=phot.fake)\n"+
+      "FakeMatch = 3.0         #maximum separation between input and recovered star (flt>0)\n"+
+      "FakePSF = 2.0           #assumed PSF FWHM for fake star matching\n"+
+      "FakeStarPSF = 1         #use PSF residuals in fake star tests? (int 0=no,1=yes)\n"+
+      "RandomFake = 1          #apply Poisson noise to fake stars? (int 0=no,1=yes)\n"+
+      "FakePad = 0             #minimum distance of fake star from any chip edge to be used\n"+
+      "DiagPlotType = PS       #format to generate diagnostic plots (PNG, GIF, PS)\n"+
+      "VerboseData = 1         #to write all displayed numbers to a .data file\n"+
+      "ForceSameMag = 0        #force same count rate in images with same filter? (int 0=no, 1=yes)\n"+
+      "FlagMask = 4            #photometry quality flags to reject when combining magnitudes\n"+
+      "CombineChi = 0          #combined magnitude weights uses chi? (int 0=no, 1=yes)\n"+
+      "InterpPSFlib = 0        #interpolate PSF library spatially\n")
+   _dp = DataProduct(filename=parfile_name,relativepath=config.confpath,subtype="dolphot_parameters",group='conf',configuration=config).create()
+   return
     
 def parse_all():
     parser = argparse.ArgumentParser()
@@ -38,5 +102,5 @@ if __name__ == '__main__':
        target = Target.get(int(config.target_id))
        write_dolphot_pars(target,config,thisjob)
        newevent = Job.getEvent(thisjob,'parameters_written',options={'target_id':tid})
-       #fire(newevent)
+       fire(newevent)
        logprint(config,thisjob,'parameters_written\n')
