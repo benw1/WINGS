@@ -76,7 +76,7 @@ def run_stips(job_id,event_id,dp_id,run_id):
    hyak_stips(job_id,event_id,dp_id,stips_script)
    #dp_opt = Parameters.getParam(myConfig.config_id) # Attach config params used tp run sim to the DP
    
-   #_dp = DataProduct(filename=fits_file,relativepath=fileroot,group='proc',subtype='stips_image',filtername=filtername,ra=myParams['racent'], dec=myParams['deccent'],configuration=myConfig).create()
+   _dp = DataProduct(filename='sim_'+str(dp_id)+'_0.fits',relativepath=fileroot,group='proc',subtype='stips_image',filtername=filtername,ra=myParams['racent'], dec=myParams['deccent'],configuration=myConfig).create()
 
 def parse_all():
     parser = argparse.ArgumentParser()
@@ -134,8 +134,8 @@ if __name__ == '__main__':
             print(dps)
             dpid = int(dps.dp_id)
             newevent = Job.getEvent(thisjob,'stips_done',options={'target_id':tid,'dp_id':dpid,'name':comp_name,'to_run':total})
-            fire(newevent)           
-            logprint(thisconf,thisjob,'stips_done\n')
-            logprint(thisconf,thisjob,''.join(["Event= ",str(event.event_id)]))
+            #fire(newevent)           
+            logprint(thisconf,thisjob,'stips_done but not firing any events for now\n')
+            #logprint(thisconf,thisjob,''.join(["Event= ",str(event.event_id)]))
 
    

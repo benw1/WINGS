@@ -25,8 +25,8 @@ def write_dolphot_pars(target,config,thisjob):
       i=0
       for dpid in datadpid:
          i += 1
-	 dp = DataProduct.get(dpid)
-	 filename = dp.filename
+         dp = DataProduct.get(dpid)
+         filename = dp.filename
          d.write("img"+i+"_file = "+filename+"\n")
       d.write("img_shift = 0 0\n"+
       "img_xform = 1 0 0\n"+

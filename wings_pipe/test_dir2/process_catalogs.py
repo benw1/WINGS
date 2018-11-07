@@ -179,7 +179,7 @@ def link_stips_catalogs(myConfig):
    target_id = myConfig.target_id
    pid = myConfig.pipeline_id
    myTarget = Target.get(int(target_id))
-   allConf = Store().select('configurations').loc[pid,target_id,:,:]
+   allConf = Store().select('configurations').loc[pid,target_id,:]
    defConfig1 = allConf[allConf['name']=='default']
    print("DEF CONF ",defConfig1['config_id'][0])
    defConfig = Configuration.get(int(defConfig1['config_id'][0]))

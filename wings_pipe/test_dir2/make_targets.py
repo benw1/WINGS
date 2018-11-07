@@ -29,7 +29,8 @@ def discover_targets(Pipe,config_file,data_dir):
       confname = conffilename.split('.')[0]
       conf = Configuration(name=confname,target=myTarget).create(params=_params,create_dir=True)
       confret = Configuration.get(int(conf['config_id'].item()))
-      logprint(confret,myJob,''.join(['Target ',targ,' created with Configuration ',confname,' and ID ',str(confret.config_id)]))
+      targid = myTarget['target_id'].item()
+      logprint(confret,myJob,''.join(['Target ',targ,' with ID ',str(targid),' created with Configuration ',confname,' and ID ',str(confret.config_id)]))
       _t = subprocess.run(['cp',config_file,conf.confpath.values[0]+'/'],stdout=subprocess.PIPE)
       _dp = DataProduct(filename=conffilename,relativepath=myPipe.config_root,group='conf',configuration=conf).create()
       targetfiles = get_target_files(data_dir,targ)
