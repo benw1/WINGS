@@ -10,24 +10,27 @@ def register(PID,task_name):
    return
 
 def write_dolphot_pars(target,config,thisjob):
-   logprint(config,thisjob,''.join(["Could write dolphot pars now","\n"]))
-   parfile_name = target.name+".param"
+   parfile_name = target['name']+".param"
    parfile_path = config.confpath+'/'+parfile_name
-   myDP = Store().select('data_products').loc[myConfig.pipeline_id,myConfig.target_id,myConfig.config_id,:]
+   logprint(config,thisjob,''.join(["Writing dolphot pars now in ",parfile_path,"\n"]))
+   myDP = Store().select('data_products').loc[config.pipeline_id,config.target_id,config.config_id,:]
    datadp = myDP[myDP['subtype']=='dolphot_data']
-   datadpid = datadp.dp_id.loc()
-   nimg = len(datadpid)
-   myParams = Parameters.Param(int(config.config_id))
-   refimage = myParams['refimage']
+   datadpid = datadp['dp_id']
+   dataname = set(datadp['filename'])
+   
+   nimg = len(dataname)
+   myParams = Parameters.getParam(int(config.config_id))
+   #refimage = myParams['refimage']  #will make this more flexible later
+   refimageid  = datadpid[0]
+   refdp = DataProduct.get(refimageid)
+   refimage = str(refdp.filename)
    with open(parfile_path, 'w') as d:
-      d.write("Nimg = "+nimg+"\n"+
-      "img0_file = "+refimage+"\n")
+      d.write("Nimg = "+str(nimg)+"\n"+
+      "img0_file = "+refimage[:-5]+"\n")
       i=0
-      for dpid in datadpid:
+      for filename in dataname:
          i += 1
-         dp = DataProduct.get(dpid)
-         filename = dp.filename
-         d.write("img"+i+"_file = "+filename+"\n")
+         d.write("img"+str(i)+"_file = "+filename[:-5]+"\n")
       d.write("img_shift = 0 0\n"+
       "img_xform = 1 0 0\n"+
       "img_RAper = 5\n"+
@@ -79,14 +82,19 @@ def write_dolphot_pars(target,config,thisjob):
    return
     
 def parse_all():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--R','-R', dest='REG', action='store_true',
+   parser = argparse.ArgumentParser()
+   parser.add_argument('--R','-R', dest='REG', action='store_true',
                         help='Specify to Register')
-    parser.add_argument('--P','-p',type=int,  dest='PID',
+   parser.add_argument('--P','-p',type=int,  dest='PID',
                         help='Pipeline ID')
-    parser.add_argument('--N','-n',type=str,  dest='task_name',
+   parser.add_argument('--N','-n',type=str,  dest='task_name',
                         help='Name of Task to be Registered')
-    return parser.parse_args()
+   parser.add_argument('--E','-e',type=int,  dest='event_id',
+                       help='Event ID')
+   parser.add_argument('--J','-j',type=int,  dest='job_id',
+                       help='Job ID')
+
+   return parser.parse_args()
 
 if __name__ == '__main__':
     args = parse_all()
@@ -97,7 +105,7 @@ if __name__ == '__main__':
        event_id = int(args.event_id)
        event = Event.get(event_id)
        thisjob = Job.get(job_id)
-       config = Configuration.get(int(event.config_id))
+       config = Configuration.get(int(thisjob.config_id))
        tid = config.target_id
        target = Target.get(int(config.target_id))
        write_dolphot_pars(target,config,thisjob)
