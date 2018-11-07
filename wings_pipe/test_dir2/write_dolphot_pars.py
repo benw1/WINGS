@@ -79,7 +79,7 @@ def write_dolphot_pars(target,config,thisjob):
       "CombineChi = 0          #combined magnitude weights uses chi? (int 0=no, 1=yes)\n"+
       "InterpPSFlib = 0        #interpolate PSF library spatially\n")
    _dp = DataProduct(filename=parfile_name,relativepath=config.confpath,subtype="dolphot_parameters",group='conf',configuration=config).create()
-   return
+   return _dp
     
 def parse_all():
    parser = argparse.ArgumentParser()
@@ -108,7 +108,9 @@ if __name__ == '__main__':
        config = Configuration.get(int(thisjob.config_id))
        tid = config.target_id
        target = Target.get(int(config.target_id))
-       write_dolphot_pars(target,config,thisjob)
-       newevent = Job.getEvent(thisjob,'parameters_written',options={'target_id':tid})
+       paramdp = write_dolphot_pars(target,config,thisjob)
+       dpid = int(paramdp.dp_id)
+       logprint(config,thisjob,''.join(["Parameter file DPID ",str(dpid),"\n"]))
+       newevent = Job.getEvent(thisjob,'parameters_written',options={'target_id':tid, 'dp_id':dpid})
        fire(newevent)
        logprint(config,thisjob,'parameters_written\n')
