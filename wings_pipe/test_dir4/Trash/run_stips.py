@@ -1,7 +1,8 @@
 #! /usr/bin/env python
 import argparse,os,subprocess
 from wpipe import *
-#from stips.observation_module import ObservationModule #save for when ready
+from stips.observation_module import ObservationModule
+import numpy as np
 
 filtdict = {'R':'R062',
             'Z':'Z087',
@@ -50,8 +51,10 @@ def hyak_stips(job_id,event_id,dp_id,stips_script):
               '## Specify the working directory for this job' + '\n'+
               '#SBATCH --workdir='+myConfig.procpath + '\n'+
               '##turn on e-mail notification' + '\n'+
-              'source activate forSTIPS3'+'\n'+
-              'python '+stips_script)
+              '#SBATCH --mail-type=ALL' + '\n'+
+              '#SBATCH --mail-user=benw1@uw.edu' + '\n'+
+              'source activate forSTIPS'+'\n'+
+              'python2.7 '+stips_script)
    subprocess.run(['sbatch',slurmfile],cwd=myConfig.procpath)
 
 def run_stips(job_id,event_id,dp_id,run_id):
@@ -69,14 +72,25 @@ def run_stips(job_id,event_id,dp_id,run_id):
    
    filtroot = filename.split('_')[-1].split('.')[0]
    filtername = filtdict[filtroot]
-   stips_script = myConfig.confpath+'/run_stips_'+str(dp_id)+'.py'
-   with open(stips_script, 'w') as f:
-      f.write('from stips.observation_module import ObservationModule'+'\n'+'import numpy as np\nfilename = \''+fileroot+'/'+filename+'\'\n'+'seed = np.random.randint(9999)+1000'+'\n'
-'with open(filename) as myfile:'+'\n'+'   head = [next(myfile) for x in range(3)]'+'\n'+'pos = head[2].split(\' \')'+'\n'+'crud,ra = pos[2].split(\'(\')'+'\n'+'dec,crud =  pos[4].split(\')\')'+'\n'+'print(\"Running \",filename,ra,dec)'+'\n'+'print(\"SEED \",seed)'+'\n'+'scene_general = {\'ra\': '+myParams['racent']+',\'dec\': '+myParams['deccent']+',\'pa\': 0.0, \'seed\': seed}'+'\n'+'obs = {\'instrument\': \'WFI\', \'filters\': [\''+filtername+'\'], \'detectors\': 1,\'distortion\': False, \'oversample\': '+myParams['oversample']+',\'pupil_mask\': \'\', \'background\': \'avg\',\'observations_id\': '+str(dp_id)+', \'exptime\': '+myParams['exptime']+',\'offsets\': [{\'offset_id\': '+str(run_id)+', \'offset_centre\': False,\'offset_ra\': 0.0, \'offset_dec\': 0.0, \'offset_pa\': 0.0}]}'+'\n'+'obm = ObservationModule(obs, scene_general=scene_general)'+'\n'+'obm.nextObservation()'+'\n'+'source_count_catalogues = obm.addCatalogue(str(filename))'+'\n'+'psf_file = obm.addError()'+'\n'+'fits_file, mosaic_file, params = obm.finalize(mosaic=False)'+'\n')
-   hyak_stips(job_id,event_id,dp_id,stips_script)
+   filename = fileroot+'/'+filename
+   seed = np.random.randint(9999)+1000
+   with open(filename) as myfile:
+      head = [next(myfile) for x in range(3)]
+   pos = head[2].split(' ')
+   crud,ra = pos[2].split('(')
+   dec,crud =  pos[4].split(')')
+   print("Running ",filename,ra,dec)
+   print("SEED ",seed)
+   scene_general = {'ra': myParams['racent'],'dec': myParams['deccent'], 'pa': 0.0, 'seed': seed}
+   obs = {'instrument': 'WFI', 'filters': [filtername], 'detectors': 1,'distortion': False, 'oversample': myParams['oversample'], 'pupil_mask': '', 'background': myParams['background_val'], 'observations_id': str(dp_id), 'exptime': myParams['exptime'], 'offsets': [{'offset_id': str(run_id), 'offset_centre': False,'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
+   obm = ObservationModule(obs, scene_general=scene_general)
+   obm.nextObservation()
+   source_count_catalogues = obm.addCatalogue(str(filename))
+   psf_file = obm.addError()
+   fits_file, mosaic_file, params = obm.finalize(mosaic=False)
    #dp_opt = Parameters.getParam(myConfig.config_id) # Attach config params used tp run sim to the DP
    
-   _dp = DataProduct(filename='sim_'+str(dp_id)+'_0.fits',relativepath=fileroot,group='proc',subtype='stips_image',filtername=filtername,ra=myParams['racent'], dec=myParams['deccent'],configuration=myConfig).create()
+   _dp = DataProduct(filename=fits_file,relativepath=fileroot,group='proc',subtype='stips_image',filtername=filtername,ra=myParams['racent'], dec=myParams['deccent'],configuration=myConfig).create()
 
 def parse_all():
     parser = argparse.ArgumentParser()
@@ -134,8 +148,8 @@ if __name__ == '__main__':
             print(dps)
             dpid = int(dps.dp_id)
             newevent = Job.getEvent(thisjob,'stips_done',options={'target_id':tid,'dp_id':dpid,'name':comp_name,'to_run':total})
-            #fire(newevent)           
-            logprint(thisconf,thisjob,'stips_done but not firing any events for now\n')
-            #logprint(thisconf,thisjob,''.join(["Event= ",str(event.event_id)]))
+            fire(newevent)           
+            logprint(thisconf,thisjob,'stips_done\n')
+            logprint(thisconf,thisjob,''.join(["Event= ",str(event.event_id)]))
 
    

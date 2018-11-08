@@ -28,9 +28,7 @@ def discover_targets(Pipe,config_file,data_dir):
       conffilename = config_file.split('/')[-1]
       confname = conffilename.split('.')[0]
       conf = Configuration(name=confname,target=myTarget).create(params=_params,create_dir=True)
-      confret = Configuration.get(int(conf['config_id'].item()))
-      targid = myTarget['target_id'].item()
-      logprint(confret,myJob,''.join(['Target ',targ,' with ID ',str(targid),' created with Configuration ',confname,' and ID ',str(confret.config_id)]))
+      print('Target ',targ,' created with Configuration ',confname," and Conf ID ",conf.config_id)
       _t = subprocess.run(['cp',config_file,conf.confpath.values[0]+'/'],stdout=subprocess.PIPE)
       _dp = DataProduct(filename=conffilename,relativepath=myPipe.config_root,group='conf',configuration=conf).create()
       targetfiles = get_target_files(data_dir,targ)
@@ -64,6 +62,7 @@ def send(dp,conf,comp_name,total,job):
    filepath = dp.relativepath[0]+'/'+dp.filename[0]
    dpid = int(dp.dp_id)
    confid = int(conf.config_id)
+   #logprint(conf,job,''.join(["Sending",filepath,"to next step","\n"]))
    print('TEST',dp.filename[0],filepath)
    data = np.loadtxt(filepath)
    if 'type' in str(data[0,0]):
