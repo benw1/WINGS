@@ -124,7 +124,7 @@ if __name__ == '__main__':
          tid = int(DP.target_id)
          #image_dps = DataProduct.get({relativepath==config.procpath,subtype=='stips_image'})
          path = thisconf.procpath
-         image_dps=Store().select('data_products', where='target_id=='+str(tid)+' & subtype=='+'"stips_image"')
+         image_dps=Store().select('data_products', where='config_id=='+str(thisconf.config_id)+' & subtype=='+'"stips_image"')
          comp_name = 'completed'+myTarget['name']
          options = {comp_name:0}
          _opt = Options(options).create('job',job_id)
