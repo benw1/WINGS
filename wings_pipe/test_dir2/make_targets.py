@@ -65,8 +65,8 @@ def send(dp,conf,comp_name,total,job):
    dpid = int(dp.dp_id)
    confid = int(conf.config_id)
    print('TEST',dp.filename[0],filepath)
-   data = np.loadtxt(filepath)
-   if 'type' in str(data[0,0]):
+   data = np.loadtxt(filepath, dtype=str, usecols=0)
+   if 'type' in str(data[0]):
       print('File ',filepath,' has type keyword, assuming STIPS-ready')
       event = Job.getEvent(job,'new_stips_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name})
       fire(event)
