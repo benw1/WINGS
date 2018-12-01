@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+
 '''
 The clean_photometry.py script uses supervised classification techniques 
 to identify stars from noisy astronomical catalogs containing stars,
@@ -42,6 +43,9 @@ from astropy import units as u
 from astropy import wcs
 from astropy.coordinates import SkyCoord, match_coordinates_sky
 
+import warnings
+warnings.filterwarnings('ignore')
+
 '''
 Therese parameters are used throughout the code:
 
@@ -63,17 +67,22 @@ feature_names=['err','SNR','Sharpness','Crowding']
 
 # filter names
 filters    = np.array(['Z087','Y106','J129','H158','F184'])
+#filters    = np.array(['Z087','H158'])
 
 # AB magnitude Zero points
 AB_Vega    = np.array([0.487,  0.653, 0.958, 1.287, 1.552])
+#AB_Vega    = np.array([0.487, 1.287])
+
 
 # Simulated images
 fits_files = ["sim_1_0.fits","sim_2_0.fits","sim_3_0.fits",
               "sim_4_0.fits","sim_5_0.fits"]
+
+#fits_files = ["sim_1_0.fits","sim_4_0.fits"]
+
 sky_coord  = np.zeros(len(filters))
 ref_fits   = int(3)
 use_radec  = False
-
 
 def clean_all(filename='10_10_phot.txt',
           feature_names=feature_names,
@@ -82,13 +91,14 @@ def clean_all(filename='10_10_phot.txt',
           fits_files=fits_files,
           ref_fits=ref_fits,
           sky_coord=sky_coord,
-          tol=5,test_size=0.9,valid_mag=30,
+          tol=2,test_size=0.1,valid_mag=30,
           use_radec=use_radec,
           show_plot=False,
           opt={'evaluate':True,
                'summary':True,
                'plots':True,
-               'tree':True}):
+               'tree':True,
+               'saveClean':True}):
     '''
     Top level wrapper to read data, clean data, train/test/evaluate
     classification model, make figure and display evaluation report
@@ -116,7 +126,8 @@ def clean_all(filename='10_10_phot.txt',
 
     clf = DecisionTreeClassifier(max_depth=4,
                                  min_samples_split=50,
-                                 min_samples_leaf=10)
+                                 min_samples_leaf=10,
+                                 class_weight={0:1,1:3})
 
     new_labels = classify(out_DF,out_LAB,
                           filters=filters,
@@ -134,6 +145,18 @@ def clean_all(filename='10_10_phot.txt',
                                use_radec=use_radec,
                                ref_fits=ref_fits,
                                show_plot=show_plot)
+        
+    if opt['saveClean']: saveCats(input_data,output_data,
+                                  out_DF,new_labels,
+                                  sky_coord=sky_coord,
+                                  filters=filters,
+                                  fileroot=fileroot,
+                                  tol=tol,
+                                  use_radec=use_radec,
+                                  ref_fits=ref_fits,
+                                  valid_mag=valid_mag)
+        
+    
     return print('\n')
 
 
@@ -202,6 +225,7 @@ def read_data(filename='10_10_phot.txt',fileroot='',filters=filters):
     input_data = [ascii.read(fileroot+filt+'_stips.txt',format='ipac')
                   for filt in filters]
     output_data  = np.loadtxt(fileroot+filename)
+    np.random.shuffle(output_data)
     return input_data,output_data
 
 
@@ -306,6 +330,10 @@ def label_output(in_df,out_df,tol=5,valid_mag=30,
     x,y = out_df['x'].values,out_df['y'].values
     tmp, typ_out = match_in_out(tol,X,Y,x,y,typ_in,radec=radec)
     typ_out[typ_out=='sersic'] = 'other'
+    magDiff = np.zeros(len(X))
+    magDiff[tmp!=-1] = in_df['m'].values[tmp!=-1]-out_df['mag'].values[tmp[tmp!=-1]]
+    #print(len(typ_out[tmp[tmp!=-1]][np.fabs(magDiff[tmp!=-1])>0.5]=='point'))
+    typ_out[tmp[tmp!=-1]][np.fabs(magDiff[tmp!=-1])>0.5] = 'other'
     typ_bin = label_binarize(typ_out,classes=['other','point'])
     typ_bin = typ_bin.reshape((typ_bin.shape[0],))
     return typ_bin
@@ -389,6 +417,64 @@ def clean_pair(inPair,outPair,tol=5,radec={'opt':False,'wcs1':'','wcs2':''}):
     clean_pair = dict(zip(['m1','m2','x','y','typ_out'],
                           [m1_out,m2_out,X2,Y2,typ_out]))
     return clean_pair
+
+def saveCats(inDAT,outDAT,outDF,Labels,
+             sky_coord=sky_coord,fileroot='',
+             filters=filters,tol=5,ref_fits=0,
+             use_radec=False,valid_mag=30):
+    i = -1
+    flags = []
+    _X,_Y = outDAT[:,2].T, outDAT[:,3].T
+    
+    for data,df,label,filt in zip(inDAT,outDF,Labels,filters):
+        i += 1
+        t = data['vegamag'] < valid_mag
+        _df1 = pd.DataFrame({'x':data['x'],'y':data['y'],'mag':data['vegamag']})
+        _df2 = df[label==1]
+        
+        X,Y = _df1['x'].values,_df1['y'].values
+        x,y = _df2['x'].values,_df2['y'].values  
+        if use_radec:
+            ra1,dec1 = xy_to_wcs(np.array([X,Y]).T,sky_coord[i])
+            ra2,dec2 = xy_to_wcs(np.array([x,y]).T,sky_coord[ref_fits])
+            in1 = matchCats(tol*0.11,ra1,dec1,ra2,dec2)
+            in2 = matchCats(tol*0.11,ra2,dec2,ra1[t],dec1[t])
+        else:
+            in1 = matchLists(tol,X,Y,x,y)
+            in2 = matchLists(tol,x,y,X[t],Y[t])
+            
+        # Extend input list with recovered mag
+        remag = np.repeat(99.99,len(X))
+        reX = np.repeat(99.99,len(X))
+        reY = np.repeat(99.99,len(X))
+        _t = (in1!=-1)&t
+        remag[_t] = _df2['mag'].values[in1[_t]]
+        reX[_t] = x[in1[_t]] 
+        reY[_t] = y[in1[_t]] 
+        data['recovmag'] = remag
+        data['recov_x'] = reX
+        data['recov_y'] = reY
+        ascii.write(data,fileroot+str(filt)+'_recov_input.txt',format='ipac')
+
+        # Extend output list with input mag
+        inmag = np.repeat(99.99,len(x))
+        _t = in2!=-1
+        inmag[_t] = _df1['mag'].values[t][in2[_t]]
+        _df2['inputmag'] = inmag
+        _df2[['x','y','mag','err','inputmag','Count','Crowding','Roundness','SNR',
+             'Sharpness']].to_csv(fileroot+str(filt)+'_clean.csv',index=False)
+        
+        # Make shorter recovered phot file keeping sources kept in at least one filter
+        in1 = matchLists(0.1,_X,_Y,x,y)
+        flag = np.zeros(len(_X))
+        flag[in1!=-1] = 1         
+        flags.append(flag)
+        
+    flag = np.sum(flags,axis=0)
+    idx = np.arange(len(flag))
+    idx = idx[flag!=0]
+    newDAT = outDAT[idx,:]
+    return np.savetxt(fileroot+'Clean_Catalog.phot',newDAT,fmt='%10.7e')
 
 
 def matchLists(tol,x1,y1,x2,y2):
@@ -697,11 +783,10 @@ def parse_all():
     '''Argument parser for command line use'''
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', nargs='+',help='Photomtery file names')
-    parser.add_argument('--RADIUS', '-tol', type=float, dest='tol', default=5, help='Matching radius in pixels')
-    parser.add_argument('--TESTSIZE', '-test', type=float, dest='test', default=0.75, help='Test sample size')
+    parser.add_argument('--RADIUS', '-tol', type=float, dest='tol', default=2, help='Matching radius in pixels')
+    parser.add_argument('--TESTSIZE', '-test', type=float, dest='test', default=0.1, help='Test sample size')
     parser.add_argument('--VALIDMAG', '-mag', type=float, dest='mag', default=30, help='Expected depth in mag')
     return parser.parse_args()
-
 
 '''If executed from command line'''
 if __name__ == '__main__':
