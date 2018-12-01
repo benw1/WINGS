@@ -181,8 +181,9 @@ def link_stips_catalogs(myConfig):
    myTarget = Target.get(int(target_id))
    allConf = Store().select('configurations').loc[pid,target_id,:]
    defConfig1 = allConf[allConf['name']=='default']
-   print("DEF CONF ",defConfig1['config_id'][0])
-   defConfig = Configuration.get(int(defConfig1['config_id'][0]))
+   print("CHECK ",defConfig1['config_id'].iloc[0])
+   print("DEF CONF ",defConfig1['config_id'].iloc[0])
+   defConfig = Configuration.get(int(defConfig1['config_id'].iloc[0]))
    myDP = Store().select('data_products').loc[defConfig.pipeline_id,defConfig.target_id,defConfig.config_id,:] 
    stips_input = myDP[myDP['subtype']=='stips_input_catalog']
    print(stips_input)
@@ -193,10 +194,10 @@ def link_stips_catalogs(myConfig):
    comp_name = 'completed'+myTarget['name']
    options = {comp_name:0}
    _opt = Options(options).create('job',job_id)
-   print("DPS0 :",stips_input['dp_id'][0])
+   print("DPS0 :",stips_input['dp_id'].iloc[0])
    for i in range(len(stips_input)):
-      print("DP ",stips_input['dp_id'][i])
-      dp = DataProduct.get(int(stips_input['dp_id'][i]))
+      print("DP ",stips_input['dp_id'].iloc[i])
+      dp = DataProduct.get(int(stips_input['dp_id'].iloc[i]))
       filename = dp['filename']
       filtname = dp['filtername']
       path = dp['relativepath']
