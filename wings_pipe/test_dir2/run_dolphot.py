@@ -48,7 +48,7 @@ def hyak_dolphot(job_id,event_id,dp_id):
    with open(slurmfile, 'w') as f:
       f.write('#!/bin/bash' + '\n'+
               '## Job Name' + '\n'+
-              '#SBATCH --job-name=stips'+str(dp_id) + '\n'+
+              '#SBATCH --job-name=dolphot_'+str(dp_id)+ '\n'+
               '## Allocation Definition ' + '\n'+
               '#SBATCH --account=astro' + '\n'+
               '#SBATCH --partition=astro' + '\n'+

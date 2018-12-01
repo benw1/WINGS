@@ -15,22 +15,86 @@ def write_dolphot_pars(target,config,thisjob):
    logprint(config,thisjob,''.join(["Writing dolphot pars now in ",parfile_path,"\n"]))
    myDP = Store().select('data_products').loc[config.pipeline_id,config.target_id,config.config_id,:]
    datadp = myDP[myDP['subtype']=='dolphot_data']
-   datadpid = datadp['dp_id']
-   dataname = set(datadp['filename'])
-   
+   datadpid = list(set(datadp['dp_id']))
+   dataname = set(datadp['filename']) 
+   zinds = []
+   yinds = []
+   jinds = []
+   hinds = []
+   finds = []
+   count = -1
+   for dpid in datadpid:
+      count += 1
+      dp = DataProduct.get(dpid)
+      filt = str(dp.filtername)
+      if "Z087" in filt:	
+        zinds = [zinds,dpid]
+      if "Y106" in filt:	
+        yinds = [yinds,dpid]
+      if "J129" in filt:	
+        jinds = [jinds,dpid]
+      if "H158" in filt:	
+        hinds = [hinds,dpid]
+      if "F184" in filt:	
+        finds = [finds,dpid]
+   zinds = zinds[1:]
+   yinds = yinds[1:]
+   jinds = jinds[1:]
+   hinds = hinds[1:]
+   finds = finds[1:]
+    
+   print("INDS ",zinds,yinds,jinds,hinds,hinds[0],finds,datadpid)
    nimg = len(dataname)
    myParams = Parameters.getParam(int(config.config_id))
    #refimage = myParams['refimage']  #will make this more flexible later
-   refimageid  = datadpid[0]
-   refdp = DataProduct.get(refimageid)
+   refdp = DataProduct.get(hinds[0])
    refimage = str(refdp.filename)
    with open(parfile_path, 'w') as d:
       d.write("Nimg = "+str(nimg)+"\n"+
       "img0_file = "+refimage[:-5]+"\n")
+      zim = []
+      for zind in zinds:
+         imdp = DataProduct.get(zind)
+         image = str(imdp.filename)
+         zim = [zim,image]
+      zim = zim[1:]
+      yim = []
+      for yind in yinds:
+         imdp = DataProduct.get(yind)
+         image = str(imdp.filename)
+         yim = [yim,image]
+      yim = yim[1:]
+      jim = []
+      for jind in jinds:
+         imdp = DataProduct.get(jind)
+         image = str(imdp.filename)
+         jim = [jim,image]
+      jim = jim[1:]
+      him = []
+      for hind in hinds:
+         imdp = DataProduct.get(hind)
+         image = str(imdp.filename)
+         him = [him,image]
+      him = him[1:]
+      fim = []
+      for find in finds:
+         fim = []
+         imdp = DataProduct.get(find)
+         image = str(imdp.filename)
+         fim = [fim,image]
+      fim = fim[1:]
+      zims = set(zim)
+      yims = set(yim)
+      jims = set(jim)
+      hims = set(him)
+      fims = set(fim)
+      images = [zim,yim,jim,him,fim]
       i=0
-      for filename in dataname:
+      for iimage in images:
+         image = iimage[0]
+         print("IMAGE ", image)        
          i += 1
-         d.write("img"+str(i)+"_file = "+filename[:-5]+"\n")
+         d.write("img"+str(i)+"_file = "+image[:-5]+"\n")
       d.write("img_shift = 0 0\n"+
       "img_xform = 1 0 0\n"+
       "img_RAper = 5\n"+

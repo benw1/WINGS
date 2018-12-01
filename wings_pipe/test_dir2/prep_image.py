@@ -67,20 +67,23 @@ def prep_image(imagepath,filtername,config,thisjob,dp_id):
    dp['filename'] = new_image_name
    Store().update('data_products',dp)
    fixwcs(imagepath)
-   _t1 = [dolphot_path+'wfirstmask','-exptime='+myParams['exptime']+' -rdnoise=41.73', imagepath]
+   _t1 = [dolphot_path+'wfirstmask','-exptime='+myParams['exptime'],'-rdnoise=41.73', imagepath]
    _t2 = [dolphot_path+'splitgroups', imagepath]
+   print("T1 ",_t1)
+   print("T2 ",_t2)
    _t = subprocess.run(_t1, stdout=subprocess.PIPE)
    _t = subprocess.run(_t2, stdout=subprocess.PIPE)
    outims = outimages(imagepath)
    if len(outims) > 1:
-      print(outimages," Images\n")
+      print(len(outims)," Images\n")
       #for outimage in outimages:
       #placeholder for when there are 18 chips in each sim
    else:
-      _t3 = [dolphot_path+'calcsky',imagepath,"15 35 -64 2.25 2.00"] #put in calcsky parameters
-      _t = subprocess.run(_t3, stdout=subprocess.PIPE)
       filename = outims[0].split('/')[-1]
       front = filename.split('.fits')[0]
+      _t3 = [dolphot_path+'calcsky',config.procpath+'/'+front,'15','35','-64','2.25','2.00'] #put in calcsky parameters
+      print("T3 ",_t3)
+      _t = subprocess.run(_t3, stdout=subprocess.PIPE)
       _dp1 = DataProduct(filename=filename,relativepath=config.procpath,group='proc',subtype='dolphot_data',filtername=filtername,configuration=config).create()
       skyname = front+'.sky.fits'
       _dp2 = DataProduct(filename=skyname,relativepath=config.procpath,group='proc',subtype='dolphot_sky',filtername=filtername,configuration=config).create()
@@ -90,11 +93,10 @@ def fixwcs(imagepath):
    data, head = fits.getdata(imagepath, header=True)
    cd11 = head['PC1_1']
    cd22 = head['PC2_2']
-   head['CD1_1']=cd11
-   head['CD2_2']=cd22
-   head['CD2_1']=0
-   head['CD1_2']=0
-   fits.writeto(imagepath,data,head,clobber=True)   
+   fits.setval(imagepath,'CD1_1',value=cd11)
+   fits.setval(imagepath,'CD2_2',value=cd22)
+   fits.setval(imagepath,'CD1_2',value=0)
+   fits.setval(imagepath,'CD2_1',value=0)
    return
                
 def parse_all():
