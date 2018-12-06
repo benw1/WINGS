@@ -4,14 +4,93 @@ from wpipe import *
 from wingtips import WingTips as wtips
 from wingtips import time, np, ascii
 import gc
-
+import pandas as pd
 
 def register(PID,task_name):
    myPipe = Pipeline.get(PID)
    myTask = Task(task_name,myPipe).create()
    _t = Task.add_mask(myTask,'*','start',task_name)
    _t = Task.add_mask(myTask,'*','new_match_catalog','*')
+   _t = Task.add_mask(myTask,'*','new_fixed_catalog','*')
    return
+
+def process_fixed_catalog(job_id,event_id,dp_id):
+   myJob = Job.get(job_id)
+   myPipe = Pipeline.get(int(myJob.pipeline_id))
+
+   catalogDP = DataProduct.get(int(dp_id))
+   myTarget = Target.get(int(catalogDP.target_id))
+   #print("NAME",myTarget['name'])
+   myConfig = Configuration.get(int(catalogDP.config_id))
+   myParams = Parameters.getParam(int(myConfig.config_id))
+   fileroot = str(catalogDP.relativepath)
+   filename = str(catalogDP.filename)     # For example:  'h15.shell.5Mpc.in'
+   filepath = fileroot+'/'+filename
+   _t = subprocess.run(['cp',filepath,myConfig.procpath+'/.'],stdout=subprocess.PIPE)
+   # 
+   fileroot = myConfig.procpath+'/'
+   procdp = DataProduct(filename=filename,relativepath=fileroot,group='proc',configuration=myConfig).create()
+   #filternames = myParams[filternames]
+   filternames   = ['R062','Z087','Y106','J129','H158','F184']
+   stips_files,filters = read_fixed(procdp.relativepath[0]+'/'+procdp.filename[0],myConfig,myJob)
+   comp_name = 'completed'+myTarget['name']
+   options = {comp_name:0}
+   _opt = Options(options).create('job',job_id)
+   total = len(stips_files)
+   i=0
+   for stips_cat in stips_files:
+      filtname = filters[i]
+      _dp = DataProduct(filename=stips_cat,relativepath=myConfig.procpath,group='proc',filtername=filtname,subtype='stips_input_catalog',configuration=myConfig).create()
+      dpid = int(_dp.dp_id)
+      event = Job.getEvent(myJob,'new_stips_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name})
+      logprint(myConfig,myJob,''.join(["Firing event ",str(event['event_id'].item()),"  new_stips_catalog"]))
+      fire(event)
+      i += 1
+
+def read_fixed(filepath,myConfig,myJob):
+   data = pd.read_csv(filepath)
+   nstars = len(data['ra'])
+   myParams = Parameters.getParam(int(myConfig.config_id))
+   area = float(myParams["area"])
+   imagesize = float(myParams["imagesize"])
+   background = myParams["background_dir"]
+   tot_dens = np.float(nstars)/area
+   print("MAX TOTAL DENSITY = ",tot_dens)
+   count = -1
+   h = data['h158']
+   htot_keep = (h > 23.0) & (h < 24.0)
+   hkeep = h[htot_keep]
+   htot = len(hkeep)
+   hden = np.float(htot)/area
+   del h
+   logprint(myConfig,myJob,''.join(["H(23-24) DENSITY = ",str(hden)]))
+
+   stips_in = []
+   filters = []
+
+   M1, M2, M3, M4, M5 =  data['z087'], data['y106'], data['j129'], data['h158'],data['f184']
+   racent = float(myParams['racent'])
+   deccent = float(myParams['deccent'])
+   pix = float(myParams['pix'])
+   starsonly = int(myParams['starsonly'])
+   ra = data['ra']
+   dec = data['dec']
+   logprint(myConfig,myJob,''.join(["MIXMAX COO: ",str(np.min(ra))," ",str(np.max(ra))," ",str(np.min(dec))," ",str(np.max(dec)),"\n"]))
+   M = np.array([M1,M2,M3,M4,M5]).T
+   del M1,M2,M3,M4,M5
+   filename = filepath.split('/')[-1]
+   file1 = filename.split('.')
+   file2 = '.'.join(file1[0:len(file1)-1])
+   file3 = myConfig.procpath+'/'+file2+str(np.around(hden,decimals=5))+'.'+file1[-1]
+   #print("STIPS",file3)
+   galradec = getgalradec(file3,ra,dec,M,background)
+   stips_lists, filters = write_stips(file3,ra,dec,M,background,galradec,racent,deccent,starsonly)
+   del M
+   gc.collect()
+   stips_in = np.append(stips_in,stips_lists)
+   return stips_in,filters
+
+
 
 def process_match_catalog(job_id,event_id,dp_id):
    myJob = Job.get(job_id)
@@ -243,9 +322,13 @@ if __name__ == '__main__':
       job_id = int(args.job_id)
       event_id = int(args.event_id)
       event = Event.get(event_id)
-      dp_id = Options.get('event',event_id)['dp_id']
-      process_match_catalog(job_id,event_id,dp_id)
-      
+      if 'match' in event['name']: 
+         dp_id = Options.get('event',event_id)['dp_id']
+         process_match_catalog(job_id,event_id,dp_id)
+      else:
+         dp_id = Options.get('event',event_id)['dp_id']
+         process_fixed_catalog(job_id,event_id,dp_id)
+ 
 
       
    
