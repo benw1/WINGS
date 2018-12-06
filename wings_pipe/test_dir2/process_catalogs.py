@@ -92,6 +92,7 @@ def read_match(filepath,cols,myConfig,myJob):
    racent = float(myParams['racent'])
    deccent = float(myParams['deccent'])
    pix = float(myParams['pix'])
+   starsonly = int(myParams['starsonly'])
    radist = np.abs(1/((tot_dens**0.5)*np.cos(deccent*3.14159/180.0)))/3600.0
    decdist = (1/tot_dens**0.5)/3600.0
    logprint(myConfig,myJob,''.join(['RA:',str(radist),'\n','DEC:',str(decdist),'\n']))
@@ -114,7 +115,7 @@ def read_match(filepath,cols,myConfig,myJob):
    file3 = myConfig.procpath+'/'+file2+str(np.around(hden,decimals=5))+'.'+file1[-1]
    #print("STIPS",file3)
    galradec = getgalradec(file3,ra,dec,M,background)
-   stips_lists, filters = write_stips(file3,ra,dec,M,background,galradec,racent,deccent)
+   stips_lists, filters = write_stips(file3,ra,dec,M,background,galradec,racent,deccent,starsonly)
    del M
    gc.collect()
    stips_in = np.append(stips_in,stips_lists)
@@ -136,7 +137,7 @@ def getgalradec(infile,ra,dec,M,background):
     return radec
 
 
-def write_stips(infile,ra,dec,M,background,galradec,racent,deccent):
+def write_stips(infile,ra,dec,M,background,galradec,racent,deccent,starsonly):
    filternames   = ['Z087','Y106','J129','H158','F184']
    ZP_AB = np.array([26.365,26.357,26.320,26.367,25.913])
    fileroot=infile
@@ -155,7 +156,8 @@ def write_stips(infile,ra,dec,M,background,galradec,racent,deccent):
       galaxies = wtips([background+'/'+filt+'.txt']) # this file will be provided pre-made
       galaxies.flux_to_Sb()                             # galaxy flux to surface brightness
       galaxies.replace_radec(galradec)                     # distribute galaxies across starfield
-      stars.merge_with(galaxies)                        # merge stars and galaxies list
+      if starsonly < 1: 
+         stars.merge_with(galaxies)                        # merge stars and galaxies list
       outfile = filedir+'Mixed'+'_'+outfilename
       mixedfilename = 'Mixed'+'_'+outfilename
       stars.write_stips(outfile,ipac=True)
