@@ -30,8 +30,7 @@ def process_fixed_catalog(job_id,event_id,dp_id):
    # 
    fileroot = myConfig.procpath+'/'
    procdp = DataProduct(filename=filename,relativepath=fileroot,group='proc',configuration=myConfig).create()
-   #filternames = myParams[filternames]
-   filternames   = ['R062','Z087','Y106','J129','H158','F184']
+   #filternames   = ['R062','Z087','Y106','J129','H158','F184']
    stips_files,filters = read_fixed(procdp.relativepath[0]+'/'+procdp.filename[0],myConfig,myJob)
    comp_name = 'completed'+myTarget['name']
    options = {comp_name:0}
@@ -57,7 +56,18 @@ def read_fixed(filepath,myConfig,myJob):
    tot_dens = np.float(nstars)/area
    print("MAX TOTAL DENSITY = ",tot_dens)
    count = -1
-   h = data['h158']
+   filtsinm = []
+   allfilts  = ['R062','Z087','Y106','J129','H158','F184']
+   M = np.arange(len(data))
+   for filt in allfilts: 
+      try:
+         test = data[filt]
+         filtsinm   = np.append(filtsinm,filt)
+         M = np.vstack((M,test))
+      except:
+         print("NO ",filt," data found")  
+   print("FILTERS: ",filtsinm)
+   h = data['H158']
    htot_keep = (h > 23.0) & (h < 24.0)
    hkeep = h[htot_keep]
    htot = len(hkeep)
@@ -67,8 +77,8 @@ def read_fixed(filepath,myConfig,myJob):
 
    stips_in = []
    filters = []
-
-   M1, M2, M3, M4, M5 =  data['z087'], data['y106'], data['j129'], data['h158'],data['f184']
+   
+   #M1, M2, M3, M4, M5 =  data['z087'], data['y106'], data['j129'], data['h158'],data['f184']
    racent = float(myParams['racent'])
    deccent = float(myParams['deccent'])
    pix = float(myParams['pix'])
@@ -76,15 +86,17 @@ def read_fixed(filepath,myConfig,myJob):
    ra = data['ra']
    dec = data['dec']
    logprint(myConfig,myJob,''.join(["MIXMAX COO: ",str(np.min(ra))," ",str(np.max(ra))," ",str(np.min(dec))," ",str(np.max(dec)),"\n"]))
-   M = np.array([M1,M2,M3,M4,M5]).T
-   del M1,M2,M3,M4,M5
+   #M = np.array([M1,M2,M3,M4,M5]).T
+   M = M[1:]
+   M = M.T
+   #del M1,M2,M3,M4,M5
    filename = filepath.split('/')[-1]
    file1 = filename.split('.')
    file2 = '.'.join(file1[0:len(file1)-1])
    file3 = myConfig.procpath+'/'+file2+str(np.around(hden,decimals=5))+'.'+file1[-1]
    #print("STIPS",file3)
    galradec = getgalradec(file3,ra,dec,M,background)
-   stips_lists, filters = write_stips(file3,ra,dec,M,background,galradec,racent,deccent,starsonly)
+   stips_lists, filters = write_stips(file3,ra,dec,M,background,galradec,racent,deccent,starsonly,filtsinm)
    del M
    gc.collect()
    stips_in = np.append(stips_in,stips_lists)
@@ -167,6 +179,7 @@ def read_match(filepath,cols,myConfig,myJob):
    stips_in = []
    filters = []
  
+   filtsinm   = ['Z087','Y106','J129','H158','F184']
    M1, M2, M3, M4, M5 =  data[:,zcol], data[:,ycol], data[:,jcol], data[:,hcol],data[:,fcol]
    racent = float(myParams['racent'])
    deccent = float(myParams['deccent'])
@@ -194,7 +207,7 @@ def read_match(filepath,cols,myConfig,myJob):
    file3 = myConfig.procpath+'/'+file2+str(np.around(hden,decimals=5))+'.'+file1[-1]
    #print("STIPS",file3)
    galradec = getgalradec(file3,ra,dec,M,background)
-   stips_lists, filters = write_stips(file3,ra,dec,M,background,galradec,racent,deccent,starsonly)
+   stips_lists, filters = write_stips(file3,ra,dec,M,background,galradec,racent,deccent,starsonly,filtsinm)
    del M
    gc.collect()
    stips_in = np.append(stips_in,stips_lists)
@@ -216,19 +229,28 @@ def getgalradec(infile,ra,dec,M,background):
     return radec
 
 
-def write_stips(infile,ra,dec,M,background,galradec,racent,deccent,starsonly):
-   filternames   = ['Z087','Y106','J129','H158','F184']
-   ZP_AB = np.array([26.365,26.357,26.320,26.367,25.913])
+def write_stips(infile,ra,dec,M,background,galradec,racent,deccent,starsonly,filtsinm):
+   filternames   = ['R062','Z087','Y106','J129','H158','F184']
+   ZP_AB = np.array([26.5,26.365,26.357,26.320,26.367,25.913])
    fileroot=infile
    starpre = '_'.join(infile.split('.')[:-1])
    filedir = '/'.join(infile.split('/')[:-1])+'/'
    outfiles = []
    filters = []
    for j,filt in enumerate(filternames):
-        
+      checkfilt = 0
+      mindex = 0
+      for k,filtinm in enumerate(filtsinm):
+       	 if filt in filtinm:
+            mindex = k
+            checkfilt += 1
+      if checkfilt==0:
+         continue
+      print("Mindex for ",filt," is ",mindex)
       outfile = starpre+'_'+filt[0]+'.tbl'
       outfilename = outfile.split('/')[-1]
-      flux    = wtips.get_counts(M[:,j],ZP_AB[j])
+      #flux    = wtips.get_counts(M[:,j],ZP_AB[j])
+      flux    = wtips.get_counts(M[:,mindex],ZP_AB[j])
       # This makes a stars only input list
       wtips.from_scratch(flux=flux,ra=ra,dec=dec,outfile=outfile)
       stars = wtips([outfile])
