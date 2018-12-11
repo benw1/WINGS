@@ -4,14 +4,105 @@ from wpipe import *
 from wingtips import WingTips as wtips
 from wingtips import time, np, ascii
 import gc
-
+import pandas as pd
 
 def register(PID,task_name):
    myPipe = Pipeline.get(PID)
    myTask = Task(task_name,myPipe).create()
    _t = Task.add_mask(myTask,'*','start',task_name)
    _t = Task.add_mask(myTask,'*','new_match_catalog','*')
+   _t = Task.add_mask(myTask,'*','new_fixed_catalog','*')
    return
+
+def process_fixed_catalog(job_id,event_id,dp_id):
+   myJob = Job.get(job_id)
+   myPipe = Pipeline.get(int(myJob.pipeline_id))
+
+   catalogDP = DataProduct.get(int(dp_id))
+   myTarget = Target.get(int(catalogDP.target_id))
+   #print("NAME",myTarget['name'])
+   myConfig = Configuration.get(int(catalogDP.config_id))
+   myParams = Parameters.getParam(int(myConfig.config_id))
+   fileroot = str(catalogDP.relativepath)
+   filename = str(catalogDP.filename)     # For example:  'h15.shell.5Mpc.in'
+   filepath = fileroot+'/'+filename
+   _t = subprocess.run(['cp',filepath,myConfig.procpath+'/.'],stdout=subprocess.PIPE)
+   # 
+   fileroot = myConfig.procpath+'/'
+   procdp = DataProduct(filename=filename,relativepath=fileroot,group='proc',configuration=myConfig).create()
+   #filternames   = ['R062','Z087','Y106','J129','H158','F184']
+   stips_files,filters = read_fixed(procdp.relativepath[0]+'/'+procdp.filename[0],myConfig,myJob)
+   comp_name = 'completed'+myTarget['name']
+   options = {comp_name:0}
+   _opt = Options(options).create('job',job_id)
+   total = len(stips_files)
+   i=0
+   for stips_cat in stips_files:
+      filtname = filters[i]
+      _dp = DataProduct(filename=stips_cat,relativepath=myConfig.procpath,group='proc',filtername=filtname,subtype='stips_input_catalog',configuration=myConfig).create()
+      dpid = int(_dp.dp_id)
+      event = Job.getEvent(myJob,'new_stips_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name})
+      logprint(myConfig,myJob,''.join(["Firing event ",str(event['event_id'].item()),"  new_stips_catalog"]))
+      fire(event)
+      i += 1
+
+def read_fixed(filepath,myConfig,myJob):
+   data = pd.read_csv(filepath)
+   nstars = len(data['ra'])
+   myParams = Parameters.getParam(int(myConfig.config_id))
+   area = float(myParams["area"])
+   imagesize = float(myParams["imagesize"])
+   background = myParams["background_dir"]
+   tot_dens = np.float(nstars)/area
+   print("MAX TOTAL DENSITY = ",tot_dens)
+   count = -1
+   filtsinm = []
+   allfilts  = ['R062','Z087','Y106','J129','H158','F184']
+   M = np.arange(len(data))
+   for filt in allfilts: 
+      try:
+         test = data[filt]
+         filtsinm   = np.append(filtsinm,filt)
+         M = np.vstack((M,test))
+      except:
+         print("NO ",filt," data found")  
+   print("FILTERS: ",filtsinm)
+   h = data['H158']
+   htot_keep = (h > 23.0) & (h < 24.0)
+   hkeep = h[htot_keep]
+   htot = len(hkeep)
+   hden = np.float(htot)/area
+   del h
+   logprint(myConfig,myJob,''.join(["H(23-24) DENSITY = ",str(hden)]))
+
+   stips_in = []
+   filters = []
+   
+   #M1, M2, M3, M4, M5 =  data['z087'], data['y106'], data['j129'], data['h158'],data['f184']
+   racent = float(myParams['racent'])
+   deccent = float(myParams['deccent'])
+   pix = float(myParams['pix'])
+   starsonly = int(myParams['starsonly'])
+   ra = data['ra']
+   dec = data['dec']
+   logprint(myConfig,myJob,''.join(["MIXMAX COO: ",str(np.min(ra))," ",str(np.max(ra))," ",str(np.min(dec))," ",str(np.max(dec)),"\n"]))
+   #M = np.array([M1,M2,M3,M4,M5]).T
+   M = M[1:]
+   M = M.T
+   #del M1,M2,M3,M4,M5
+   filename = filepath.split('/')[-1]
+   file1 = filename.split('.')
+   file2 = '.'.join(file1[0:len(file1)-1])
+   file3 = myConfig.procpath+'/'+file2+str(np.around(hden,decimals=5))+'.'+file1[-1]
+   #print("STIPS",file3)
+   galradec = getgalradec(file3,ra,dec,M,background)
+   stips_lists, filters = write_stips(file3,ra,dec,M,background,galradec,racent,deccent,starsonly,filtsinm)
+   del M
+   gc.collect()
+   stips_in = np.append(stips_in,stips_lists)
+   return stips_in,filters
+
+
 
 def process_match_catalog(job_id,event_id,dp_id):
    myJob = Job.get(job_id)
@@ -88,10 +179,12 @@ def read_match(filepath,cols,myConfig,myJob):
    stips_in = []
    filters = []
  
+   filtsinm   = ['Z087','Y106','J129','H158','F184']
    M1, M2, M3, M4, M5 =  data[:,zcol], data[:,ycol], data[:,jcol], data[:,hcol],data[:,fcol]
    racent = float(myParams['racent'])
    deccent = float(myParams['deccent'])
    pix = float(myParams['pix'])
+   starsonly = int(myParams['starsonly'])
    radist = np.abs(1/((tot_dens**0.5)*np.cos(deccent*3.14159/180.0)))/3600.0
    decdist = (1/tot_dens**0.5)/3600.0
    logprint(myConfig,myJob,''.join(['RA:',str(radist),'\n','DEC:',str(decdist),'\n']))
@@ -114,7 +207,7 @@ def read_match(filepath,cols,myConfig,myJob):
    file3 = myConfig.procpath+'/'+file2+str(np.around(hden,decimals=5))+'.'+file1[-1]
    #print("STIPS",file3)
    galradec = getgalradec(file3,ra,dec,M,background)
-   stips_lists, filters = write_stips(file3,ra,dec,M,background,galradec,racent,deccent)
+   stips_lists, filters = write_stips(file3,ra,dec,M,background,galradec,racent,deccent,starsonly,filtsinm)
    del M
    gc.collect()
    stips_in = np.append(stips_in,stips_lists)
@@ -136,26 +229,36 @@ def getgalradec(infile,ra,dec,M,background):
     return radec
 
 
-def write_stips(infile,ra,dec,M,background,galradec,racent,deccent):
-   filternames   = ['Z087','Y106','J129','H158','F184']
-   ZP_AB = np.array([26.365,26.357,26.320,26.367,25.913])
+def write_stips(infile,ra,dec,M,background,galradec,racent,deccent,starsonly,filtsinm):
+   filternames   = ['R062','Z087','Y106','J129','H158','F184']
+   ZP_AB = np.array([26.5,26.365,26.357,26.320,26.367,25.913])
    fileroot=infile
    starpre = '_'.join(infile.split('.')[:-1])
    filedir = '/'.join(infile.split('/')[:-1])+'/'
    outfiles = []
    filters = []
    for j,filt in enumerate(filternames):
-        
+      checkfilt = 0
+      mindex = 0
+      for k,filtinm in enumerate(filtsinm):
+       	 if filt in filtinm:
+            mindex = k
+            checkfilt += 1
+      if checkfilt==0:
+         continue
+      print("Mindex for ",filt," is ",mindex)
       outfile = starpre+'_'+filt[0]+'.tbl'
       outfilename = outfile.split('/')[-1]
-      flux    = wtips.get_counts(M[:,j],ZP_AB[j])
+      #flux    = wtips.get_counts(M[:,j],ZP_AB[j])
+      flux    = wtips.get_counts(M[:,mindex],ZP_AB[j])
       # This makes a stars only input list
       wtips.from_scratch(flux=flux,ra=ra,dec=dec,outfile=outfile)
       stars = wtips([outfile])
       galaxies = wtips([background+'/'+filt+'.txt']) # this file will be provided pre-made
       galaxies.flux_to_Sb()                             # galaxy flux to surface brightness
       galaxies.replace_radec(galradec)                     # distribute galaxies across starfield
-      stars.merge_with(galaxies)                        # merge stars and galaxies list
+      if starsonly < 1: 
+         stars.merge_with(galaxies)                        # merge stars and galaxies list
       outfile = filedir+'Mixed'+'_'+outfilename
       mixedfilename = 'Mixed'+'_'+outfilename
       stars.write_stips(outfile,ipac=True)
@@ -241,9 +344,13 @@ if __name__ == '__main__':
       job_id = int(args.job_id)
       event_id = int(args.event_id)
       event = Event.get(event_id)
-      dp_id = Options.get('event',event_id)['dp_id']
-      process_match_catalog(job_id,event_id,dp_id)
-      
+      if 'match' in event['name']: 
+         dp_id = Options.get('event',event_id)['dp_id']
+         process_match_catalog(job_id,event_id,dp_id)
+      else:
+         dp_id = Options.get('event',event_id)['dp_id']
+         process_fixed_catalog(job_id,event_id,dp_id)
+ 
 
       
    

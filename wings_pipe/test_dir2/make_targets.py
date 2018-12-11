@@ -70,6 +70,11 @@ def send(dp,conf,comp_name,total,job):
       print('File ',filepath,' has type keyword, assuming STIPS-ready')
       event = Job.getEvent(job,'new_stips_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name})
       fire(event)
+   elif 'ra' in str(data[0]):
+      print('File ',filepath,' has ra keyword, assuming positions defined')
+      event = Job.getEvent(job,'new_fixed_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name})
+      fire(event)
+
    else:
       print('File ',filepath,' does not have type keyword, assuming MATCH output')
       event = Job.getEvent(job,'new_match_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name, 'config_id':confid})
