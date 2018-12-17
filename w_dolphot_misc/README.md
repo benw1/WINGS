@@ -6,12 +6,14 @@ dependencies installed (python3, scikit-learn, Pandas, NumPy, SciPy, AstroPy,
 Matplotlib, graphviz etc.) the simplest use case is:
 
 ```
-./clean_photomtry.py $path/filename.phot
+./clean_photomtry.py $path/filename.phot -tol 2 -test 0.1 -mag 30
 ```
 
 where filename.phot is the raw DOLPHOT photomtery output. Please see the 
 IPython notebooks Quick_Demo and Code_Details for details on the functions and
-parameters as well as the required and optional input files.
+parameters as well as the required and optional input files.o
+
+flags give the tolerance for matching in pixles, test sample size, and expected depth
 
 # Background
 This tool is built as part of the WFIRST simulations, analysis and 
