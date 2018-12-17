@@ -95,7 +95,7 @@ def read_fixed(filepath,myConfig,myJob):
    file2 = '.'.join(file1[0:len(file1)-1])
    file3 = myConfig.procpath+'/'+file2+str(np.around(hden,decimals=5))+'.'+file1[-1]
    #print("STIPS",file3)
-   galradec = getgalradec(file3,ra,dec,M,background)
+   galradec = getgalradec(file3,ra*0.0+racent,dec*0.0+deccent,M,background)
    stips_lists, filters = write_stips(file3,ra,dec,M,background,galradec,racent,deccent,starsonly,filtsinm)
    del M
    gc.collect()
@@ -206,7 +206,7 @@ def read_match(filepath,cols,myConfig,myJob):
    file2 = '.'.join(file1[0:len(file1)-1])
    file3 = myConfig.procpath+'/'+file2+str(np.around(hden,decimals=5))+'.'+file1[-1]
    #print("STIPS",file3)
-   galradec = getgalradec(file3,ra,dec,M,background)
+   galradec = getgalradec(file3,ra*0.0+racent,dec*0.0+deccent,M,background)
    stips_lists, filters = write_stips(file3,ra,dec,M,background,galradec,racent,deccent,starsonly,filtsinm)
    del M
    gc.collect()
