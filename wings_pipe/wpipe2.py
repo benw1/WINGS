@@ -27,14 +27,12 @@ session = Session()
 
 Base = declarative_base()
 
-
 class BaseMixin(object):
     @classmethod
-    def create(cls, *args, **kwargs):
-        obj = cls(*args, **kwargs)
+    def create(cls):
         session.add(obj)
         session.commit()
-
+        return obj
 
 class Options(Base):
     __tablename__= 'options'
@@ -42,17 +40,40 @@ class Options(Base):
     opt_id = Column(BigInteger, Sequence('opt_id_seq'),
                      primary_key=True, nullable=False)
 
+    target_id = Column(Integer, ForeignKey('targets.target_id'))
+    dp_id     = Column(Integer, ForeignKey('data_products.dp_id'))
+    job_id    = Column(Integer, ForeignKey('jobs.job_id'))
+    event_id  = Column(Integer, ForeignKey('events.event_id'))
+    
     name = Column(postgresql.VARCHAR(64),nullable=False)
     value = Column(postgresql.VARCHAR(64),nullable=False)
     
+    def __init__(self, name, value):
+        self.name = str(name)
+        self.value = str(value)
+        
+    def create(self,opt={'any':1}):
+        opts = []
+        for item in opt.items():
+            opts.append(Options(item[0],item[1]))
+        session.add_all(opts)
+        session.commit()
+        return opts
 
 class User(BaseMixin,Base):
     __tablename__= 'users'
     user_id = Column(Integer, Sequence('user_id_seq'),
                      primary_key=True, nullable=False)
     name = Column(postgresql.VARCHAR(32),nullable=False)
+    
+    pipelines = relationship('Pipeline',
+                    backref=backref('users',
+                    uselist=True,passive_updates=False,
+                    cascade='delete,all'))
+    
     timestamp = Column(DateTime, default=func.now())
 
+    
     def __init__(self,name='any'):
         self.name = str(name)
         
@@ -63,6 +84,12 @@ class User(BaseMixin,Base):
                     ,conn)
         return _df
     
+    @classmethod
+    def add_pipeline(cls,obj):
+        cls.pipelines.append(obj)
+        session.commit()
+        return cls
+    
 class Pipeline(BaseMixin,Base):
     __tablename__= 'pipelines'
     pipeline_id = Column(Integer, Sequence('pipeline_id_seq'),
@@ -70,7 +97,13 @@ class Pipeline(BaseMixin,Base):
     name = Column(postgresql.VARCHAR(64),nullable=False)
     
     user_id = Column(Integer, ForeignKey('users.user_id'))
-    user = relationship(User,
+    
+    targets = relationship('Target',
+                        backref=backref('pipelines',
+                        uselist=True,passive_updates=False,
+                        cascade='delete,all'))
+    
+    tasks = relationship('Task',
                         backref=backref('pipelines',
                         uselist=True,passive_updates=False,
                         cascade='delete,all'))
@@ -82,13 +115,10 @@ class Pipeline(BaseMixin,Base):
     description = Column(postgresql.VARCHAR(512))
     timestamp = Column(DateTime, default=func.now())
 
-    def __init__(self,user,name='any',software_root='',
+    def __init__(self,name='any',software_root='',
                  data_root='',pipe_root='',config_root='',
                  description=''):
-        user = user.iloc[0]
-        self.name = str(name)
-        self.user_name = str(user['name'])
-        self.user_id = int(user.user_id)      
+        self.name = str(name)  
         self.software_root = str(software_root)
         self.data_root = str(data_root)
         self.pipe_root = str(pipe_root)
@@ -102,6 +132,19 @@ class Pipeline(BaseMixin,Base):
                     ,conn)
         return _df
     
+    @classmethod
+    def add_target(cls,obj):
+        cls.targets.append(obj)
+        session.commit()
+        return cls
+    
+    @classmethod
+    def add_task(cls,obj):
+        cls.tasks.append(obj)
+        session.commit()
+        return cls
+    
+    
 class Target(BaseMixin,Base):
     __tablename__= 'targets'
     
@@ -109,16 +152,14 @@ class Target(BaseMixin,Base):
                        primary_key=True, nullable=False)
     name = Column(postgresql.VARCHAR(64),nullable=False)
     
-    user_id = Column(Integer, ForeignKey('users.user_id'))
-    
     pipeline_id = Column(Integer, ForeignKey('pipelines.pipeline_id'))
-    pipeline = relationship(Pipeline,
+    
+    configurations = relationship('Configuration',
                         backref=backref('targets',
                         uselist=True,passive_updates=False,
-                        cascade='delete,all'))
+                        cascade='delete,all'))  
     
-    opt_id = Column(Integer, ForeignKey('options.opt_id'))
-    options = relationship(Options,
+    options = relationship('Options',
                            backref=backref('targets',
                            uselist=True,passive_updates=False,
                            cascade='delete,all'))
@@ -128,11 +169,8 @@ class Target(BaseMixin,Base):
     timestamp = Column(DateTime, default=func.now())
     
     
-    def __init__(self,name,pipeline,create_dir=False):
-        pipeline = pipeline.iloc[0]
+    def __init__(self,name,create_dir=False):
         self.name = str(name)
-        self.user_id = int(pipeline.user_id)
-        self.pipeline_id = int(pipeline.pipeline_id)
         self.relativepath = str(pipeline.data_root)+'/'+str(name)
         if create_dir:
             _t = subprocess.run(['mkdir', '-p', str(self.relativepath)],
@@ -144,7 +182,26 @@ class Target(BaseMixin,Base):
                     .where(Target.target_id==int(target_id))
                     ,conn)
         return _df
-
+        
+    @classmethod
+    def add_configuration(cls,obj):
+        cls.configurations.append(obj)
+        session.commit()
+        return cls
+    
+    @classmethod
+    def add_options(cls,obj):
+        for opt in obj:
+            cls.options.append(opt)
+        session.commit()
+        return cls
+    
+    @classmethod
+    def add_paths(cls,pipeline_id,create_dir=False):
+        pipeline = Pipeline.get(int(pipeline_id))
+        pipeline = pipeline.iloc[0]
+        cls.relativepath = str(pipeline.data_root)+'/'+str(cls.name)
+        
 class Configuration(BaseMixin,Base):
     __tablename__= 'configurations'
     
@@ -152,14 +209,21 @@ class Configuration(BaseMixin,Base):
                      primary_key=True, nullable=False)
     name = Column(postgresql.VARCHAR(64),nullable=False)
     
-    user_id = Column(Integer, ForeignKey('users.user_id'))
-    pipeline_id = Column(Integer, ForeignKey('pipelines.pipeline_id'))
-    
     target_id = Column(Integer, ForeignKey('targets.target_id'))
-    target = relationship(Target,
-                        backref=backref('configurations',
-                        uselist=True,passive_updates=False,
-                        cascade='delete,all'))
+    
+    data_products = relationship('DataProduct',
+                           backref=backref('configurations',
+                           uselist=True,passive_updates=False,
+                           cascade='delete,all'))
+    
+    parameters = relationship('Parameters',
+                           backref=backref('configurations',
+                           uselist=True,passive_updates=False,
+                           cascade='delete,all')) 
+    
+    jobs = relationship('Job',
+                    backref=backref('configurations',
+                    uselist=False,passive_updates=False))
     
     relativepath = Column(postgresql.VARCHAR(256))
     logpath = Column(postgresql.VARCHAR(256))
@@ -170,22 +234,43 @@ class Configuration(BaseMixin,Base):
     
     timestamp = Column(DateTime, default=func.now())
 
-    def __init__(self,name,description,target,create_dir=False):
-        target = target.iloc[0]
+    def __init__(self,name,description,create_dir=False):
         self.name = str(name)
-        self.relativepath = str(target.relativepath)
-        self.logpath = str(target.relativepath)+'/log_'+str(name)
-        self.confpath = str(target.relativepath)+'/conf_'+str(name)
-        self.rawpath = str(target.relativepath)+'/raw_'+str(name)
-        self.procpath = str(target.relativepath)+'/proc_'+str(name)
-        self.user_id = int(target.user_id)
-        self.target_id = int(target.target_id)
-        self.pipeline_id = int(target.pipeline_id)
         self.description = str(description)
+
+    @classmethod
+    def add_dp(cls,obj):
+        cls.data_products.append(obj)
+        session.commit()
+        return cls
+
+    @classmethod
+    def add_parameters(cls,obj):
+        for param in obj:
+            cls.parameters.append(param)
+        session.commit()
+        return cls
+    
+    @classmethod
+    def add_paths(cls,target_id,create_dir=False):
+        target = Target.get(int(target_id))
+        target = target.iloc[0]
+        cls.relativepath = str(target.relativepath)
+        cls.logpath = str(target.relativepath)+'/log_'+str(name)
+        cls.confpath = str(target.relativepath)+'/conf_'+str(name)
+        cls.rawpath = str(target.relativepath)+'/raw_'+str(name)
+        cls.procpath = str(target.relativepath)+'/proc_'+str(name)
         
         if create_dir:
-            for _path in [self.rawpath,self.confpath,self.procpath,self.logpath]:
-                _t = subprocess.run(['mkdir', '-p', str(_path)], stdout=subprocess.PIPE)
+            for _path in [cls.rawpath,cls.confpath,cls.procpath,cls.logpath]:
+                _t = subprocess.run(['mkdir', '-p', str(_path)], stdout=subprocess.PIPE)        
+        
+    @classmethod
+    def add_job(cls,obj):
+        cls.jobs.append(obj)
+        session.commit()
+        return cls
+    
                 
     def get(config_id):
         with engine.connect() as conn:
@@ -194,6 +279,7 @@ class Configuration(BaseMixin,Base):
                     ,conn)
         return _df    
     
+    
 class Parameters(Base):
     __tablename__= 'parameters'
     
@@ -201,14 +287,22 @@ class Parameters(Base):
                      primary_key=True, nullable=False)
 
     config_id = Column(Integer, ForeignKey('configurations.config_id'))
-    configuration = relationship(Configuration,
-                        backref=backref('parameters',
-                        uselist=True,passive_updates=False,
-                        cascade='delete,all'))
                         
     name = Column(postgresql.VARCHAR(64),nullable=False)
     value = Column(postgresql.VARCHAR(64),nullable=False)
-
+    
+    def __init__(self, name, value):
+        self.name = str(name)
+        self.value = str(value)
+        
+    def create(self,param={'any':1}):
+        params = []
+        for item in param.items():
+            params.append(Parameters(item[0],item[1]))
+        session.add_all(params)
+        session.commit()
+        return params
+    
     def getParam(config_id):
         with engine.connect() as conn:
             _df = pd.read_sql_query(select([Parameters])
@@ -222,16 +316,8 @@ class DataProduct(BaseMixin,Base):
     
     dp_id = Column(BigInteger, Sequence('dp_id_seq'),
                      primary_key=True, nullable=False)
-                     
-    user_id = Column(Integer, ForeignKey('users.user_id'))
-    pipeline_id = Column(Integer, ForeignKey('pipelines.pipeline_id'))
-    target_id = Column(Integer, ForeignKey('targets.target_id'))
     
     config_id = Column(Integer, ForeignKey('configurations.config_id'))
-    configuration = relationship(Configuration,
-                        backref=backref('data_products',
-                        uselist=True,passive_updates=False,
-                        cascade='delete,all'))
     
     filename = Column(postgresql.VARCHAR(128))
     relativepath = Column(postgresql.VARCHAR(256))
@@ -245,24 +331,16 @@ class DataProduct(BaseMixin,Base):
     dec = Column(Float)
     pointing_angle = Column(Float)
     
-    opt_id = Column(Integer, ForeignKey('options.opt_id'))
-    options = relationship(Options,
+    options = relationship('Options',
                            backref=backref('data_products',
                            uselist=True,passive_updates=False,
                            cascade='delete,all'))    
     
     timestamp = Column(DateTime, default=func.now())
     
-    def __init__(self,filename,relativepath,group,
-                 configuration,
+    def __init__(self,filename='',relativepath='',group='',
                  data_type='',subtype='',filtername='',
                  ra=0,dec=0,pointing_angle=0):
-        configuration = configuration.iloc[0]
-        self.user_id = int(configuration.user_id)
-        self.config_id = int(configuration.config_id)
-        self.target_id = int(configuration.target_id)
-        self.pipeline_id = int(configuration.pipeline_id)
-
         self.filename = str(filename)
         self.relativepath = str(relativepath)
 
@@ -296,6 +374,14 @@ class DataProduct(BaseMixin,Base):
                     ,conn)
         return _df
     
+    @classmethod
+    def add_options(cls,obj):
+        for opt in obj:
+            cls.options.append(opt)
+        session.commit()
+        return cls
+    
+    
 class Task(BaseMixin,Base):
     __tablename__= 'tasks'
     
@@ -304,10 +390,14 @@ class Task(BaseMixin,Base):
     
     name = Column(postgresql.VARCHAR(64),nullable=False)
     
-    user_id = Column(Integer, ForeignKey('users.user_id'))
-    
     pipeline_id = Column(Integer, ForeignKey('pipelines.pipeline_id'))
-    pipeline = relationship(Pipeline,
+
+    masks = relationship('Mask',
+                        backref=backref('tasks',
+                        uselist=True,passive_updates=False,
+                        cascade='delete,all'))
+    
+    jobs = relationship('Job',
                         backref=backref('tasks',
                         uselist=True,passive_updates=False,
                         cascade='delete,all'))
@@ -318,15 +408,10 @@ class Task(BaseMixin,Base):
     
     timestamp = Column(DateTime, default=func.now())
     
-    def __init__(self,name,
-                 pipeline,
+    def __init__(self,name='',
                  nruns=0,run_time=0,
                  is_exclusive=0):
-        pipeline = pipeline.iloc[0]
-        self.name = str(name)
-        
-        self.user_id = int(pipeline.user_id)
-        self.pipeline_id = int(pipeline.pipeline_id)
+        self.name = str(name)        
         self.nruns = int(nruns)
         self.run_time = float(run_time)
         self.is_exclusive = bool(is_exclusive)
@@ -338,6 +423,18 @@ class Task(BaseMixin,Base):
                     ,conn)
         return _df
     
+    @classmethod
+    def add_mask(cls,obj):
+        cls.masks.append(obj)
+        session.commit()
+        return cls
+        
+    @classmethod
+    def add_job(cls,obj):
+        cls.jobs.append(obj)
+        session.commit()
+        return cls
+    
 class Mask(BaseMixin,Base):
     __tablename__= 'masks'
     
@@ -345,10 +442,6 @@ class Mask(BaseMixin,Base):
                      primary_key=True, nullable=False)
     
     task_id = Column(Integer, ForeignKey('tasks.task_id'))
-    task = relationship(Task,
-                        backref=backref('masks',
-                        uselist=True,passive_updates=False,
-                        cascade='delete,all'))
     
     source = Column(postgresql.VARCHAR(64),nullable=False)
     name = Column(postgresql.VARCHAR(64),nullable=False)
@@ -357,12 +450,10 @@ class Mask(BaseMixin,Base):
     timestamp = Column(DateTime, default=func.now())
     
     
-    def __init__(self,task,source='',name='',value=''):
-        task = task.iloc[0]
+    def __init__(self,source='',name='',value=''):
         self.source = str(source)
         self.name   = str(name)
         self.value  = str(value)
-        self.task_id = int(task.task_id)
         
         
     def get(mask_id):
@@ -379,36 +470,18 @@ class Job(BaseMixin,Base):
     job_id = Column(BigInteger, Sequence('job_id_seq'),
                      primary_key=True, nullable=False)
     
-    user_id = Column(Integer, ForeignKey('users.user_id'))
-    
-    pipeline_id = Column(Integer, ForeignKey('pipelines.pipeline_id'))
-    
     task_id = Column(Integer, ForeignKey('tasks.task_id'))
-    task = relationship(Task,
-                        backref=backref('jobs',
-                        uselist=True,passive_updates=False,
-                        cascade='delete,all'))
     
     config_id = Column(Integer, ForeignKey('configurations.config_id'))
-    configuration = relationship(Configuration,
-                        backref=backref('jobs',
-                        uselist=True,passive_updates=False,
-                        cascade='delete,all'))
     
-    opt_id = Column(Integer, ForeignKey('options.opt_id'))
-    options = relationship(Options,
+    options = relationship('Options',
                            backref=backref('jobs',
                            uselist=True,passive_updates=False,
                            cascade='delete,all'))
+
+    events = relationship('Event', backref='jobs', secondary='job_event_link')
     
-    # This is for the parent's event_id
-    event_id = Column(Integer, ForeignKey('events.event_id'))
-    
-    # This is for the child events
-    event = relationship('Event', secondary='job_event_link')
-    
-    node_id = Column(Integer, ForeignKey('nodes.node_id'))
-    node = relationship('Node', secondary='job_node_link')
+    nodes = relationship('Node', backref='jobs', secondary='job_node_link')
     
     state = Column(postgresql.VARCHAR(64),nullable=False)
     starttime = Column(DateTime, default=func.now())
@@ -417,18 +490,8 @@ class Job(BaseMixin,Base):
     timestamp = Column(DateTime, default=func.now())
     
     
-    def __init__(self,state,event_id,
-                 task,
-                 config,
-                 node):
+    def __init__(self,state):
         self.state = str(state)
-        self.event_id = int(event_id)
-        task,config,node = task.iloc[0],config.iloc[0],node.iloc[0]
-        self.task_id = int(task.task_id)
-        self.config_id = int(config.config_id)
-        self.node_id = int(node.node_id)
-        self.pipeline_id =  int(config.pipeline_id)
-        self.user_id = int(task.user_id)
     
     
     def get(job_id):
@@ -438,31 +501,45 @@ class Job(BaseMixin,Base):
                     ,conn)
         return _df
     
+    @classmethod
+    def add_options(cls,obj):
+        for opt in obj:
+            cls.options.append(opt)
+        session.commit()
+        return cls
+ 
+    @classmethod
+    def add_event(cls,obj):
+        cls.events.append(obj)
+        session.commit()
+        return cls
+        
+    @classmethod
+    def add_node(cls,obj):
+        cls.nodes.append(obj)
+        session.commit()
+        return cls
+    
 class Event(BaseMixin,Base):
     __tablename__= 'events'
     
     event_id = Column(BigInteger, Sequence('event_id_seq'),
                      primary_key=True, nullable=False)
     
-    # Job that created this event
-    job_id = Column(Integer, ForeignKey('jobs.job_id'))
-    job = relationship(Job, secondary='job_event_link')
+    jobs = relationship('Job', backref='events')
     
     jargs = Column(postgresql.VARCHAR(64),nullable=False)
     name = Column(postgresql.VARCHAR(64),nullable=False)
     value = Column(postgresql.VARCHAR(64),nullable=False)
-    
-    opt_id = Column(Integer, ForeignKey('options.opt_id'))
-    options = relationship(Options,
+
+    options = relationship('Options',
                            backref=backref('events',
                            uselist=True,passive_updates=False,
                            cascade='delete,all'))
     
     timestamp = Column(DateTime, default=func.now())
     
-    def __init__(self,name,value,jargs,job):
-        job = job.iloc[0]
-        self.job_id = int(job.job_id)
+    def __init__(self,name,value,jargs):
         self.jargs  = str(jargs)
         self.name   = str(name)
         self.value  = str(value)
@@ -473,6 +550,14 @@ class Event(BaseMixin,Base):
                     .where(Event.event_id==int(event_id))
                     ,conn)
         return _df
+
+    @classmethod
+    def add_job(cls,obj):
+        cls.jobs.append(obj)
+        session.commit()
+        return cls
+
+    
     
 class Node(BaseMixin,Base):
     __tablename__= 'nodes'
@@ -481,8 +566,7 @@ class Node(BaseMixin,Base):
                      primary_key=True, nullable=False)
     name = Column(postgresql.VARCHAR(64),nullable=False)
     
-    job_id = Column(Integer, ForeignKey('jobs.job_id'))
-    job = relationship(Job, secondary='job_node_link')
+    jobs = relationship('Job', backref='nodes')
     
     int_ip = Column(postgresql.INET)
     ext_ip = Column(postgresql.INET)
@@ -501,6 +585,12 @@ class Node(BaseMixin,Base):
                     ,conn)
         return _df
     
+    @classmethod
+    def add_job(cls,obj):
+        cls.jobs.append(obj)
+        session.commit()
+        return cls
+    
 class JobEventLink(Base):
     __tablename__ = 'job_event_link'    
     job_id = Column(Integer, ForeignKey('jobs.job_id'), primary_key=True)
@@ -511,7 +601,8 @@ class JobNodeLink(Base):
     __tablename__ = 'job_node_link'    
     job_id = Column(Integer, ForeignKey('jobs.job_id'), primary_key=True)
     node_id = Column(Integer, ForeignKey('nodes.node_id'), primary_key=True)
-
-Base.metadata.create_all(engine)
-
-session.commit()
+#
+#Base.metadata.create_all(engine)
+#
+#session.commit()
+pass;
