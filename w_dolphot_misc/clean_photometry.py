@@ -32,10 +32,14 @@ from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 
-from sklearn.preprocessing import label_binarize
+from sklearn.linear_model import SGDClassifier as SGDc
+from sklearn.neural_network import MLPClassifier as MLPc
+
+from sklearn.preprocessing import label_binarize, StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
+
 from os import cpu_count
 from scipy.spatial import cKDTree
 from astropy.io import ascii, fits
@@ -47,7 +51,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 '''
-Therese parameters are used throughout the code:
+These parameters are used throughout the code:
 
 feature_names: DOLPHOT quality parameters to use for 
 training Machine Learning models. 
@@ -84,6 +88,7 @@ sky_coord  = np.zeros(len(filters))
 ref_fits   = int(3)
 use_radec  = False
 
+
 def clean_all(filename='10_10_phot.txt',
           feature_names=feature_names,
           filters=filters,
@@ -97,7 +102,7 @@ def clean_all(filename='10_10_phot.txt',
           opt={'evaluate':True,
                'summary':True,
                'plots':True,
-               'tree':True,
+               'tree':False,
                'saveClean':True}):
     '''
     Top level wrapper to read data, clean data, train/test/evaluate
@@ -124,10 +129,14 @@ def clean_all(filename='10_10_phot.txt',
                                         valid_mag=valid_mag,
                                         ref_fits=ref_fits)
 
-    clf = DecisionTreeClassifier(max_depth=4,
-                                 min_samples_split=50,
-                                 min_samples_leaf=10,
-                                 class_weight={0:1,1:3})
+    clf = MLPc(hidden_layer_sizes=(10,10,10),
+               activation='logistic',
+               solver='lbfgs',
+               max_iter=20000,
+               shuffle=True,
+               warm_start=False,
+               early_stopping=True,
+               n_iter_no_change=10)
 
     new_labels = classify(out_DF,out_LAB,
                           filters=filters,
@@ -155,7 +164,6 @@ def clean_all(filename='10_10_phot.txt',
                                   use_radec=use_radec,
                                   ref_fits=ref_fits,
                                   valid_mag=valid_mag)
-        
     
     return print('\n')
 
@@ -197,7 +205,7 @@ def classify(out_DF,out_LAB,
         
         if (opt['evaluate']|opt['summary']):
             print_report(filt,test_L,pred_L,feature_names,
-                         clf.feature_importances_,opt['summary'])
+                         opt['summary'])
             
         if opt['tree']:
             dot_data = export_graphviz(clf, out_file=None,
@@ -231,7 +239,7 @@ def read_data(filename='10_10_phot.txt',fileroot='',filters=filters):
 
 def prep_data(input_data,output_data,sky_coord=sky_coord,
               filters=filters,use_radec=False,
-              tol=5,valid_mag=30,ref_fits=0):
+              tol=2,valid_mag=30,ref_fits=0):
     '''
     Prepare the data for classification. The output data is now cleaned 
     to exclude low information entries and also labeled based on location 
@@ -286,6 +294,17 @@ def validate_output(err,count,snr,shr,rnd,crd):
     return (err<0.5)&(count>=0)&(snr>=1)&(crd!=9.999)&\
         (shr!=9.999)&(shr!=-9.999)&(rnd!=9.999)&(rnd!=-9.999)
 
+def scale_features(_df):
+    scaler = StandardScaler()
+    for i,df in enumerate(_df):
+        df['err'] = scaler.fit_transform(df['err'].values.reshape(-1, 1))
+        df['Count'] = scaler.fit_transform(df['Count'].values.reshape(-1, 1))
+        df['SNR'] = scaler.fit_transform(df['SNR'].values.reshape(-1, 1))
+        df['Crowding'] = scaler.fit_transform(df['Crowding'].values.reshape(-1, 1))
+        df['Sharpness'] = scaler.fit_transform(df['Sharpness'].values.reshape(-1, 1))
+        df['Roundness'] = scaler.fit_transform(df['Roundness'].values.reshape(-1, 1))
+        _df[i] = df
+    return _df
 
 def pack_input(data,valid_mag=30):
     '''
@@ -305,9 +324,10 @@ def pack_output(xy,mags,errs,count,snr,shr,rnd,crd,t):
     return pd.DataFrame({'x':xy[0][t],'y':xy[1][t],'mag':mags[t],'err':errs[t],
                         'Count':count[t],'SNR':snr[t],'Sharpness':shr[t],
                          'Roundness':rnd[t],'Crowding':crd[t]})
+    #return _df.reindex(np.random.permutation(_df.index))
 
 
-def label_output(in_df,out_df,tol=5,valid_mag=30,
+def label_output(in_df,out_df,tol=2,valid_mag=30,
                  radec={'opt':False,'wcs1':'','wcs2':''}):
     '''
     Label output data entries and return the labels as numpy array.
@@ -398,7 +418,7 @@ def output_pair(df,labels,i,j):
     return dict(zip(nms,K))
 
 
-def clean_pair(inPair,outPair,tol=5,radec={'opt':False,'wcs1':'','wcs2':''}):
+def clean_pair(inPair,outPair,tol=2,radec={'opt':False,'wcs1':'','wcs2':''}):
     '''
     Re-classify sources detected in both bands as stars. Change detected 
     source type from 'star' to 'other' if their location do not match to
@@ -420,7 +440,7 @@ def clean_pair(inPair,outPair,tol=5,radec={'opt':False,'wcs1':'','wcs2':''}):
 
 def saveCats(inDAT,outDAT,outDF,Labels,
              sky_coord=sky_coord,fileroot='',
-             filters=filters,tol=5,ref_fits=0,
+             filters=filters,tol=2,ref_fits=0,
              use_radec=False,valid_mag=30):
     i = -1
     flags = []
@@ -537,7 +557,7 @@ def match_in_out(tol,X,Y,x,y,typ_in,
     return in1, typ_out
 
 
-def print_report(filt,test_labels,pred_labels,feat_nms,feat_imp,short_rep=True):
+def print_report(filt,test_labels,pred_labels,feat_nms,feat_imp=[],short_rep=True):
     '''
     Evaluate the classification model
     - Score the classifier for all classes and each class separately
@@ -559,8 +579,8 @@ def print_report(filt,test_labels,pred_labels,feat_nms,feat_imp,short_rep=True):
         print(' Tp:\t\t{:d}\n Fp:\t\t{:d}\n Tn:\t\t{:d}\n Fn:\t\t{:d}\n'.format(tp,fp,tn,fn))
         print(' All:\t\t{:.2f}\n Non-point:\t{:.2f}\n Point:\t\t{:.2f}\n'.format(score1,score2,score3))
         print(' Precision:\t{:.2f}'.format(tp/(tp+fp)))
-    _tmp = [print('{:s}:\t{:.3f}'.format(feat_nms[i],feat_imp[i]))
-            for i in range(len(feat_nms))]
+    #_tmp = [print('{:s}:\t{:.3f}'.format(feat_nms[i],feat_imp[i]))
+    #        for i in range(len(feat_nms))]
     print('\n Precision:\t{:.2f}'.format(tp/(tp+fp)))
     print(' Recall:\t{:.2f} (Sensitivity)'.format(tp/(tp+fn)))
     print(' Specificity:\t{:.2f}\n'.format(tn/(tn+fp)))    
@@ -628,8 +648,6 @@ def make_plots(all_in=[],all_out=[],clean_out=[],\
         print('Stars: {:d}  Others: {:d}'.format(int(np.sum(stars)),int(np.sum(other))))
         plot_me(m1_in,m2_in,stars,other,\
                 'Input CMD (Vega)','input','Vega')
-        #plot_me(m1_in+AB_Vega1,m2_in+AB_Vega2,stars,other,\
-        #        'Input CMD (AB)','input','AB')
 
     if (('output' in opt)&(len(all_out)>0)):
         m1,m2 = all_out['mag'][0], all_out['mag'][1]
@@ -783,10 +801,11 @@ def parse_all():
     '''Argument parser for command line use'''
     parser = argparse.ArgumentParser()
     parser.add_argument('filenames', nargs='+',help='Photomtery file names')
-    parser.add_argument('--RADIUS', '-tol', type=float, dest='tol', default=2, help='Matching radius in pixels')
-    parser.add_argument('--TESTSIZE', '-test', type=float, dest='test', default=0.1, help='Test sample size')
+    parser.add_argument('--RADIUS', '-tol', type=float, dest='tol', default=5, help='Matching radius in pixels')
+    parser.add_argument('--TESTSIZE', '-test', type=float, dest='test', default=0.75, help='Test sample size')
     parser.add_argument('--VALIDMAG', '-mag', type=float, dest='mag', default=30, help='Expected depth in mag')
     return parser.parse_args()
+
 
 '''If executed from command line'''
 if __name__ == '__main__':
