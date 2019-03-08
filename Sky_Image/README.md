@@ -1,1 +1,2 @@
-reads in spitzer sky image and outputs a fits file in WFIRST filter sky fits images
+# Generate Estimated IR Sky Image
+Reads in star-subtracted Spitzer sky image and produces a fits file of IR sky images in WFIRST filterset.

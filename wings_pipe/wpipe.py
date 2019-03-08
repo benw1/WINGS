@@ -253,7 +253,7 @@ class Configuration():
         
         if create_dir:
             for _path in [self.rawpath[0],self.confpath[0],self.procpath[0],self.logpath[0]]:
-                _t = _t = subprocess.run(['mkdir', '-p', str(_path)], stdout=subprocess.PIPE)
+                _t = subprocess.run(['mkdir', '-p', str(_path)], stdout=subprocess.PIPE)
         
         if ret_opt:
             return _df, _params
