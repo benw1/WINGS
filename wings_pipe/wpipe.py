@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 pd.set_option('io.hdf.default_format','table')
 
-path_to_store='/gscratch/astro/benw1/data/WINGS/wings_pipe/h5data/wpipe_store.h5'
+path_to_store='/nobackup/bwilli24/WINGS/wings_pipe/h5data/wpipe_store.h5'
 # path_to_store='/Users/rubab/Work/WINGS/wings_pipe/h5data/wpipe_store.h5'
 
 def update_time(x):
@@ -506,9 +506,11 @@ def Submit(task,job_id,event_id):
     dataroot = myPipe.data_root
     job = Job.get(int(job_id))
     #subprocess.Popen([executable,'-e',str(event_id),'-j',str(job_id)],cwd=dataroot) # This line will work with an SQL backbone, but NOT hdf5, as 2 tasks running on the same hdf5 file will collide!
-    #subprocess.run([executable,'-e',str(event_id),'-j',str(job_id)],cwd=dataroot)
+    subprocess.run([executable,'-e',str(event_id),'-j',str(job_id)],cwd=dataroot)
     #Let's send stuff to slurm
-    hyak(task,job_id,event_id)
+    #hyak(task,job_id,event_id)
+    #Let's send stuff to pbs
+    #pbs(task,job_id,event_id)
     return
 
 def hyak(task,job_id,event_id):
@@ -546,9 +548,45 @@ def hyak(task,job_id,event_id):
               '## Specify the working directory for this job' + '\n'+
               '#SBATCH --workdir='+myConfig.procpath + '\n'+
               'source activate forSTIPS3'+'\n'+
-              executable+' \-e '+eidstr+' \-j '+jidstr)
+              executable+' -e '+eidstr+' -j '+jidstr)
     subprocess.run(['sbatch',slurmfile],cwd=myConfig.confpath)
     
+def pbs(task,job_id,event_id):
+    myJob  = Job.get(job_id)
+    myPipe = Pipeline.get(int(myJob.pipeline_id))
+    swroot = myPipe.software_root
+    executable = swroot+'/'+task['name']
+    dataroot = myPipe.data_root
+
+    catalogID = Options.get('event',event_id)['dp_id']
+    catalogDP = DataProduct.get(int(catalogID))
+    myTarget = Target.get(int(catalogDP.target_id))
+    myConfig = Configuration.get(int(catalogDP.config_id))
+    myParams = Parameters.getParam(int(myConfig.config_id))
+
+    #pbsfile = myConfig.confpath+'/'+task['name']+'_'+str(job_id)+'.pbs'
+    pbsfile = '/home1/bwilli24/Wpipelines/'+task['name']+'_jobs'
+
+    #print(event_id,job_id,executable,type(executable))
+    eidstr = str(event_id)
+    jidstr = str(job_id)
+    print("Submitting ",pbs)
+    #with open(pbsfile, 'w') as f:
+    with open(pbsfile, 'a') as f:
+        f.write(#'#PBS -S /bin/csh' + '\n'+
+                #'#PBS -j oe' + '\n'+
+                #'#PBS -l select=1:ncpus=4:model=san' + '\n'+
+                #'#PBS -W group_list=s1692' + '\n'+
+                #'#PBS -l walltime=10:00:00' + '\n'+
+
+                #'cd ' + myConfig.procpath  + '\n'+
+
+                #'source activate STIPS'+'\n'+
+              
+                #executable+' -e '+eidstr+' -j '+jidstr)
+                'source /nobackupp11/bwilli24/miniconda3/bin/activate STIPS && '+executable+' -e '+eidstr+' -j '+jidstr + '\n')
+
+    subprocess.run(['qsub',pbsfile],cwd=myConfig.confpath)
 
 def fire(event):
     event_name = event['name'].values[0]
