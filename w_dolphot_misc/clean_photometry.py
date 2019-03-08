@@ -41,6 +41,7 @@ from scipy.spatial import cKDTree
 from astropy.io import ascii, fits
 from astropy import units as u
 from astropy import wcs
+from astropy.table import Table, vstack
 from astropy.coordinates import SkyCoord, match_coordinates_sky
 
 import warnings
@@ -67,6 +68,8 @@ feature_names=['err','SNR','Sharpness','Crowding']
 
 # filter names
 filters    = np.array(['Z087','Y106','J129','H158','F184'])
+#filtershort    = np.array(['Z','Y','J','H','F'])
+filtershort    = np.array(['Z'])
 #filters    = np.array(['Z087','H158'])
 
 # AB magnitude Zero points
@@ -222,10 +225,36 @@ def read_data(filename='10_10_phot.txt',fileroot='',filters=filters):
     Return arrays of AstroPy tables for input and numpy arrays for output
     ordered by corresponding filternames.
     '''
-    input_data = [ascii.read(fileroot+filt+'_stips.txt',format='ipac')
-                  for filt in filters]
-    output_data  = np.loadtxt(fileroot+filename)
+    #input_data = [ascii.read(fileroot+filt+'_stips.txt',format='ipac')
+    #              for filt in filters]
+    input_data = [fits.open(fileroot+'_'+filt+'_observed_WFIRST-WFI.fits')
+                  for filt in filtershort]
+    input_data = []
+    for filt in filtershort:
+        all = fits.open(fileroot+'_'+filt+'_observed_WFIRST-WFI.fits')
+        check=0
+        count=0
+        for table in all:
+            if check == 2:
+               continue
+            else:
+               hdr=table.header
+               if 'DETECTOR' in hdr:
+                  count += 1
+                  if count == 1:
+                     input_data1 = Table.read(table)
+                     #print(input_data1)
+                  else:
+                     input_data1 = vstack([input_data1,Table.read(table)])
+                     #print(input_data1)
+
+               else:
+                  check += 1
+        input_data = [input_data,input_data1]
+    input_data = input_data[1:]
+    output_data  = np.loadtxt(filename)
     np.random.shuffle(output_data)
+    print(input_data[0])
     return input_data,output_data
 
 
@@ -775,7 +804,7 @@ def get_fileroot(filename):
         fileroot = filename[:-len(tmp)]
         filename = tmp
     else:
-        fileroot = ''
+        fileroot = filename.split('.')[0]
     return fileroot, filename
 
 
