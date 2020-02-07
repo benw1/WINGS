@@ -17,9 +17,9 @@ class User():
         _df.index = _df.user_id
         return update_time(_df)
 
-    def create(self,store=Store()):
+    def create(self, store=Store()):
         return store.create('users','user_id',self)
 
-    def get(user_name,store=Store()):
+    def get(user_name, store=Store()):
         x = store.select('users','name=="'+str(user_name)+'"')
         return x.loc[x.index.values[0]]

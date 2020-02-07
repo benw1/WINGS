@@ -7,7 +7,8 @@ pd.set_option('io.hdf.default_format','table')
 from wings_pipe import Configuration, DataProduct, Job, \
     Parameters, Pipeline, Options, Store, Target, Task
 
-
+path_to_store = '~/workspace/WINGS/wings_pipe/h5data/wpipe_store.h5'
+# path_to_store='/Users/rubab/Work/WINGS/wings_pipe/h5data/wpipe_store.h5'
 
 def update_time(x):
     x.timestamp = pd.to_datetime(time.time(),unit='s')
@@ -41,6 +42,7 @@ def Submit(task,job_id,event_id):
     #Let's send stuff to pbs
     #pbs(task,job_id,event_id)
     return
+
 
 def hyak(task,job_id,event_id):
     myJob  = Job.get(job_id)
@@ -132,12 +134,12 @@ def fire(event):
     configuration = Configuration.get(conf_id)
     pipeline_id = parent_job.pipeline_id
     #print(pipeline_id)
-    alltasks =  Store().select('tasks',where="pipeline_id=="+str(pipeline_id))
+    alltasks =  Store().select('tasks', where="pipeline_id==" + str(pipeline_id))
     for i in range(alltasks.shape[0]):
         task = alltasks.iloc[i]
         task_id = task['task_id']
         #print(task_id)
-        m = Store().select('masks',where="task_id=="+str(task_id))
+        m = Store().select('masks', where="task_id==" + str(task_id))
         for j in range(m.shape[0]):
             mask = m.iloc[j]
             mask_name = mask['name']
@@ -175,18 +177,3 @@ def logprint(configuration,job,log_text):
     log.write(log_text)
     log.close()
 
-if __name__ == "__main__":
-    path_to_store = '~/workspace/WINGS/wings_pipe/h5data/wpipe_store.h5'
-    # path_to_store='/Users/rubab/Work/WINGS/wings_pipe/h5data/wpipe_store.h5'
-
-    myJob = Job.get(job_id)
-    myPipe = Pipeline.get(int(myJob.pipeline_id))
-    swroot = myPipe.software_root
-    executable = swroot + '/' + task['name']
-    dataroot = myPipe.data_root
-
-    catalogID = Options.get('event', event_id)['dp_id']
-    catalogDP = DataProduct.get(int(catalogID))
-    myTarget = Target.get(int(catalogDP.target_id))
-    myConfig = Configuration.get(int(catalogDP.config_id))
-    myParams = Parameters.getParam(int(myConfig.config_id))
