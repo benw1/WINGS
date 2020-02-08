@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import time
 
-from wings_pipe import Parameters, Store, Target
-from wings_pipe.wpipe import update_time
+from pipebackbone import Parameters, Store, Target
+from pipebackbone.wpipe import update_time
 
 class Configuration():
     def __init__(self, name='', description='',

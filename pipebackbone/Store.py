@@ -1,10 +1,10 @@
 import pandas as pd
 import subprocess
 
-from wings_pipe import Configuration, DataProduct, Event, Job, Mask,\
+from pipebackbone import Configuration, DataProduct, Event, Job, Mask,\
     Node, Options, Parameters, Pipeline, Target, Task, User
-from wings_pipe.wpipe import _min_itemsize
-from wings_pipe.wpipe import path_to_store
+from pipebackbone.wpipe import _min_itemsize
+from pipebackbone.wpipe import path_to_store
 
 
 class Store():

@@ -4,11 +4,11 @@ import numpy as np
 import pandas as pd
 pd.set_option('io.hdf.default_format','table')
 
-from wings_pipe import Configuration, DataProduct, Job, \
+from pipebackbone import Configuration, DataProduct, Job, \
     Parameters, Pipeline, Options, Store, Target, Task
 
-path_to_store = '~/workspace/WINGS/wings_pipe/h5data/wpipe_store.h5'
-# path_to_store='/Users/rubab/Work/WINGS/wings_pipe/h5data/wpipe_store.h5'
+path_to_store = '/pipebackbone/h5data/wpipe_store.h5'
+# path_to_store='/Users/rubab/Work/WINGS/pipebackbone/h5data/wpipe_store.h5'
 
 def update_time(x):
     x.timestamp = pd.to_datetime(time.time(),unit='s')

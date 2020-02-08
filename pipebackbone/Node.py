@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import time
 
-from wings_pipe.wpipe import update_time
-from wings_pipe import Store
+from pipebackbone.wpipe import update_time
+from pipebackbone import Store
 
 class Node():
     def __init__(self, name='any', int_ip='', ext_ip=''):

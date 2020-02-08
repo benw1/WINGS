@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 
-from wings_pipe import Store, Task
-from wings_pipe.wpipe import update_time
+from pipebackbone import Store, Task
+from pipebackbone.wpipe import update_time
 
 class Mask():
     def __init__(self, task=Task().new(), source='', name='', value=''):

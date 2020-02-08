@@ -4,10 +4,10 @@ import subprocess
 import time
 
 
-from wings_pipe import Pipeline
-from wings_pipe import Store
-from wings_pipe import Options
-from wings_pipe.wpipe import update_time
+from pipebackbone import Pipeline
+from pipebackbone import Store
+from pipebackbone import Options
+from pipebackbone.wpipe import update_time
 
 class Target():
     def __init__(self, name='any',

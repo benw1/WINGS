@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np
 import time
 
-from wings_pipe import Store
-from wings_pipe import User
-from wings_pipe.wpipe import update_time
+from pipebackbone import Store
+from pipebackbone import User
+from pipebackbone.wpipe import update_time
 
 class Pipeline():
     def __init__(self, user=User().new(), name='any', software_root='',

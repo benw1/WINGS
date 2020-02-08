@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 
-from wings_pipe import Job, Options, Store
-from wings_pipe.wpipe import update_time
+from pipebackbone import Job, Options, Store
+from pipebackbone.wpipe import update_time
 
 class Event():
     def __init__(self, name='', value='', jargs='', job=Job().new()):

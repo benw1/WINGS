@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import time
 
-from wings_pipe import Configuration, Event, Node, Store, Options, Task
-from wings_pipe.wpipe import update_time
+from pipebackbone import Configuration, Event, Node, Store, Options, Task
+from pipebackbone.wpipe import update_time
 
 class Job():
     def __init__(self, state='any', event_id=0,

@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 
-from wings_pipe import Store
-from wings_pipe.wpipe import _min_itemsize
+from pipebackbone import Store
+from pipebackbone.wpipe import _min_itemsize
 
 class Options():
     def __init__(self, opts={'any': 0}):

@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 
-from wings_pipe import Configuration, Store
-from wings_pipe.wpipe import _min_itemsize
+from pipebackbone import Configuration, Store
+from pipebackbone.wpipe import _min_itemsize
 
 class Parameters():
     def __init__(self, params={'any': 0}):

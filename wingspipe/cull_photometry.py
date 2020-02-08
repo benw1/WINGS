@@ -2,8 +2,6 @@
 import argparse,os,subprocess
 from wpipe import *
 
-from pipebackbone import Store
-
 def register(PID,task_name):
    myPipe = Store().select('pipelines').loc[int(PID)]
    myTask = Task(task_name,myPipe).create()
