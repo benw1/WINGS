@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 import argparse, os, subprocess
-from pipebackbone import Store
-from pipebackbone import Pipeline
+from wpipe import Store
+from wpipe import Pipeline
 
 
 def createPipeline(user_name,pipe_tasks_path,description=''):

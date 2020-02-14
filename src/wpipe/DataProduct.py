@@ -1,11 +1,6 @@
-import pandas as pd
-import numpy as np
-import time
-
-from pipebackbone import Configuration
-from pipebackbone import Store
-from pipebackbone import Options
-from pipebackbone.wpipe import update_time
+from .core import *
+from .Store import Store
+from .Configuration import Configuration
 
 class DataProduct():
     def __init__(self, filename='any', relativepath='', group='',
@@ -54,6 +49,7 @@ class DataProduct():
         return update_time(_df)
 
     def create(self, options={'any': 0}, ret_opt=False, store=Store()):
+        from . import Options
         _df = store.create('data_products', 'dp_id', self)
         _opt = Options(options).create('data_product', int(_df.dp_id), store=store)
         if ret_opt:

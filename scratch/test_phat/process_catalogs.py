@@ -305,7 +305,7 @@ def write_stips(infile,ra,dec,M,background,galradec,racent,deccent,starsonly,fil
          content = f.read()
          f.seek(0, 0)
          f.write('\\type = internal' + '\n'  +
-                 '\\filter = F' + str(filt[1:]) +'\n' +
+                 '\\filter = ' + str(filt) +'\n' + 
                  '\\center = (' + str(racent) +
                '  ' + str(deccent) + ')\n' +
                  content)
