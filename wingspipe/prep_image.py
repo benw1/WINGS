@@ -68,7 +68,7 @@ def prep_image(imagepath,filtername,config,thisjob,dp_id):
    dp = Store().select('data_products', 'dp_id=='+str(dp_id))
    dp['filename'] = new_image_name
    Store().update('data_products',dp)
-   fixwcs(imagepath)
+   #fixwcs(imagepath)
    _t1 = [dolphot_path+'wfirstmask','-exptime='+myParams['exptime'],'-rdnoise=41.73', imagepath]
    _t2 = [dolphot_path+'splitgroups', imagepath]
    print("T1 ",_t1)
