@@ -1,9 +1,6 @@
-import pandas as pd
-import numpy as np
-import time
-
-from pipebackbone import Pipeline, Store, Mask
-from pipebackbone.wpipe import update_time
+from .core import *
+from .Store import Store
+from .Pipeline import Pipeline
 
 class Task():
     def __init__(self, name='any',
@@ -30,6 +27,7 @@ class Task():
         return _df
 
     def add_mask(task, source='any', name='any', value='0', store=Store()):
+        from . import Mask
         return Mask(task, source, name, value).create(store=store)
 
     def get(task_id, store=Store()):

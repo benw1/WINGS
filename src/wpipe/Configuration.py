@@ -1,9 +1,6 @@
-import pandas as pd
-import numpy as np
-import time
-
-from pipebackbone import Parameters, Store, Target
-from pipebackbone.wpipe import update_time
+from .core import *
+from .Store import Store
+from .Target import Target
 
 class Configuration():
     def __init__(self, name='', description='',
@@ -29,6 +26,7 @@ class Configuration():
         return update_time(_df)
 
     def create(self, params={'any': 0}, create_dir=False, ret_opt=False, store=Store()):
+        from . import Parameters
         _df = store.create('configurations', 'config_id', self)
         _params = Parameters(params).create(_df, store=store)
 

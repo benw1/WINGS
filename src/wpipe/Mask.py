@@ -1,8 +1,6 @@
-import pandas as pd
-import numpy as np
-
-from pipebackbone import Store, Task
-from pipebackbone.wpipe import update_time
+from .core import *
+from .Store import Store
+from .Task import Task
 
 class Mask():
     def __init__(self, task=Task().new(), source='', name='', value=''):

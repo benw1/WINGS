@@ -1,9 +1,8 @@
-import pandas as pd
-import numpy as np
-import time
-
-from pipebackbone import Configuration, Event, Node, Store, Options, Task
-from pipebackbone.wpipe import update_time
+from .core import *
+from .Store import Store
+from .Node import Node
+from .Configuration import Configuration
+from .Task import Task
 
 class Job():
     def __init__(self, state='any', event_id=0,
@@ -36,6 +35,7 @@ class Job():
         return _df
 
     def create(self, options={'completed': 0}, ret_opt=False, store=Store()):
+        from . import Options
         _df = store.create('jobs', 'job_id', self)
         _opt = Options(options).create('job', int(_df.job_id), store=store)
         if ret_opt:
@@ -50,4 +50,5 @@ class Job():
     def getEvent(job,
                  name='any', value='0', jargs='0',
                  options={'any': 0}, store=Store()):
+        from . import Event
         return Event(name, value, jargs, job).create(options=options, store=store)

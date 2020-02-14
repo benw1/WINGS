@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 pd.set_option('io.hdf.default_format','table')
 
-from pipebackbone import Configuration, DataProduct, Job, \
+from . import Configuration, DataProduct, Job, \
     Parameters, Pipeline, Options, Store, Target, Task
 
 path_to_store = '/pipebackbone/h5data/wpipe_store.h5'

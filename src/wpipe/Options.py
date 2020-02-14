@@ -1,8 +1,5 @@
-import pandas as pd
-import numpy as np
-
-from pipebackbone import Store
-from pipebackbone.wpipe import _min_itemsize
+from .core import *
+from .Store import Store
 
 class Options():
     def __init__(self, opts={'any': 0}):
@@ -23,7 +20,7 @@ class Options():
     def create(self, owner='any', owner_id=0, store=Store()):
         _df = self.new(owner, owner_id)
         with pd.HDFStore(str(store.path), 'r+') as myStore:
-            myStore.append('options', _df, min_itemsize=_min_itemsize(_df),
+            myStore.append('options', _df, min_itemsize=fmin_itemsize(_df),
                            complevel=9, complib='blosc:blosclz')
         return _df
 

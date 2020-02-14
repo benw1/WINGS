@@ -1,8 +1,6 @@
-import pandas as pd
-import numpy as np
-
-from pipebackbone import Configuration, Store
-from pipebackbone.wpipe import _min_itemsize
+from .core import *
+from .Store import Store
+from .Configuration import Configuration
 
 class Parameters():
     def __init__(self, params={'any': 0}):
@@ -26,7 +24,7 @@ class Parameters():
     def create(self, config=Configuration().new(), store=Store()):
         _df = self.new(config)
         with pd.HDFStore(str(store.path), 'r+') as myStore:
-            myStore.append('parameters', _df, min_itemsize=_min_itemsize(_df))
+            myStore.append('parameters', _df, min_itemsize=fmin_itemsize(_df))
         return _df
 
     def getParam(config_id=0, store=Store()):

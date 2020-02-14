@@ -1,11 +1,4 @@
-import pandas as pd
-import subprocess
-
-from pipebackbone import Configuration, DataProduct, Event, Job, Mask,\
-    Node, Options, Parameters, Pipeline, Target, Task, User
-from pipebackbone.wpipe import _min_itemsize
-from pipebackbone.wpipe import path_to_store
-
+from .core import *
 
 class Store():
     def __init__(self, storePath=path_to_store):
@@ -13,6 +6,8 @@ class Store():
         return None
 
     def new(self):
+        from . import User, Node, Options, Pipeline, Target,\
+            Configuration, DataProduct, Parameters, Task, Job, Mask, Event
         _dict = {'users': User().new(),
                  'nodes': Node().new(),
                  'options': Options().new(),
@@ -28,7 +23,7 @@ class Store():
         with pd.HDFStore(str(self.path), 'w', complevel=9,
                          complib='blosc:blosclz') as myStore:
             for k, v in _dict.items():
-                myStore.append(k, v, min_itemsize=_min_itemsize(v),
+                myStore.append(k, v, min_itemsize=fmin_itemsize(v),
                                complevel=9, complib='blosc:blosclz')
         return None
 
@@ -36,7 +31,7 @@ class Store():
         with pd.HDFStore(str(self.path), 'r+') as myStore:
             stuff.__dict__[name_id][0] = int(myStore[key][name_id].max()) + 1
             newStuff = stuff.new()
-            myStore.append(key, newStuff, min_itemsize=_min_itemsize(newStuff),
+            myStore.append(key, newStuff, min_itemsize=fmin_itemsize(newStuff),
                            complevel=9, complib='blosc:blosclz')
         return newStuff
 
@@ -45,7 +40,7 @@ class Store():
             _t = myStore[key]
             _t = _t.drop(index=stuff.index).append(stuff)
             myStore.remove(key)
-            myStore.append(key, _t, min_itemsize=_min_itemsize(_t),
+            myStore.append(key, _t, min_itemsize=fmin_itemsize(_t),
                            complevel=9, complib='blosc:blosclz')
         return None
 

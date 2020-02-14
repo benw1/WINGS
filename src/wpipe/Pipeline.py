@@ -1,10 +1,6 @@
-import pandas as pd
-import numpy as np
-import time
-
-from pipebackbone import Store
-from pipebackbone import User
-from pipebackbone.wpipe import update_time
+from .core import *
+from .Store import Store
+from .User import User
 
 class Pipeline():
     def __init__(self, user=User().new(), name='any', software_root='',
