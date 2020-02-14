@@ -1,9 +1,11 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 import argparse, os, subprocess
-from wpipe import *
+from pipebackbone import Store
+from pipebackbone import Pipeline
+
 
 def createPipeline(user_name,pipe_tasks_path,description=''):
-    myUser   = Store().select('users',''.join(('name=="',str(user_name),'"')))
+    myUser   = Store().select('users', ''.join(('name=="', str(user_name), '"')))
     pipeRoot = os.getcwd()
     pipeName = os.path.basename(pipeRoot)
     softRoot = pipeRoot+'/build'
