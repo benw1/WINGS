@@ -1,16 +1,17 @@
 from .core import *
 from .Store import Store
 
-class Options():
+
+# What is this for?
+class Options:
     def __init__(self, opts={'any': 0}):
         self.__dict__ = opts
-        return None
 
     def new(self, owner=str('any' + 250 * ' '), owner_id=0):
         name = np.array(list(self.__dict__.keys()))
         value = np.array(list(self.__dict__.values()))
-        _df = pd.DataFrame(data=np.array([name, value]).T, columns=
-        ['name', 'value']).sort_values('name')
+        _df = pd.DataFrame(data=np.array([name, value]).T,
+                           columns=['name', 'value']).sort_values('name')
         owner = np.repeat(str(owner), len(name))
         owner_id = np.repeat(int(owner_id), len(name))
         arrays = [owner, owner_id]

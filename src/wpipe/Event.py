@@ -29,6 +29,7 @@ class Event():
         return store.select('events').loc[int(event_id)]
 
     def run_complete(event_id=0, store=Store()):
+        from . import Options
         event = Event.get(int(event_id))
         job_id = int(event.job_id)
         jobOpt = Options.get('job', int(job_id))

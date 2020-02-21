@@ -2,16 +2,17 @@ from .core import *
 from .Store import Store
 from .Configuration import Configuration
 
-class Parameters():
+
+# What is this for?
+class Parameters:
     def __init__(self, params={'any': 0}):
         self.__dict__ = params
-        return None
 
     def new(self, config=Configuration().new()):
         name = np.array(list(self.__dict__.keys()))
         value = np.array(list(self.__dict__.values()))
-        _df = pd.DataFrame(data=np.array([name, value]).T, columns=
-        ['name', 'value']).sort_values('name')
+        _df = pd.DataFrame(data=np.array([name, value]).T,
+                           columns=['name', 'value']).sort_values('name')
 
         _config_id = np.repeat(int(config.config_id), len(name))
         _target_id = np.repeat(int(config.target_id), len(name))

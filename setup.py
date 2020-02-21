@@ -8,7 +8,5 @@ setup(name='wpipe',
       packages=['wpipe'],
       package_dir={'wpipe': 'src/wpipe'},
       package_data={'wpipe': ['h5data/wpipe_store.h5']},
-      install_requires=['numpy','pandas','tables','astropy'],
+      install_requires=['numpy', 'pandas', 'tables', 'sqlalchemy', 'astropy'],
       )
-
-

@@ -4,7 +4,8 @@ from .Node import Node
 from .Configuration import Configuration
 from .Task import Task
 
-class Job():
+
+class Job:
     def __init__(self, state='any', event_id=0,
                  task=Task().new(),
                  config=Configuration().new(),
@@ -19,18 +20,16 @@ class Job():
         self.starttime = pd.to_datetime(time.time(), unit='s')
         self.endtime = pd.to_datetime(time.time(), unit='s')
         self.timestamp = pd.to_datetime(time.time(), unit='s')
-        return None
 
     def new(self):
         _df = pd.DataFrame.from_dict(self.__dict__)
-        _df.index = update_time((pd.MultiIndex.from_arrays(arrays=
-                                                           [np.array([int(self.pipeline_id)]),
-                                                            np.array([int(self.task_id)]),
-                                                            np.array([int(self.config_id)]),
-                                                            np.array([int(self.event_id)]),
-                                                            np.array([int(self.job_id)])],
-                                                           names=(
-                                                           'pipelineID', 'taskID', 'configID', 'eventID', 'jobID'))))
+        _df.index = update_time((pd.MultiIndex.from_arrays(arrays=[np.array([int(self.pipeline_id)]),
+                                                                   np.array([int(self.task_id)]),
+                                                                   np.array([int(self.config_id)]),
+                                                                   np.array([int(self.event_id)]),
+                                                                   np.array([int(self.job_id)])],
+                                                           names=('pipelineID', 'taskID', 'configID',
+                                                                  'eventID', 'jobID'))))
         _df.endtime = _df.timestamp.copy()
         return _df
 

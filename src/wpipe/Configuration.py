@@ -1,8 +1,9 @@
 from .core import *
 from .Store import Store
-from .Target import Target
+from .Target import Target, SQLTarget
 
-class Configuration():
+
+class Configuration:
     def __init__(self, name='', description='',
                  target=Target().new()):
         self.name = np.array([str(name)])
@@ -16,7 +17,6 @@ class Configuration():
         self.config_id = np.array([int(0)])
         self.description = np.array([str(description)])
         self.timestamp = pd.to_datetime(time.time(), unit='s')
-        return None
 
     def new(self):
         _df = pd.DataFrame.from_dict(self.__dict__)
@@ -42,3 +42,91 @@ class Configuration():
     def get(config_id, store=Store()):
         x = store.select('configurations', 'config_id==' + str(config_id))
         return x.loc[x.index.values[0]]
+
+
+class SQLConfiguration:
+    def __init__(self, target, name='', description=''):
+        try:
+            self._config = si.session.query(si.Target). \
+                filter_by(target_id=target.target_id). \
+                filter_by(name=name).one()
+        except si.orm.exc.NoResultFound:
+            self._config = si.Configuration(name=name,
+                                            relativepath=target.relativepath,
+                                            logpath=target.relativepath+'/log_'+name,
+                                            confpath=target.relativepath+'/conf_'+name,
+                                            rawpath=target.relativepath+'/raw_'+name,
+                                            procpath=target.relativepath+'/proc_'+name,
+                                            description=description)
+            target._config.configurations.append(self._config)
+            # _params = Parameters(params).create(_df, store=store)
+            if not os.path.isdir(self._config.logpath):
+                os.mkdir(self._config.logpath)
+            if not os.path.isdir(self._config.confpath):
+                os.mkdir(self._config.confpath)
+            if not os.path.isdir(self._config.rawpath):
+                os.mkdir(self._config.rawpath)
+            if not os.path.isdir(self._config.procpath):
+                os.mkdir(self._config.procpath)
+        self._config.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
+    @property
+    def name(self):
+        return self._config.name
+
+    @name.setter
+    def name(self, name):
+        self._config.name = name
+        self._config.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
+    @property
+    def config_id(self):
+        return self._config.id
+
+    @property
+    def timestamp(self):
+        return self._config.timestamp
+
+    @property
+    def relativepath(self):
+        return self._config.relativepath
+
+    @property
+    def logpath(self):
+        return self._config.logpath
+
+    @property
+    def confpath(self):
+        return self._config.confpath
+
+    @property
+    def rawpath(self):
+        return self._config.rawpath
+
+    @property
+    def procpath(self):
+        return self._config.procpath
+
+    @property
+    def description(self):
+        return self._config.description
+
+    @description.setter
+    def description(self, description):
+        self._config.description = description
+        self._config.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
+    @property
+    def target_id(self):
+        return self._config.target_id
+
+    @property
+    def pipeline_id(self):
+        return self._config._target.pipeline_id
+
+    @property
+    def jobs(self):
+        return list(map(lambda job: job.name, self._config.jobs))

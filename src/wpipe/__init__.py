@@ -1,15 +1,14 @@
-#! /usr/bin/env python
 from .core import *
 from .Store import Store
-from .User import User
-from .Node import Node
-from .Options import Options
-from .Pipeline import Pipeline
-from .Target import Target
-from .Configuration import Configuration
+from .User import User, SQLUser
+from .Node import Node, SQLNode
+from .Options import Options  # What is this for?
+from .Pipeline import Pipeline, SQLPipeline
+from .Target import Target, SQLTarget
+from .Configuration import Configuration, SQLConfiguration
 from .DataProduct import DataProduct
-from .Parameters import Parameters
-from .Task import Task
+from .Parameters import Parameters  # What is this for?
+from .Task import Task, SQLTask
 from .Job import Job
 from .Event import Event
 from .Mask import Mask
@@ -164,4 +163,3 @@ def logprint(configuration, job, log_text):
         log = open(logpath + logfile, "w")
     log.write(log_text)
     log.close()
-
