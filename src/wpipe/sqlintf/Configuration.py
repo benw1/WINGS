@@ -1,5 +1,4 @@
 from .core import *
-from .Target import Target
 
 
 class Configuration(Base):
@@ -14,6 +13,6 @@ class Configuration(Base):
     procpath = sa.Column(sa.String)
     target_id = sa.Column(sa.Integer, sa.ForeignKey('targets.id'))
     target = orm.relationship("Target", back_populates="configurations")
-
-
-Target.configurations = orm.relationship("Configuration", order_by=Configuration.id, back_populates="target")
+    dataproducts = orm.relationship("DataProduct", back_populates="config")
+    parameters = orm.relationship("Parameter", back_populates="config")
+    jobs = orm.relationship("Job", back_populates="config")

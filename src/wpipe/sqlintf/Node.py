@@ -8,3 +8,4 @@ class Node(Base):
     timestamp = sa.Column(sa.TIMESTAMP)
     int_ip = sa.Column(sa.String)
     ext_ip = sa.Column(sa.String)
+    jobs = orm.relationship("Job", back_populates="node")

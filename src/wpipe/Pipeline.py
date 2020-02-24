@@ -33,8 +33,8 @@ class Pipeline:
 
 class SQLPipeline:
     def __init__(self, user, name, software_root='build',
-                 data_root='data', pipe_root='', config_root='config',
-                 description=''):
+                 data_root='data', pipe_root='',
+                 config_root='config', description=''):
         try:
             self._pipeline = si.session.query(si.Pipeline). \
                 filter_by(user_id=user.user_id). \

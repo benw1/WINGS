@@ -1,8 +1,9 @@
 from .core import *
 from .Store import Store
-from .Node import Node
-from .Configuration import Configuration
-from .Task import Task
+from .Node import Node, SQLNode
+from .Owner import SQLOwner
+from .Configuration import Configuration, SQLConfiguration
+from .Task import Task, SQLTask
 
 
 class Job:
@@ -51,3 +52,65 @@ class Job:
                  options={'any': 0}, store=Store()):
         from . import Event
         return Event(name, value, jargs, job).create(options=options, store=store)
+
+
+class SQLJob(SQLOwner):
+    def __init__(self, task, node, config, state='any',
+                 options={}):
+        super().__init__()
+        try:
+            self._job = si.session.query(si.Job). \
+                filter_by(task_id=task.task_id). \
+                filter_by(node_id=node.node_id). \
+                filter_by(config_id=config.config_id).one()
+        except si.orm.exc.NoResultFound:
+            self._job = si.Job(state=state)
+            task._task.jobs.append(self._job)
+            node._node.jobs.append(self._job)
+            config._config.jobs.append(self._job)
+            self._job.starttime = datetime.datetime.utcnow()
+            self._job.endtime = datetime.datetime.utcnow()
+        self._owner = self._job
+        self.options = options
+        self._job.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
+    @property
+    def state(self):
+        return self._job.state
+
+    @property
+    def job_id(self):
+        return self._job.id
+
+    @property
+    def timestamp(self):
+        return self._job.timestamp
+
+    @property
+    def starttime(self):
+        return self._job.starttime
+
+    @property
+    def endtime(self):
+        return self._job.endtime
+
+    @property
+    def task_id(self):
+        return self._job.task_id
+
+    @property
+    def node_id(self):
+        return self._job.node_id
+
+    @property
+    def config_id(self):
+        return self._job.config_id
+
+    @property
+    def pipeline_id(self):
+        return self._job.config.pipeline_id
+
+    @property
+    def event_id(self):
+        return self._job.event.id

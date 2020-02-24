@@ -1,8 +1,10 @@
 from .core import *
 from .Store import Store
+from .Owner import SQLOwner
 from .Configuration import Configuration
 
-class DataProduct():
+
+class DataProduct:
     def __init__(self, filename='any', relativepath='', group='',
                  configuration=Configuration().new(),
                  data_type='', subtype='', filtername='',
@@ -24,7 +26,8 @@ class DataProduct():
             _suffix = 'other'
         self.suffix = np.array([str(_suffix)])
 
-        if not (data_type): data_type = _suffix
+        if not data_type:
+            data_type = _suffix
         self.data_type = np.array([str(data_type)])
         self.subtype = np.array([str(subtype)])
 
@@ -38,7 +41,6 @@ class DataProduct():
         self.pointing_angle = np.array([float(pointing_angle)])
         # self.tags = Options(tags) # meant to break
         self.timestamp = pd.to_datetime(time.time(), unit='s')
-        return None
 
     def new(self):
         _df = pd.DataFrame.from_dict(self.__dict__)
@@ -60,3 +62,105 @@ class DataProduct():
     def get(dp_id, store=Store()):
         x = store.select('data_products', 'dp_id==' + str(dp_id))
         return x.loc[x.index.values[0]]
+
+
+class SQLDataProduct(SQLOwner):
+    def __init__(self, config, filename, relativepath='',
+                 group='', data_type='', subtype='',
+                 filtername='', ra=0, dec=0, pointing_angle=0,
+                 options={}):
+        super().__init__()
+        try:
+            self._dp = si.session.query(si.DataProduct). \
+                filter_by(config_id=config.config_id). \
+                filter_by(filename=filename).one()
+        except si.orm.exc.NoResultFound:
+            if '.' in filename:
+                _suffix = filename.split('.')[-1]
+            else:
+                _suffix = ' '
+            if _suffix not in ['fits', 'txt', 'head', 'cl',
+                               'py', 'pyc', 'pl', 'phot', 'png', 'jpg', 'ps',
+                               'gz', 'dat', 'lst', 'sh']:
+                _suffix = 'other'
+            self._dp = si.DataProduct(filename=filename,
+                                      relativepath=relativepath,  # config.relativepath,
+                                      suffix=_suffix,
+                                      data_type=data_type,
+                                      subtype=subtype,
+                                      group=group,
+                                      filtername=filtername,
+                                      ra=ra,
+                                      dec=dec,
+                                      pointing_angle=pointing_angle)
+            config._config.dataproducts = self._dp
+        self._owner = self._dp
+        self.options = options
+        self._dp.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
+    @property
+    def filename(self):
+        return self._dp.filename
+
+    @filename.setter
+    def filename(self, filename):
+        self._dp.name = filename
+        self._dp.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
+    @property
+    def dp_id(self):
+        return self._dp.id
+
+    @property
+    def timestamp(self):
+        return self._dp.timestamp
+
+    @property
+    def relativepath(self):
+        return self._dp.relativepath
+
+    @property
+    def suffix(self):
+        return self._dp.suffix
+
+    @property
+    def data_type(self):
+        return self._dp.data_type
+
+    @property
+    def subtype(self):
+        return self._dp.subtype
+
+    @property
+    def group(self):
+        return self._dp.group
+
+    @property
+    def filtername(self):
+        return self._dp.filtername
+
+    @property
+    def ra(self):
+        return self._dp.ra
+
+    @property
+    def dec(self):
+        return self._dp.dec
+
+    @property
+    def pointing_angle(self):
+        return self._dp.pointing_angle
+
+    @property
+    def config_id(self):
+        return self._dp.config_id
+
+    @property
+    def target_id(self):
+        return self._dp.config.target_id
+
+    @property
+    def pipeline_id(self):
+        return self._dp.config.target.pipeline_id

@@ -36,3 +36,53 @@ class Options:
         _opt = Options.get(owner, int(owner_id))
         _opt[key] = value
         return store.update('options', Options(_opt).new(owner, int(owner_id)))
+
+
+class SQLOption:
+    def __init__(self, owner, name, value):
+        try:
+            self._option = si.session.query(si.Option). \
+                filter_by(owner_id=owner.owner_id). \
+                filter_by(name=name).one()
+        except si.orm.exc.NoResultFound:
+            self._option = si.Option(name=name,
+                                     value=str(value))
+            owner._owner.options.append(self._option)
+        self._option.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
+    @property
+    def name(self):
+        return self._option.name
+
+    @name.setter
+    def name(self, name):
+        self._option.name = name
+        self._option.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
+    @property
+    def option_id(self):
+        return self._option.id
+
+    @property
+    def timestamp(self):
+        return self._option.timestamp
+
+    @property
+    def value(self):
+        return self._option.value
+
+    @value.setter
+    def value(self, value):
+        self._option.value = value
+        self._option.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
+    @property
+    def owner(self):
+        return self._option.type
+
+    @property
+    def owner_id(self):
+        return self._option.owner_id

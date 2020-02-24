@@ -1,6 +1,6 @@
 from .core import *
 from .Store import Store
-from .Configuration import Configuration
+from .Configuration import Configuration, SQLConfiguration
 
 
 # What is this for?
@@ -45,3 +45,49 @@ class Parameters:
         _params = Parameters.getParam(config_id)
         _params[key] = value
         return store.update('parameters', Parameters(_params).new(_config))
+
+
+class SQLParameter:
+    def __init__(self, config, name, value):
+        try:
+            self._parameter = si.session.query(si.Parameter). \
+                filter_by(config_id=config.config_id). \
+                filter_by(name=name).one()
+        except si.orm.exc.NoResultFound:
+            self._parameter = si.Parameter(name=name,
+                                           value=str(value))
+            config._config.parameters.append(self._parameter)
+        self._parameter.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
+    @property
+    def name(self):
+        return self._parameter.name
+
+    @name.setter
+    def name(self, name):
+        self._parameter.name = name
+        self._parameter.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
+    @property
+    def parameter_id(self):
+        return self._parameter.id
+
+    @property
+    def timestamp(self):
+        return self._parameter.timestamp
+
+    @property
+    def value(self):
+        return self._parameter.value
+
+    @value.setter
+    def value(self, value):
+        self._parameter.value = value
+        self._parameter.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
+    @property
+    def config_id(self):
+        return self._parameter.config_id

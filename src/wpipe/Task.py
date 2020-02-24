@@ -87,5 +87,9 @@ class SQLTask:
         return self._task.pipeline_id
 
     @property
+    def masks(self):
+        return list(map(lambda mask: mask.name, self._task.masks))
+
+    @property
     def jobs(self):
         return list(map(lambda job: job.name, self._task.jobs))

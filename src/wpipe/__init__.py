@@ -2,16 +2,16 @@ from .core import *
 from .Store import Store
 from .User import User, SQLUser
 from .Node import Node, SQLNode
-from .Options import Options  # What is this for?
 from .Pipeline import Pipeline, SQLPipeline
+from .Options import Options, SQLOption  # What is this for?
 from .Target import Target, SQLTarget
 from .Configuration import Configuration, SQLConfiguration
-from .DataProduct import DataProduct
-from .Parameters import Parameters  # What is this for?
+from .Parameters import Parameters, SQLParameter  # What is this for?
+from .DataProduct import DataProduct, SQLDataProduct
 from .Task import Task, SQLTask
-from .Job import Job
-from .Event import Event
-from .Mask import Mask
+from .Mask import Mask, SQLMask
+from .Job import Job, SQLJob
+from .Event import Event, SQLEvent
 
 
 def Submit(task, job_id, event_id):

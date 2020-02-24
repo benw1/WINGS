@@ -1,6 +1,10 @@
 from .core import *
 from .Store import Store
 from .Target import Target, SQLTarget
+# from .Parameters import SQLParameter # this will work if only
+#                                        importing working with SQL,
+#                                        right now it can't work
+#                                        due to the existing class
 
 
 class Configuration:
@@ -45,7 +49,8 @@ class Configuration:
 
 
 class SQLConfiguration:
-    def __init__(self, target, name='', description=''):
+    def __init__(self, target, name='', description='',
+                 parameters = {}):
         try:
             self._config = si.session.query(si.Target). \
                 filter_by(target_id=target.target_id). \
@@ -68,6 +73,7 @@ class SQLConfiguration:
                 os.mkdir(self._config.rawpath)
             if not os.path.isdir(self._config.procpath):
                 os.mkdir(self._config.procpath)
+        self.parameters = parameters
         self._config.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
@@ -125,7 +131,21 @@ class SQLConfiguration:
 
     @property
     def pipeline_id(self):
-        return self._config._target.pipeline_id
+        return self._config.target.pipeline_id
+
+    @property
+    def dataproducts(self):
+        return list(map(lambda dataproduct: dataproduct.filename, self._config.dataproducts))
+
+    @property
+    def parameters(self):
+        return dict(map(lambda parameter: [parameter.name, parameter.value], self._config.parameters))
+
+    @parameters.setter
+    def parameters(self, parameters={}):
+        from .Parameters import SQLParameter  #line to delete in final version
+        for key, value in parameters.items():
+            SQLParameter(self._config, key, value)
 
     @property
     def jobs(self):

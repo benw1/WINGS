@@ -1,15 +1,11 @@
 from .core import *
-from .Node import Node
-from .Configuration import Configuration
-from .Task import Task
+from .Owner import Owner
 
 
-class Job(Base):
+class Job(Owner):
     __tablename__ = 'jobs'
-    id = sa.Column(sa.Integer, primary_key=True)
-    name = sa.Column(sa.String)
+    id = sa.Column(sa.Integer, sa.ForeignKey('owners.id'), primary_key=True)
     state = sa.Column(sa.String)
-    timestamp = sa.Column(sa.TIMESTAMP)
     starttime = sa.Column(sa.TIMESTAMP)
     endtime = sa.Column(sa.TIMESTAMP)
     node_id = sa.Column(sa.Integer, sa.ForeignKey('nodes.id'))
@@ -18,8 +14,7 @@ class Job(Base):
     config = orm.relationship("Configuration", back_populates="jobs")
     task_id = sa.Column(sa.Integer, sa.ForeignKey('tasks.id'))
     task = orm.relationship("Task", back_populates="jobs")
-
-
-Node.jobs = orm.relationship("Job", order_by=Job.id, back_populates="node")
-Configuration.jobs = orm.relationship("Job", order_by=Job.id, back_populates="config")
-Task.jobs = orm.relationship("Job", order_by=Job.id, back_populates="task")
+    event = orm.relationship("Event", uselist=False, primaryjoin="Job.id==Event.job_id", back_populates="job")
+    __mapper_args__ = {
+        'polymorphic_identity':'job',
+    }

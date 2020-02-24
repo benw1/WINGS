@@ -1,5 +1,4 @@
 from .core import *
-from .User import User
 
 
 class Pipeline(Base):
@@ -14,6 +13,5 @@ class Pipeline(Base):
     description = sa.Column(sa.String)
     user_id = sa.Column(sa.Integer, sa.ForeignKey('users.id'))
     user = orm.relationship("User", back_populates="pipelines")
-
-
-User.pipelines = orm.relationship("Pipeline", order_by=Pipeline.id, back_populates="user")
+    targets = orm.relationship("Target", back_populates="pipeline")
+    tasks = orm.relationship("Task", back_populates="pipeline")

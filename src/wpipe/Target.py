@@ -1,6 +1,7 @@
 from .core import *
 from .Store import Store
 from .Pipeline import Pipeline, SQLPipeline
+from .Owner import SQLOwner
 
 
 class Target:
@@ -38,8 +39,9 @@ class Target:
         return x.loc[x.index.values[0]]
 
 
-class SQLTarget:
-    def __init__(self, pipeline, name):
+class SQLTarget(SQLOwner):
+    def __init__(self, pipeline, name, options={}):
+        super().__init__()
         try:
             self._target = si.session.query(si.Target). \
                 filter_by(pipeline_id=pipeline.pipeline_id). \
@@ -48,9 +50,10 @@ class SQLTarget:
             self._target = si.Target(name=name,
                                      relativepath=pipeline.data_root+'/'+name)
             pipeline._pipeline.targets.append(self._target)
-            # _opt = Options(options).create('target', int(_df.target_id), store=store)
             if not os.path.isdir(self._target.relativepath):
                 os.mkdir(self._target.relativepath)
+        self._owner = self._target
+        self.options = options
         self._target.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
