@@ -14,3 +14,6 @@ from .Job import Job
 from .Event import Event
 
 Base.metadata.create_all(engine)
+
+# import eralchemy as ERA
+# ERA.render_er(wp.si.Base,"UML.png")

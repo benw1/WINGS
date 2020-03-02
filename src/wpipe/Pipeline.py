@@ -40,6 +40,12 @@ class SQLPipeline:
                 filter_by(user_id=user.user_id). \
                 filter_by(name=name).one()
         except si.orm.exc.NoResultFound:
+            temp = []
+            for path in [pipe_root, software_root, data_root, config_root]:
+                if path[:1] != '/' or path == '':
+                    path = os.getcwd() + ['', '/'][bool(path)] + path
+                temp.append(path)
+            pipe_root, software_root, data_root, config_root = temp
             self._pipeline = si.Pipeline(name=name,
                                          software_root=software_root,
                                          data_root=data_root,

@@ -5,7 +5,7 @@ class Owner(Base):
     __tablename__ = 'owners'
     id = sa.Column(sa.Integer, primary_key=True)
     timestamp = sa.Column(sa.TIMESTAMP)
-    type = sa.Column(sa.String)
+    type = sa.Column(sa.String(256))
     options = orm.relationship("Option", back_populates="owner")
     __mapper_args__ = {
         'polymorphic_identity':'owner',

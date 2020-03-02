@@ -5,7 +5,7 @@ from .Owner import Owner
 class Job(Owner):
     __tablename__ = 'jobs'
     id = sa.Column(sa.Integer, sa.ForeignKey('owners.id'), primary_key=True)
-    state = sa.Column(sa.String)
+    state = sa.Column(sa.String(256))
     starttime = sa.Column(sa.TIMESTAMP)
     endtime = sa.Column(sa.TIMESTAMP)
     node_id = sa.Column(sa.Integer, sa.ForeignKey('nodes.id'))

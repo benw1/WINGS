@@ -4,7 +4,7 @@ from .core import *
 class Task(Base):
     __tablename__ = 'tasks'
     id = sa.Column(sa.Integer, primary_key=True)
-    name = sa.Column(sa.String)
+    name = sa.Column(sa.String(256))
     timestamp = sa.Column(sa.TIMESTAMP)
     nruns = sa.Column(sa.Integer)
     run_time = sa.Column(sa.Float)
