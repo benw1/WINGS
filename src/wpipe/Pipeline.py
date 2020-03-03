@@ -64,6 +64,7 @@ class SQLPipeline:
 
     @property
     def name(self):
+        si.session.commit()
         return self._pipeline.name
 
     @name.setter
@@ -74,30 +75,37 @@ class SQLPipeline:
 
     @property
     def pipeline_id(self):
+        si.session.commit()
         return self._pipeline.id
 
     @property
     def timestamp(self):
+        si.session.commit()
         return self._pipeline.timestamp
 
     @property
     def software_root(self):
+        si.session.commit()
         return self._pipeline.software_root
 
     @property
     def data_root(self):
+        si.session.commit()
         return self._pipeline.data_root
 
     @property
     def pipe_root(self):
+        si.session.commit()
         return self._pipeline.pipe_root
 
     @property
     def config_root(self):
+        si.session.commit()
         return self._pipeline.config_root
 
     @property
     def description(self):
+        si.session.commit()
         return self._pipeline.description
 
     @description.setter
@@ -108,16 +116,20 @@ class SQLPipeline:
 
     @property
     def user_id(self):
+        si.session.commit()
         return self._pipeline.user_id
 
     @property
     def user_name(self):
+        si.session.commit()
         return self._pipeline.user.name
 
     @property
     def targets(self):
+        si.session.commit()
         return list(map(lambda target: target.name, self._pipeline.targets))
 
     @property
     def tasks(self):
+        si.session.commit()
         return list(map(lambda task: task.name, self._pipeline.tasks))

@@ -1,6 +1,8 @@
 from .core import *
 from .Store import Store
 from .Target import Target, SQLTarget
+
+
 # from .Parameters import SQLParameter # this will work if only
 #                                        importing working with SQL,
 #                                        right now it can't work
@@ -50,20 +52,20 @@ class Configuration:
 
 class SQLConfiguration:
     def __init__(self, target, name='', description='',
-                 parameters = {}):
+                 parameters={}):
         try:
-            self._config = si.session.query(si.Target). \
+            self._config = si.session.query(si.Configuration). \
                 filter_by(target_id=target.target_id). \
                 filter_by(name=name).one()
         except si.orm.exc.NoResultFound:
             self._config = si.Configuration(name=name,
                                             relativepath=target.relativepath,
-                                            logpath=target.relativepath+'/log_'+name,
-                                            confpath=target.relativepath+'/conf_'+name,
-                                            rawpath=target.relativepath+'/raw_'+name,
-                                            procpath=target.relativepath+'/proc_'+name,
+                                            logpath=target.relativepath + '/log_' + name,
+                                            confpath=target.relativepath + '/conf_' + name,
+                                            rawpath=target.relativepath + '/raw_' + name,
+                                            procpath=target.relativepath + '/proc_' + name,
                                             description=description)
-            target._config.configurations.append(self._config)
+            target._target.configurations.append(self._config)
             # _params = Parameters(params).create(_df, store=store)
             if not os.path.isdir(self._config.logpath):
                 os.mkdir(self._config.logpath)
@@ -79,6 +81,7 @@ class SQLConfiguration:
 
     @property
     def name(self):
+        si.session.commit()
         return self._config.name
 
     @name.setter
@@ -89,34 +92,42 @@ class SQLConfiguration:
 
     @property
     def config_id(self):
+        si.session.commit()
         return self._config.id
 
     @property
     def timestamp(self):
+        si.session.commit()
         return self._config.timestamp
 
     @property
     def relativepath(self):
+        si.session.commit()
         return self._config.relativepath
 
     @property
     def logpath(self):
+        si.session.commit()
         return self._config.logpath
 
     @property
     def confpath(self):
+        si.session.commit()
         return self._config.confpath
 
     @property
     def rawpath(self):
+        si.session.commit()
         return self._config.rawpath
 
     @property
     def procpath(self):
+        si.session.commit()
         return self._config.procpath
 
     @property
     def description(self):
+        si.session.commit()
         return self._config.description
 
     @description.setter
@@ -127,26 +138,31 @@ class SQLConfiguration:
 
     @property
     def target_id(self):
+        si.session.commit()
         return self._config.target_id
 
     @property
     def pipeline_id(self):
+        si.session.commit()
         return self._config.target.pipeline_id
 
     @property
     def dataproducts(self):
+        si.session.commit()
         return list(map(lambda dataproduct: dataproduct.filename, self._config.dataproducts))
 
     @property
     def parameters(self):
+        si.session.commit()
         return dict(map(lambda parameter: [parameter.name, parameter.value], self._config.parameters))
 
     @parameters.setter
     def parameters(self, parameters={}):
-        from .Parameters import SQLParameter  #line to delete in final version
+        from .Parameters import SQLParameter # line to delete in final version
         for key, value in parameters.items():
-            SQLParameter(self._config, key, value)
+            SQLParameter(self, key, value)
 
     @property
     def jobs(self):
+        si.session.commit()
         return list(map(lambda job: job.name, self._config.jobs))

@@ -53,6 +53,7 @@ class SQLOption:
 
     @property
     def name(self):
+        si.session.commit()
         return self._option.name
 
     @name.setter
@@ -63,14 +64,17 @@ class SQLOption:
 
     @property
     def option_id(self):
+        si.session.commit()
         return self._option.id
 
     @property
     def timestamp(self):
+        si.session.commit()
         return self._option.timestamp
 
     @property
     def value(self):
+        si.session.commit()
         return self._option.value
 
     @value.setter
@@ -81,8 +85,10 @@ class SQLOption:
 
     @property
     def owner(self):
+        si.session.commit()
         return self._option.type
 
     @property
     def owner_id(self):
+        si.session.commit()
         return self._option.owner_id

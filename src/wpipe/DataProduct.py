@@ -101,6 +101,7 @@ class SQLDataProduct(SQLOwner):
 
     @property
     def filename(self):
+        si.session.commit()
         return self._dp.filename
 
     @filename.setter
@@ -111,56 +112,70 @@ class SQLDataProduct(SQLOwner):
 
     @property
     def dp_id(self):
+        si.session.commit()
         return self._dp.id
 
     @property
     def timestamp(self):
+        si.session.commit()
         return self._dp.timestamp
 
     @property
     def relativepath(self):
+        si.session.commit()
         return self._dp.relativepath
 
     @property
     def suffix(self):
+        si.session.commit()
         return self._dp.suffix
 
     @property
     def data_type(self):
+        si.session.commit()
         return self._dp.data_type
 
     @property
     def subtype(self):
+        si.session.commit()
         return self._dp.subtype
 
     @property
     def group(self):
+        si.session.commit()
         return self._dp.group
 
     @property
     def filtername(self):
+        si.session.commit()
         return self._dp.filtername
 
     @property
     def ra(self):
+        si.session.commit()
         return self._dp.ra
 
     @property
     def dec(self):
+        si.session.commit()
         return self._dp.dec
 
     @property
     def pointing_angle(self):
+        si.session.commit()
         return self._dp.pointing_angle
 
     @property
     def config_id(self):
+        si.session.commit()
         return self._dp.config_id
 
     @property
     def target_id(self):
+        si.session.commit()
         return self._dp.config.target_id
 
     @property
     def pipeline_id(self):
+        si.session.commit()
         return self._dp.config.target.pipeline_id

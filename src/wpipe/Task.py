@@ -54,6 +54,7 @@ class SQLTask:
 
     @property
     def name(self):
+        si.session.commit()
         return self._task.name
 
     @name.setter
@@ -64,32 +65,40 @@ class SQLTask:
 
     @property
     def task_id(self):
+        si.session.commit()
         return self._task.id
 
     @property
     def timestamp(self):
+        si.session.commit()
         return self._task.timestamp
 
     @property
     def nruns(self):
+        si.session.commit()
         return self._task.nruns
 
     @property
     def run_time(self):
+        si.session.commit()
         return self._task.run_time
 
     @property
     def is_exclusive(self):
+        si.session.commit()
         return self._task.is_exclusive
 
     @property
     def pipeline_id(self):
+        si.session.commit()
         return self._task.pipeline_id
 
     @property
     def masks(self):
+        si.session.commit()
         return list(map(lambda mask: mask.name, self._task.masks))
 
     @property
     def jobs(self):
+        si.session.commit()
         return list(map(lambda job: job.name, self._task.jobs))

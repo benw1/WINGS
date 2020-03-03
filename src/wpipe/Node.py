@@ -37,6 +37,7 @@ class SQLNode:
 
     @property
     def name(self):
+        si.session.commit()
         return self._node.name
 
     @name.setter
@@ -47,20 +48,25 @@ class SQLNode:
 
     @property
     def node_id(self):
+        si.session.commit()
         return self._node.id
 
     @property
     def timestamp(self):
+        si.session.commit()
         return self._node.timestamp
 
     @property
     def int_ip(self):
+        si.session.commit()
         return self._node.int_ip
 
     @property
     def ext_ip(self):
+        si.session.commit()
         return self._node.ext_ip
 
     @property
     def jobs(self):
+        si.session.commit()
         return list(map(lambda job: job.name, self._node.jobs))

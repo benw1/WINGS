@@ -39,25 +39,39 @@ class Event:
 
 
 class SQLEvent(SQLOwner):
-    def __init__(self, job, name, jargs='', value='',
-                 options={}):
-        super().__init__()
+    def __new__(cls, *args, **kwargs):
+        job = args[0]
+        name = args[1]
+        jargs = kwargs.get('jargs','')
+        value = kwargs.get('value','')
         try:
-            self._event = si.session.query(si.Event). \
-                filter_by(job_id=job.job_id). \
+            cls._event = si.session.query(si.Event). \
+                filter_by(parent_job_id=job.job_id). \
                 filter_by(name=name).one()
         except si.orm.exc.NoResultFound:
-            self._event = si.Event(name=name,
-                                   jargs=jargs,
-                                   value=value)
-            job._job.event = self._event
-        self._owner = self._event
-        self.options = options
+            cls._event = si.Event(name=name,
+                                  jargs=jargs,
+                                  value=value)
+            job._job.child_events.append(cls._event)
+        if hasattr(cls._event, '_wpipe_object'):
+            cls._inst = cls._event._wpipe_object
+        else:
+            cls._inst = super(SQLEvent, cls).__new__(cls)
+            cls._inst._event = cls._event
+            cls._event._wpipe_object = cls._inst
+        return cls._inst
+
+    def __init__(self, *args, **kwargs):
+        if not hasattr(self,'_owner'):
+            super().__init__()
+            self._owner = self._event
+        self.options = kwargs.get('options',{})
         self._event.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
     @property
     def name(self):
+        si.session.commit()
         return self._event.name
 
     @name.setter
@@ -68,20 +82,30 @@ class SQLEvent(SQLOwner):
 
     @property
     def event_id(self):
+        si.session.commit()
         return self._event.id
 
     @property
     def timestamp(self):
+        si.session.commit()
         return self._event.timestamp
 
     @property
     def jargs(self):
+        si.session.commit()
         return self._event.jargs
 
     @property
     def value(self):
+        si.session.commit()
         return self._event.value
 
     @property
-    def job_id(self):
-        return self._event.job_id
+    def parent_job_id(self):
+        si.session.commit()
+        return self._event.parent_job_id
+
+    @property
+    def fired_jobs_ids(self):
+        si.session.commit()
+        return list(map(lambda job: job.id, self._event.fired_jobs))

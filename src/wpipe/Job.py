@@ -55,21 +55,42 @@ class Job:
 
 
 class SQLJob(SQLOwner):
-    def __init__(self, task, node, config, state='any',
-                 options={}):
+    def __init__(self, config, task=None, event=None, node=None,
+                 state='any', options={}):
         super().__init__()
         try:
             self._job = si.session.query(si.Job). \
-                filter_by(task_id=task.task_id). \
-                filter_by(node_id=node.node_id). \
-                filter_by(config_id=config.config_id).one()
+                filter_by(config_id=config.config_id). \
+                filter_by(node_id=node.node_id)
+            if task is not None:
+                self._job = self._job. \
+                    filter_by(task_id=task.task_id)
+            if event is not None:
+                self._job = self._job. \
+                    filter_by(firing_event_id=event.event_id)
+            if node is not None:
+                self._job = self._job. \
+                    filter_by(node_id=node.node_id)
+            self._job = self._job.one()
+            self._child_events = []
+            from .Event import SQLEvent
+            for child_event in self._job.child_events:
+                if hasattr(child_event, '_wpipe_object'):
+                    self._child_events.append(child_event._wpipe_object)
+                else:
+                    self._child_events.append(SQLEvent(self, child_event.name))
         except si.orm.exc.NoResultFound:
             self._job = si.Job(state=state)
-            task._task.jobs.append(self._job)
-            node._node.jobs.append(self._job)
             config._config.jobs.append(self._job)
+            if task is not None:
+                task._task.jobs.append(self._job)
+            if event is not None:
+                event._event.fired_jobs.append(self._job)
+            if node is not None:
+                node._node.jobs.append(self._job)
             self._job.starttime = datetime.datetime.utcnow()
             self._job.endtime = datetime.datetime.utcnow()
+            self._child_events = []
         self._owner = self._job
         self.options = options
         self._job.timestamp = datetime.datetime.utcnow()
@@ -77,40 +98,60 @@ class SQLJob(SQLOwner):
 
     @property
     def state(self):
+        si.session.commit()
         return self._job.state
 
     @property
     def job_id(self):
+        si.session.commit()
         return self._job.id
 
     @property
     def timestamp(self):
+        si.session.commit()
         return self._job.timestamp
 
     @property
     def starttime(self):
+        si.session.commit()
         return self._job.starttime
 
     @property
     def endtime(self):
+        si.session.commit()
         return self._job.endtime
 
     @property
     def task_id(self):
+        si.session.commit()
         return self._job.task_id
 
     @property
     def node_id(self):
+        si.session.commit()
         return self._job.node_id
 
     @property
     def config_id(self):
+        si.session.commit()
         return self._job.config_id
 
     @property
     def pipeline_id(self):
+        si.session.commit()
         return self._job.config.pipeline_id
 
     @property
-    def event_id(self):
-        return self._job.event.id
+    def firing_event_id(self):
+        si.session.commit()
+        return self._job.firing_event_id
+
+    @property
+    def child_events(self):
+        return self._child_events
+
+    def create_event(self, name, **kwargs):
+        from .Event import SQLEvent
+        si.session.commit()
+        self._child_events.append(SQLEvent(self, name, **kwargs))
+        return self._child_events[-1]

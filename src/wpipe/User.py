@@ -34,6 +34,7 @@ class SQLUser:
 
     @property
     def name(self):
+        si.session.commit()
         return self._user.name
 
     @name.setter
@@ -44,12 +45,15 @@ class SQLUser:
 
     @property
     def user_id(self):
+        si.session.commit()
         return self._user.id
 
     @property
     def timestamp(self):
+        si.session.commit()
         return self._user.timestamp
 
     @property
     def pipelines(self):
+        si.session.commit()
         return list(map(lambda pipeline: pipeline.name, self._user.pipelines))

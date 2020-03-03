@@ -59,6 +59,7 @@ class SQLTarget(SQLOwner):
 
     @property
     def name(self):
+        si.session.commit()
         return self._target.name
 
     @name.setter
@@ -69,20 +70,25 @@ class SQLTarget(SQLOwner):
 
     @property
     def target_id(self):
+        si.session.commit()
         return self._target.id
 
     @property
     def timestamp(self):
+        si.session.commit()
         return self._target.timestamp
 
     @property
     def relativepath(self):
+        si.session.commit()
         return self._target.relativepath
 
     @property
     def pipeline_id(self):
+        si.session.commit()
         return self._target.pipeline_id
 
     @property
     def configurations(self):
+        si.session.commit()
         return list(map(lambda configuration: configuration.name, self._target.configurations))

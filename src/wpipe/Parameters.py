@@ -62,6 +62,7 @@ class SQLParameter:
 
     @property
     def name(self):
+        si.session.commit()
         return self._parameter.name
 
     @name.setter
@@ -72,14 +73,17 @@ class SQLParameter:
 
     @property
     def parameter_id(self):
+        si.session.commit()
         return self._parameter.id
 
     @property
     def timestamp(self):
+        si.session.commit()
         return self._parameter.timestamp
 
     @property
     def value(self):
+        si.session.commit()
         return self._parameter.value
 
     @value.setter
@@ -90,4 +94,5 @@ class SQLParameter:
 
     @property
     def config_id(self):
+        si.session.commit()
         return self._parameter.config_id

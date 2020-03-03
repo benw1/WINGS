@@ -11,6 +11,7 @@ class Configuration(Base):
     confpath = sa.Column(sa.String(256))
     rawpath = sa.Column(sa.String(256))
     procpath = sa.Column(sa.String(256))
+    description = sa.Column(sa.String(256))
     target_id = sa.Column(sa.Integer, sa.ForeignKey('targets.id'))
     target = orm.relationship("Target", back_populates="configurations")
     dataproducts = orm.relationship("DataProduct", back_populates="config")
