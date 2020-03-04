@@ -32,33 +32,52 @@ class Pipeline:
 
 
 class SQLPipeline:
-    def __init__(self, user, name, software_root='build',
-                 data_root='data', pipe_root='',
-                 config_root='config', description=''):
-        try:
-            self._pipeline = si.session.query(si.Pipeline). \
-                filter_by(user_id=user.user_id). \
-                filter_by(name=name).one()
-        except si.orm.exc.NoResultFound:
-            temp = []
-            for path in [pipe_root, software_root, data_root, config_root]:
-                if path[:1] != '/' or path == '':
-                    path = os.getcwd() + ['', '/'][bool(path)] + path
-                temp.append(path)
-            pipe_root, software_root, data_root, config_root = temp
-            self._pipeline = si.Pipeline(name=name,
-                                         software_root=software_root,
-                                         data_root=data_root,
-                                         pipe_root=pipe_root,
-                                         config_root=config_root,
-                                         description=description)
-            user._user.pipelines.append(self._pipeline)
-            if not os.path.isdir(self._pipeline.software_root):
-                os.mkdir(self._pipeline.software_root)
-            if not os.path.isdir(self._pipeline.data_root):
-                os.mkdir(self._pipeline.data_root)
-            if not os.path.isdir(self._pipeline.config_root):
-                os.mkdir(self._pipeline.config_root)
+    def __new__(cls, *args, **kwargs):
+        # checking if given argument is sqlintf object
+        cls._pipeline = args[0] if len(args) else None
+        if not isinstance(cls._pipeline, si.Pipeline):
+            # gathering construction arguments
+            user = kwargs.get('user', args[0] if len(args) else None)
+            name = kwargs.get('name', args[1] if len(args) > 1 else None)
+            software_root = kwargs.get('software_root', 'build')
+            data_root = kwargs.get('data_root', 'data')
+            pipe_root = kwargs.get('pipe_root', '')
+            config_root = kwargs.get('config_root', 'config')
+            description = kwargs.get('description', '')
+            # querying the database for existing row or create
+            try:
+                cls._pipeline = si.session.query(si.Pipeline). \
+                    filter_by(user_id=user.user_id). \
+                    filter_by(name=name).one()
+            except si.orm.exc.NoResultFound:
+                temp = []
+                for path in [pipe_root, software_root, data_root, config_root]:
+                    if path[:1] != '/' or path == '':
+                        path = os.getcwd() + ['', '/'][bool(path)] + path
+                    temp.append(path)
+                pipe_root, software_root, data_root, config_root = temp
+                cls._pipeline = si.Pipeline(name=name,
+                                            software_root=software_root,
+                                            data_root=data_root,
+                                            pipe_root=pipe_root,
+                                            config_root=config_root,
+                                            description=description)
+                user._user.pipelines.append(cls._pipeline)
+                if not os.path.isdir(cls._pipeline.software_root):
+                    os.mkdir(cls._pipeline.software_root)
+                if not os.path.isdir(cls._pipeline.data_root):
+                    os.mkdir(cls._pipeline.data_root)
+                if not os.path.isdir(cls._pipeline.config_root):
+                    os.mkdir(cls._pipeline.config_root)
+        # verifying if instance already exists and return
+        wpipe_to_sqlintf_connection(cls, 'Pipeline', __name__)
+        return cls._inst
+
+    def __init__(self, *args, **kwargs):
+        if not hasattr(self, '_targets_proxy'):
+            self._targets_proxy = ChildrenProxy(self._pipeline, 'targets', 'Target', __name__)
+        if not hasattr(self, '_tasks_proxy'):
+            self._tasks_proxy = ChildrenProxy(self._pipeline, 'tasks', 'Task', __name__)
         self._pipeline.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
@@ -126,10 +145,8 @@ class SQLPipeline:
 
     @property
     def targets(self):
-        si.session.commit()
-        return list(map(lambda target: target.name, self._pipeline.targets))
+        return self._targets_proxy
 
     @property
     def tasks(self):
-        si.session.commit()
-        return list(map(lambda task: task.name, self._pipeline.tasks))
+        return self._tasks_proxy

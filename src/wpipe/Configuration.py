@@ -51,110 +51,127 @@ class Configuration:
 
 
 class SQLConfiguration:
-    def __init__(self, target, name='', description='',
-                 parameters={}):
-        try:
-            self._config = si.session.query(si.Configuration). \
-                filter_by(target_id=target.target_id). \
-                filter_by(name=name).one()
-        except si.orm.exc.NoResultFound:
-            self._config = si.Configuration(name=name,
-                                            relativepath=target.relativepath,
-                                            logpath=target.relativepath + '/log_' + name,
-                                            confpath=target.relativepath + '/conf_' + name,
-                                            rawpath=target.relativepath + '/raw_' + name,
-                                            procpath=target.relativepath + '/proc_' + name,
-                                            description=description)
-            target._target.configurations.append(self._config)
-            # _params = Parameters(params).create(_df, store=store)
-            if not os.path.isdir(self._config.logpath):
-                os.mkdir(self._config.logpath)
-            if not os.path.isdir(self._config.confpath):
-                os.mkdir(self._config.confpath)
-            if not os.path.isdir(self._config.rawpath):
-                os.mkdir(self._config.rawpath)
-            if not os.path.isdir(self._config.procpath):
-                os.mkdir(self._config.procpath)
-        self.parameters = parameters
-        self._config.timestamp = datetime.datetime.utcnow()
+    def __new__(cls, *args, **kwargs):
+        # checking if given argument is sqlintf object
+        cls._configuration = args[0] if len(args) else None
+        if not isinstance(cls._configuration, si.Configuration):
+            # gathering construction arguments
+            target = kwargs.get('target', args[0] if len(args) else None)
+            name = kwargs.get('name', args[1] if len(args) > 1 else None)
+            description = kwargs.get('description', '')
+            # querying the database for existing row or create
+            try:
+                cls._configuration = si.session.query(si.Configuration). \
+                    filter_by(target_id=target.target_id). \
+                    filter_by(name=name).one()
+            except si.orm.exc.NoResultFound:
+                cls._configuration = si.Configuration(name=name,
+                                                      relativepath=target.relativepath,
+                                                      logpath=target.relativepath + '/log_' + name,
+                                                      confpath=target.relativepath + '/conf_' + name,
+                                                      rawpath=target.relativepath + '/raw_' + name,
+                                                      procpath=target.relativepath + '/proc_' + name,
+                                                      description=description)
+                target._target.configurations.append(cls._configuration)
+                # _params = Parameters(params).create(_df, store=store)
+                if not os.path.isdir(cls._configuration.logpath):
+                    os.mkdir(cls._configuration.logpath)
+                if not os.path.isdir(cls._configuration.confpath):
+                    os.mkdir(cls._configuration.confpath)
+                if not os.path.isdir(cls._configuration.rawpath):
+                    os.mkdir(cls._configuration.rawpath)
+                if not os.path.isdir(cls._configuration.procpath):
+                    os.mkdir(cls._configuration.procpath)
+        # verifying if instance already exists and return
+        wpipe_to_sqlintf_connection(cls, 'Configuration', __name__)
+        return cls._inst
+
+    def __init__(self, *args, **kwargs):
+        if not hasattr(self, '_dataproducts_proxy'):
+            self._dataproducts_proxy = ChildrenProxy(self._configuration, 'dataproducts', 'DataProduct', __name__,
+                                                     child_attr='filename')
+        self.parameters = kwargs.get('parameters', {})
+        if not hasattr(self, '_jobs_proxy'):
+            self._jobs_proxy = ChildrenProxy(self._configuration, 'jobs', 'Job', __name__,
+                                             child_attr='id')
+        self._configuration.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
     @property
     def name(self):
         si.session.commit()
-        return self._config.name
+        return self._configuration.name
 
     @name.setter
     def name(self, name):
-        self._config.name = name
-        self._config.timestamp = datetime.datetime.utcnow()
+        self._configuration.name = name
+        self._configuration.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
     @property
     def config_id(self):
         si.session.commit()
-        return self._config.id
+        return self._configuration.id
 
     @property
     def timestamp(self):
         si.session.commit()
-        return self._config.timestamp
+        return self._configuration.timestamp
 
     @property
     def relativepath(self):
         si.session.commit()
-        return self._config.relativepath
+        return self._configuration.relativepath
 
     @property
     def logpath(self):
         si.session.commit()
-        return self._config.logpath
+        return self._configuration.logpath
 
     @property
     def confpath(self):
         si.session.commit()
-        return self._config.confpath
+        return self._configuration.confpath
 
     @property
     def rawpath(self):
         si.session.commit()
-        return self._config.rawpath
+        return self._configuration.rawpath
 
     @property
     def procpath(self):
         si.session.commit()
-        return self._config.procpath
+        return self._configuration.procpath
 
     @property
     def description(self):
         si.session.commit()
-        return self._config.description
+        return self._configuration.description
 
     @description.setter
     def description(self, description):
-        self._config.description = description
-        self._config.timestamp = datetime.datetime.utcnow()
+        self._configuration.description = description
+        self._configuration.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
     @property
     def target_id(self):
         si.session.commit()
-        return self._config.target_id
+        return self._configuration.target_id
 
     @property
     def pipeline_id(self):
         si.session.commit()
-        return self._config.target.pipeline_id
+        return self._configuration.target.pipeline_id
 
     @property
     def dataproducts(self):
-        si.session.commit()
-        return list(map(lambda dataproduct: dataproduct.filename, self._config.dataproducts))
+        return self._dataproducts_proxy
 
     @property
     def parameters(self):
         si.session.commit()
-        return dict(map(lambda parameter: [parameter.name, parameter.value], self._config.parameters))
+        return dict(map(lambda parameter: [parameter.name, parameter.value], self._configuration.parameters))
 
     @parameters.setter
     def parameters(self, parameters={}):
@@ -164,5 +181,4 @@ class SQLConfiguration:
 
     @property
     def jobs(self):
-        si.session.commit()
-        return list(map(lambda job: job.name, self._config.jobs))
+        return self._jobs_proxy

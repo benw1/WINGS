@@ -65,117 +65,130 @@ class DataProduct:
 
 
 class SQLDataProduct(SQLOwner):
-    def __init__(self, config, filename, relativepath='',
-                 group='', data_type='', subtype='',
-                 filtername='', ra=0, dec=0, pointing_angle=0,
-                 options={}):
-        super().__init__()
-        try:
-            self._dp = si.session.query(si.DataProduct). \
-                filter_by(config_id=config.config_id). \
-                filter_by(filename=filename).one()
-        except si.orm.exc.NoResultFound:
-            if '.' in filename:
-                _suffix = filename.split('.')[-1]
-            else:
-                _suffix = ' '
-            if _suffix not in ['fits', 'txt', 'head', 'cl',
-                               'py', 'pyc', 'pl', 'phot', 'png', 'jpg', 'ps',
-                               'gz', 'dat', 'lst', 'sh']:
-                _suffix = 'other'
-            self._dp = si.DataProduct(filename=filename,
-                                      relativepath=relativepath,  # config.relativepath,
-                                      suffix=_suffix,
-                                      data_type=data_type,
-                                      subtype=subtype,
-                                      group=group,
-                                      filtername=filtername,
-                                      ra=ra,
-                                      dec=dec,
-                                      pointing_angle=pointing_angle)
-            config._config.dataproducts = self._dp
-        self._owner = self._dp
-        self.options = options
-        self._dp.timestamp = datetime.datetime.utcnow()
+    def __new__(cls, *args, **kwargs):
+        # checking if given argument is sqlintf object
+        cls._dataproduct = args[0] if len(args) else None
+        if not isinstance(cls._dataproduct, si.DataProduct):
+            # gathering construction arguments
+            config = kwargs.get('config', args[0] if len(args) else None)
+            filename = kwargs.get('filename', args[1] if len(args) > 1 else None)
+            relativepath = kwargs.get('relativepath', config.relativepath)
+            group = kwargs.get('group', '')
+            data_type = kwargs.get('data_type', '')
+            subtype = kwargs.get('subtype', '')
+            filtername = kwargs.get('filtername', '')
+            ra = kwargs.get('ra', 0)
+            dec = kwargs.get('dec', 0)
+            pointing_angle = kwargs.get('pointing_angle', 0)
+            # querying the database for existing row or create
+            try:
+                cls._dataproduct = si.session.query(si.DataProduct). \
+                    filter_by(config_id=config.config_id). \
+                    filter_by(filename=filename).one()
+            except si.orm.exc.NoResultFound:
+                if '.' in filename:
+                    _suffix = filename.split('.')[-1]
+                else:
+                    _suffix = ' '
+                if _suffix not in ['fits', 'txt', 'head', 'cl',
+                                   'py', 'pyc', 'pl', 'phot', 'png', 'jpg', 'ps',
+                                   'gz', 'dat', 'lst', 'sh']:
+                    _suffix = 'other'
+                cls._dataproduct = si.DataProduct(filename=filename,
+                                                  relativepath=relativepath,
+                                                  suffix=_suffix,
+                                                  data_type=data_type,
+                                                  subtype=subtype,
+                                                  group=group,
+                                                  filtername=filtername,
+                                                  ra=ra,
+                                                  dec=dec,
+                                                  pointing_angle=pointing_angle)
+                config._config.dataproducts = cls._dataproduct
+        # verifying if instance already exists and return
+        wpipe_to_sqlintf_connection(cls, 'DataProduct', __name__)
+        return cls._inst
+
+    def __init__(self, *args, **kwargs):
+        if not hasattr(self, '_owner'):
+            super().__init__()
+            self._owner = self._dataproduct
+        self.options = kwargs.get('options', {})
+        self._dataproduct.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
     @property
     def filename(self):
         si.session.commit()
-        return self._dp.filename
+        return self._dataproduct.filename
 
     @filename.setter
     def filename(self, filename):
-        self._dp.name = filename
-        self._dp.timestamp = datetime.datetime.utcnow()
+        self._dataproduct.name = filename
+        self._dataproduct.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
     @property
     def dp_id(self):
         si.session.commit()
-        return self._dp.id
-
-    @property
-    def timestamp(self):
-        si.session.commit()
-        return self._dp.timestamp
+        return self._dataproduct.id
 
     @property
     def relativepath(self):
         si.session.commit()
-        return self._dp.relativepath
+        return self._dataproduct.relativepath
 
     @property
     def suffix(self):
         si.session.commit()
-        return self._dp.suffix
+        return self._dataproduct.suffix
 
     @property
     def data_type(self):
         si.session.commit()
-        return self._dp.data_type
+        return self._dataproduct.data_type
 
     @property
     def subtype(self):
         si.session.commit()
-        return self._dp.subtype
+        return self._dataproduct.subtype
 
     @property
     def group(self):
         si.session.commit()
-        return self._dp.group
+        return self._dataproduct.group
 
     @property
     def filtername(self):
         si.session.commit()
-        return self._dp.filtername
+        return self._dataproduct.filtername
 
     @property
     def ra(self):
         si.session.commit()
-        return self._dp.ra
+        return self._dataproduct.ra
 
     @property
     def dec(self):
         si.session.commit()
-        return self._dp.dec
+        return self._dataproduct.dec
 
     @property
     def pointing_angle(self):
         si.session.commit()
-        return self._dp.pointing_angle
+        return self._dataproduct.pointing_angle
 
     @property
     def config_id(self):
         si.session.commit()
-        return self._dp.config_id
+        return self._dataproduct.config_id
 
     @property
     def target_id(self):
         si.session.commit()
-        return self._dp.config.target_id
+        return self._dataproduct.config.target_id
 
     @property
     def pipeline_id(self):
         si.session.commit()
-        return self._dp.config.target.pipeline_id
+        return self._dataproduct.config.target.pipeline_id

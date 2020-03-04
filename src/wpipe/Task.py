@@ -36,19 +36,37 @@ class Task:
 
 
 class SQLTask:
-    def __init__(self, pipeline, name,
-                 nruns=0, run_time=0,
-                 is_exclusive=0):
-        try:
-            self._task = si.session.query(si.Task). \
-                filter_by(pipeline_id=pipeline.pipeline_id). \
-                filter_by(name=name).one()
-        except si.orm.exc.NoResultFound:
-            self._task = si.Task(name=name,
-                                 nruns=nruns,
-                                 run_time=run_time,
-                                 is_exclusive=is_exclusive)
-            pipeline._pipeline.tasks.append(self._task)
+    def __new__(cls, *args, **kwargs):
+        # checking if given argument is sqlintf object
+        cls._task = args[0] if len(args) else None
+        if not isinstance(cls._task, si.Task):
+            # gathering construction arguments
+            pipeline = kwargs.get('pipeline', args[0] if len(args) else None)
+            name = kwargs.get('name', args[1] if len(args) > 1 else None)
+            nruns = kwargs.get('nruns', 0)
+            run_time = kwargs.get('run_time', 0)
+            is_exclusive = kwargs.get('is_exclusive', 0)
+            # querying the database for existing row or create
+            try:
+                cls._task = si.session.query(si.Task). \
+                    filter_by(pipeline_id=pipeline.pipeline_id). \
+                    filter_by(name=name).one()
+            except si.orm.exc.NoResultFound:
+                cls._task = si.Task(name=name,
+                                    nruns=nruns,
+                                    run_time=run_time,
+                                    is_exclusive=is_exclusive)
+                pipeline._pipeline.tasks.append(cls._task)
+            # verifying if instance already exists and return
+        wpipe_to_sqlintf_connection(cls, 'Task', __name__)
+        return cls._inst
+
+    def __init__(self, *args, **kwargs):
+        if not hasattr(self, '_masks_proxy'):
+            self._masks_proxy = ChildrenProxy(self._task, 'masks', 'Mask', __name__)
+        if not hasattr(self, '_jobs_proxy'):
+            self._jobs_proxy = ChildrenProxy(self._task, 'jobs', 'Job', __name__,
+                                             child_attr='id')
         self._task.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
@@ -95,10 +113,8 @@ class SQLTask:
 
     @property
     def masks(self):
-        si.session.commit()
-        return list(map(lambda mask: mask.name, self._task.masks))
+        return self._masks_proxy
 
     @property
     def jobs(self):
-        si.session.commit()
-        return list(map(lambda job: job.name, self._task.jobs))
+        return self._jobs_proxy

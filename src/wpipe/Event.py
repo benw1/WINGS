@@ -40,32 +40,36 @@ class Event:
 
 class SQLEvent(SQLOwner):
     def __new__(cls, *args, **kwargs):
-        job = args[0]
-        name = args[1]
-        jargs = kwargs.get('jargs','')
-        value = kwargs.get('value','')
-        try:
-            cls._event = si.session.query(si.Event). \
-                filter_by(parent_job_id=job.job_id). \
-                filter_by(name=name).one()
-        except si.orm.exc.NoResultFound:
-            cls._event = si.Event(name=name,
-                                  jargs=jargs,
-                                  value=value)
-            job._job.child_events.append(cls._event)
-        if hasattr(cls._event, '_wpipe_object'):
-            cls._inst = cls._event._wpipe_object
-        else:
-            cls._inst = super(SQLEvent, cls).__new__(cls)
-            cls._inst._event = cls._event
-            cls._event._wpipe_object = cls._inst
+        # checking if given argument is sqlintf object
+        cls._event = args[0] if len(args) else None
+        if not isinstance(cls._event, si.Event):
+            # gathering construction arguments
+            job = kwargs.get('job', args[0] if len(args) else None)
+            name = kwargs.get('name', args[1] if len(args) > 1 else None)
+            jargs = kwargs.get('jargs', '')
+            value = kwargs.get('value', '')
+            # querying the database for existing row or create
+            try:
+                cls._event = si.session.query(si.Event). \
+                    filter_by(parent_job_id=job.job_id). \
+                    filter_by(name=name).one()
+            except si.orm.exc.NoResultFound:
+                cls._event = si.Event(name=name,
+                                      jargs=jargs,
+                                      value=value)
+                job._job.child_events.append(cls._event)
+        # verifying if instance already exists and return
+        wpipe_to_sqlintf_connection(cls, 'Event', __name__)
         return cls._inst
 
     def __init__(self, *args, **kwargs):
-        if not hasattr(self,'_owner'):
+        if not hasattr(self, '_fired_jobs_proxy'):
+            self._fired_jobs_proxy = ChildrenProxy(self._event, 'fired_jobs', 'Job', __name__,
+                                                   child_attr='id')
+        if not hasattr(self, '_owner'):
             super().__init__()
             self._owner = self._event
-        self.options = kwargs.get('options',{})
+        self.options = kwargs.get('options', {})
         self._event.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
@@ -86,11 +90,6 @@ class SQLEvent(SQLOwner):
         return self._event.id
 
     @property
-    def timestamp(self):
-        si.session.commit()
-        return self._event.timestamp
-
-    @property
     def jargs(self):
         si.session.commit()
         return self._event.jargs
@@ -106,6 +105,5 @@ class SQLEvent(SQLOwner):
         return self._event.parent_job_id
 
     @property
-    def fired_jobs_ids(self):
-        si.session.commit()
-        return list(map(lambda job: job.id, self._event.fired_jobs))
+    def fired_jobs(self):
+        return self._fired_jobs_proxy

@@ -40,20 +40,35 @@ class Target:
 
 
 class SQLTarget(SQLOwner):
-    def __init__(self, pipeline, name, options={}):
-        super().__init__()
-        try:
-            self._target = si.session.query(si.Target). \
-                filter_by(pipeline_id=pipeline.pipeline_id). \
-                filter_by(name=name).one()
-        except si.orm.exc.NoResultFound:
-            self._target = si.Target(name=name,
-                                     relativepath=pipeline.data_root+'/'+name)
-            pipeline._pipeline.targets.append(self._target)
-            if not os.path.isdir(self._target.relativepath):
-                os.mkdir(self._target.relativepath)
-        self._owner = self._target
-        self.options = options
+    def __new__(cls, *args, **kwargs):
+        # checking if given argument is sqlintf object
+        cls._target = args[0] if len(args) else None
+        if not isinstance(cls._target, si.Target):
+            # gathering construction arguments
+            pipeline = kwargs.get('pipeline', args[0] if len(args) else None)
+            name = kwargs.get('name', args[1] if len(args) > 1 else None)
+            # querying the database for existing row or create
+            try:
+                cls._target = si.session.query(si.Target). \
+                    filter_by(pipeline_id=pipeline.pipeline_id). \
+                    filter_by(name=name).one()
+            except si.orm.exc.NoResultFound:
+                cls._target = si.Target(name=name,
+                                        relativepath=pipeline.data_root+'/'+name)
+                pipeline._pipeline.targets.append(cls._target)
+                if not os.path.isdir(cls._target.relativepath):
+                    os.mkdir(cls._target.relativepath)
+        # verifying if instance already exists and return
+        wpipe_to_sqlintf_connection(cls, 'Target', __name__)
+        return cls._inst
+
+    def __init__(self, *args, **kwargs):
+        if not hasattr(self, '_configurations_proxy'):
+            self._configurations_proxy = ChildrenProxy(self._target, 'configurations', 'Configuration', __name__)
+        if not hasattr(self, '_owner'):
+            super().__init__()
+            self._owner = self._target
+        self.options = kwargs.get('options', {})
         self._target.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
@@ -74,11 +89,6 @@ class SQLTarget(SQLOwner):
         return self._target.id
 
     @property
-    def timestamp(self):
-        si.session.commit()
-        return self._target.timestamp
-
-    @property
     def relativepath(self):
         si.session.commit()
         return self._target.relativepath
@@ -90,5 +100,4 @@ class SQLTarget(SQLOwner):
 
     @property
     def configurations(self):
-        si.session.commit()
-        return list(map(lambda configuration: configuration.name, self._target.configurations))
+        return self._configurations_proxy

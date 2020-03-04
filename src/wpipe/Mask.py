@@ -24,16 +24,30 @@ class Mask():
 
 
 class SQLMask:
-    def __init__(self, task, name, source='', value=''):
-        try:
-            self._mask = si.session.query(si.Mask). \
-                filter_by(task_id=task.task_id). \
-                filter_by(name=name).one()
-        except si.orm.exc.NoResultFound:
-            self._mask = si.Mask(name=name,
-                                 source=source,
-                                 value=value)
-            task._task.masks.append(self._mask)
+    def __new__(cls, *args, **kwargs):
+        # checking if given argument is sqlintf object
+        cls._mask = args[0] if len(args) else None
+        if not isinstance(cls._mask, si.Mask):
+            # gathering construction arguments
+            task = kwargs.get('task', args[0] if len(args) else None)
+            name = kwargs.get('name', args[1] if len(args) > 1 else None)
+            source = kwargs.get('source', '')
+            value = kwargs.get('value', '')
+            # querying the database for existing row or create
+            try:
+                cls._mask = si.session.query(si.Mask). \
+                    filter_by(task_id=task.task_id). \
+                    filter_by(name=name).one()
+            except si.orm.exc.NoResultFound:
+                cls._mask = si.Mask(name=name,
+                                    source=source,
+                                    value=value)
+                task._task.masks.append(cls._mask)
+        # verifying if instance already exists and return
+        wpipe_to_sqlintf_connection(cls, 'Mask', __name__)
+        return cls._inst
+
+    def __init__(self, *args, **kwargs):
         self._mask.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 

@@ -22,13 +22,26 @@ class User:
 
 
 class SQLUser:
-    def __init__(self, name):
-        try:
-            self._user = si.session.query(si.User).\
-                filter_by(name=name).one()
-        except si.orm.exc.NoResultFound:
-            self._user = si.User(name=name)
-            si.session.add(self._user)
+    def __new__(cls, *args, **kwargs):
+        # checking if given argument is sqlintf object
+        cls._user = args[0] if len(args) else None
+        if not isinstance(cls._user, si.User):
+            # gathering construction arguments
+            name = kwargs.get('name', args[0] if len(args) else None)
+            # querying the database for existing row or create
+            try:
+                cls._user = si.session.query(si.User). \
+                    filter_by(name=name).one()
+            except si.orm.exc.NoResultFound:
+                cls._user = si.User(name=name)
+                si.session.add(cls._user)
+        # verifying if instance already exists and return
+        wpipe_to_sqlintf_connection(cls, 'User', __name__)
+        return cls._inst
+
+    def __init__(self, *args, **kwargs):
+        if not hasattr(self, '_pipelines_proxy'):
+            self._pipelines_proxy = ChildrenProxy(self._user, 'pipelines', 'Pipeline', __name__)
         self._user.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
@@ -55,5 +68,4 @@ class SQLUser:
 
     @property
     def pipelines(self):
-        si.session.commit()
-        return list(map(lambda pipeline: pipeline.name, self._user.pipelines))
+        return self._pipelines_proxy

@@ -23,15 +23,31 @@ class Node:
 
 
 class SQLNode:
-    def __init__(self, name, int_ip='', ext_ip=''):
-        try:
-            self._node = si.session.query(si.Node). \
-                filter_by(name=name).one()
-        except si.orm.exc.NoResultFound:
-            self._node = si.Node(name=name,
-                                 int_ip=int_ip,
-                                 ext_ip=ext_ip)
-            si.session.add(self._node)
+    def __new__(cls, *args, **kwargs):
+        # checking if given argument is sqlintf object
+        cls._node = args[0] if len(args) else None
+        if not isinstance(cls._node, si.Node):
+            # gathering construction arguments
+            name = kwargs.get('name', args[0] if len(args) else None)
+            int_ip = kwargs.get('int_ip', '')
+            ext_ip = kwargs.get('ext_ip', '')
+            # querying the database for existing row or create
+            try:
+                cls._node = si.session.query(si.Node). \
+                    filter_by(name=name).one()
+            except si.orm.exc.NoResultFound:
+                cls._node = si.Node(name=name,
+                                    int_ip=int_ip,
+                                    ext_ip=ext_ip)
+                si.session.add(cls._node)
+        # verifying if instance already exists and return
+        wpipe_to_sqlintf_connection(cls, 'Node', __name__)
+        return cls._inst
+
+    def __init__(self, *args, **kwargs):
+        if not hasattr(self, '_jobs_proxy'):
+            self._jobs_proxy = ChildrenProxy(self._node, 'jobs', 'Job', __name__,
+                                             child_attr='id')
         self._node.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
@@ -68,5 +84,4 @@ class SQLNode:
 
     @property
     def jobs(self):
-        si.session.commit()
-        return list(map(lambda job: job.name, self._node.jobs))
+        return self._jobs_proxy

@@ -39,15 +39,28 @@ class Options:
 
 
 class SQLOption:
+    def __new__(cls, *args, **kwargs):
+        # checking if given argument is sqlintf object
+        cls._option = args[0] if len(args) else None
+        if not isinstance(cls._option, si.Option):
+            # gathering construction arguments
+            owner = kwargs.get('owner', args[0] if len(args) else None)
+            name = kwargs.get('name', args[1] if len(args) > 1 else None)
+            value = kwargs.get('value', args[2] if len(args) > 2 else None)
+            # querying the database for existing row or create
+            try:
+                cls._option = si.session.query(si.Option). \
+                    filter_by(owner_id=owner.owner_id). \
+                    filter_by(name=name).one()
+            except si.orm.exc.NoResultFound:
+                cls._option = si.Option(name=name,
+                                         value=str(value))
+                owner._owner.options.append(cls._option)
+        # verifying if instance already exists and return
+        wpipe_to_sqlintf_connection(cls, 'Option', __name__)
+        return cls._inst
+
     def __init__(self, owner, name, value):
-        try:
-            self._option = si.session.query(si.Option). \
-                filter_by(owner_id=owner.owner_id). \
-                filter_by(name=name).one()
-        except si.orm.exc.NoResultFound:
-            self._option = si.Option(name=name,
-                                     value=str(value))
-            owner._owner.options.append(self._option)
         self._option.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
