@@ -99,5 +99,13 @@ class SQLTarget(SQLOwner):
         return self._target.pipeline_id
 
     @property
+    def pipeline(self):
+        if hasattr(self._target.pipeline, '_wpipe_object'):
+            return self._target.pipeline._wpipe_object
+        else:
+            from .Pipeline import SQLPipeline
+            return SQLPipeline(self._target.pipeline)
+
+    @property
     def configurations(self):
         return self._configurations_proxy

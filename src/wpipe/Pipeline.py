@@ -78,6 +78,9 @@ class SQLPipeline:
             self._targets_proxy = ChildrenProxy(self._pipeline, 'targets', 'Target', __name__)
         if not hasattr(self, '_tasks_proxy'):
             self._tasks_proxy = ChildrenProxy(self._pipeline, 'tasks', 'Task', __name__)
+        if not hasattr(self, '_dummy_task'):
+            from .Task import SQLTask
+            self._dummy_task = SQLTask(self, 'dummy')
         self._pipeline.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
@@ -150,3 +153,7 @@ class SQLPipeline:
     @property
     def tasks(self):
         return self._tasks_proxy
+
+    @property
+    def dummy_task(self):
+        return self._dummy_task

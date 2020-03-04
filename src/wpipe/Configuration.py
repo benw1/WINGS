@@ -160,9 +160,24 @@ class SQLConfiguration:
         return self._configuration.target_id
 
     @property
+    def target(self):
+        if hasattr(self._configuration.target, '_wpipe_object'):
+            return self._configuration.target._wpipe_object
+        else:
+            from .Target import SQLTarget
+            return SQLTarget(self._configuration.target)
+
+    @property
     def pipeline_id(self):
-        si.session.commit()
-        return self._configuration.target.pipeline_id
+        return self.target.pipeline_id
+
+    @property
+    def pipeline(self):
+        return self.target.pipeline
+
+    @property
+    def dummy_task(self):
+        return self.target.pipeline.dummy_task
 
     @property
     def dataproducts(self):

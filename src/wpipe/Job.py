@@ -61,7 +61,7 @@ class SQLJob(SQLOwner):
         if not isinstance(cls._job, si.Job):
             # gathering construction arguments
             config = kwargs.get('config', args[0] if len(args) else None)
-            task = kwargs.get('task', args[1] if len(args) > 1 else None)
+            task = kwargs.get('task', args[1] if len(args) > 1 else config.dummy_task)
             event = kwargs.get('event', args[2] if len(args) > 2 else None)
             node = kwargs.get('node', args[3] if len(args) > 3 else None)
             state = kwargs.get('state', 'any')
@@ -69,10 +69,7 @@ class SQLJob(SQLOwner):
             try:
                 cls._job = si.session.query(si.Job). \
                     filter_by(config_id=config.config_id). \
-                    filter_by(node_id=node.node_id)
-                if task is not None:
-                    cls._job = cls._job. \
-                        filter_by(task_id=task.task_id)
+                    filter_by(task_id=task.task_id)
                 if event is not None:
                     cls._job = cls._job. \
                         filter_by(firing_event_id=event.event_id)
