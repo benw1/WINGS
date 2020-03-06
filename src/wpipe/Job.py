@@ -56,38 +56,43 @@ class Job:
 
 class SQLJob(SQLOwner):
     def __new__(cls, *args, **kwargs):
-        # checking if given argument is sqlintf object
-        cls._job = args[0] if len(args) else None
+        # checking if given argument is sqlintf object or existing id
+        cls._job = args[0] if len(args)==1 else None
         if not isinstance(cls._job, si.Job):
-            # gathering construction arguments
-            config = kwargs.get('config', args[0] if len(args) else None)
-            task = kwargs.get('task', args[1] if len(args) > 1 else config.dummy_task)
-            event = kwargs.get('event', args[2] if len(args) > 2 else None)
-            node = kwargs.get('node', args[3] if len(args) > 3 else None)
-            state = kwargs.get('state', 'any')
-            # querying the database for existing row or create
-            try:
-                cls._job = si.session.query(si.Job). \
-                    filter_by(config_id=config.config_id). \
-                    filter_by(task_id=task.task_id)
-                if event is not None:
-                    cls._job = cls._job. \
-                        filter_by(firing_event_id=event.event_id)
-                if node is not None:
-                    cls._job = cls._job. \
-                        filter_by(node_id=node.node_id)
-                cls._job = cls._job.one()
-            except si.orm.exc.NoResultFound:
-                cls._job = si.Job(state=state)
-                config._configuration.jobs.append(cls._job)
-                if task is not None:
-                    task._task.jobs.append(cls._job)
-                if event is not None:
-                    event._event.fired_jobs.append(cls._job)
-                if node is not None:
-                    node._node.jobs.append(cls._job)
-                cls._job.starttime = datetime.datetime.utcnow()
-                cls._job.endtime = datetime.datetime.utcnow()
+            id = kwargs.get('id', cls._job)
+            if isinstance(id, int):
+                cls._job = si.session.query(si.Job).filter_by(id=id).one()
+            else:
+                # gathering construction arguments
+                wpargs, args = wpargs_from_args(*args)
+                event = wpargs.get('Event', kwargs.get('event', None))
+                config = wpargs.get('Configuration', kwargs.get('config', event.config if event is not None else None))
+                task = wpargs.get('Task', kwargs.get('task', config.dummy_task))
+                node = wpargs.get('Node', kwargs.get('node', event.parent_job.node if event is not None else None))
+                state = args[0] if len(args) else kwargs.get('state', 'any')
+                # querying the database for existing row or create
+                try:
+                    cls._job = si.session.query(si.Job). \
+                        filter_by(config_id=config.config_id). \
+                        filter_by(task_id=task.task_id)
+                    if event is not None:
+                        cls._job = cls._job. \
+                            filter_by(firing_event_id=event.event_id)
+                    if node is not None:
+                        cls._job = cls._job. \
+                            filter_by(node_id=node.node_id)
+                    cls._job = cls._job.one()
+                except si.orm.exc.NoResultFound:
+                    cls._job = si.Job(state=state)
+                    config._configuration.jobs.append(cls._job)
+                    if task is not None:
+                        task._task.jobs.append(cls._job)
+                    if event is not None:
+                        event._event.fired_jobs.append(cls._job)
+                    if node is not None:
+                        node._node.jobs.append(cls._job)
+                    cls._job.starttime = datetime.datetime.utcnow()
+                    cls._job.endtime = datetime.datetime.utcnow()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Job', __name__)
         return cls._inst
@@ -101,6 +106,10 @@ class SQLJob(SQLOwner):
         self.options = kwargs.get('options', {})
         self._job.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @property
+    def parents(self):
+        return self.config, self.task, self.node, self.firing_event
 
     @property
     def state(self):
@@ -128,9 +137,25 @@ class SQLJob(SQLOwner):
         return self._job.task_id
 
     @property
+    def task(self):
+        if hasattr(self._job.task, '_wpipe_object'):
+            return self._job.task._wpipe_object
+        else:
+            from .Task import SQLTask
+            return SQLTask(self._job.task)
+
+    @property
     def node_id(self):
         si.session.commit()
         return self._job.node_id
+
+    @property
+    def node(self):
+        if hasattr(self._job.node, '_wpipe_object'):
+            return self._job.node._wpipe_object
+        else:
+            from .Node import SQLNode
+            return SQLNode(self._job.node)
 
     @property
     def config_id(self):
@@ -138,9 +163,20 @@ class SQLJob(SQLOwner):
         return self._job.config_id
 
     @property
+    def config(self):
+        if hasattr(self._job.config, '_wpipe_object'):
+            return self._job.config._wpipe_object
+        else:
+            from .Configuration import SQLConfiguration
+            return SQLConfiguration(self._job.config)
+
+    @property
     def pipeline_id(self):
-        si.session.commit()
-        return self._job.config.pipeline_id
+        return self.config.pipeline_id
+
+    @property
+    def pipeline(self):
+        return self.config.pipeline
 
     @property
     def firing_event_id(self):
@@ -148,9 +184,20 @@ class SQLJob(SQLOwner):
         return self._job.firing_event_id
 
     @property
+    def firing_event(self):
+        if self._job.firing_event is None:
+            return None
+        else:
+            if hasattr(self._job.firing_event, '_wpipe_object'):
+                return self._job.firing_event._wpipe_object
+            else:
+                from .Event import SQLEvent
+                return SQLEvent(self._job.firing_event)
+
+    @property
     def child_events(self):
         return self._child_events_proxy
 
-    def child_event(self, name, **kwargs):
+    def child_event(self, *args, **kwargs):
         from .Event import SQLEvent
-        return SQLEvent(self, name, **kwargs)
+        return SQLEvent(self, *args, **kwargs)

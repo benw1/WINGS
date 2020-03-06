@@ -41,23 +41,28 @@ class Target:
 
 class SQLTarget(SQLOwner):
     def __new__(cls, *args, **kwargs):
-        # checking if given argument is sqlintf object
+        # checking if given argument is sqlintf object or existing id
         cls._target = args[0] if len(args) else None
         if not isinstance(cls._target, si.Target):
-            # gathering construction arguments
-            pipeline = kwargs.get('pipeline', args[0] if len(args) else None)
-            name = kwargs.get('name', args[1] if len(args) > 1 else None)
-            # querying the database for existing row or create
-            try:
-                cls._target = si.session.query(si.Target). \
-                    filter_by(pipeline_id=pipeline.pipeline_id). \
-                    filter_by(name=name).one()
-            except si.orm.exc.NoResultFound:
-                cls._target = si.Target(name=name,
-                                        relativepath=pipeline.data_root+'/'+name)
-                pipeline._pipeline.targets.append(cls._target)
-                if not os.path.isdir(cls._target.relativepath):
-                    os.mkdir(cls._target.relativepath)
+            id = kwargs.get('id', cls._target)
+            if isinstance(id, int):
+                cls._target = si.session.query(si.Target).filter_by(id=id).one()
+            else:
+                # gathering construction arguments
+                wpargs, args = wpargs_from_args(*args)
+                pipeline = wpargs.get('Pipeline', kwargs.get('pipeline', None))
+                name = args[0] if len(args) else kwargs.get('name', None)
+                # querying the database for existing row or create
+                try:
+                    cls._target = si.session.query(si.Target). \
+                        filter_by(pipeline_id=pipeline.pipeline_id). \
+                        filter_by(name=name).one()
+                except si.orm.exc.NoResultFound:
+                    cls._target = si.Target(name=name,
+                                            relativepath=pipeline.data_root+'/'+name)
+                    pipeline._pipeline.targets.append(cls._target)
+                    if not os.path.isdir(cls._target.relativepath):
+                        os.mkdir(cls._target.relativepath)
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Target', __name__)
         return cls._inst
@@ -71,6 +76,10 @@ class SQLTarget(SQLOwner):
         self.options = kwargs.get('options', {})
         self._target.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @property
+    def parents(self):
+        return self.pipeline
 
     @property
     def name(self):
@@ -109,3 +118,7 @@ class SQLTarget(SQLOwner):
     @property
     def configurations(self):
         return self._configurations_proxy
+
+    def configuration(self, *args, **kwargs):
+        from .Configuration import SQLConfiguration
+        return SQLConfiguration(self, *args, **kwargs)

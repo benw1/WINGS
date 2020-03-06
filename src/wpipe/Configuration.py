@@ -52,36 +52,41 @@ class Configuration:
 
 class SQLConfiguration:
     def __new__(cls, *args, **kwargs):
-        # checking if given argument is sqlintf object
+        # checking if given argument is sqlintf object or existing id
         cls._configuration = args[0] if len(args) else None
         if not isinstance(cls._configuration, si.Configuration):
-            # gathering construction arguments
-            target = kwargs.get('target', args[0] if len(args) else None)
-            name = kwargs.get('name', args[1] if len(args) > 1 else None)
-            description = kwargs.get('description', '')
-            # querying the database for existing row or create
-            try:
-                cls._configuration = si.session.query(si.Configuration). \
-                    filter_by(target_id=target.target_id). \
-                    filter_by(name=name).one()
-            except si.orm.exc.NoResultFound:
-                cls._configuration = si.Configuration(name=name,
-                                                      relativepath=target.relativepath,
-                                                      logpath=target.relativepath + '/log_' + name,
-                                                      confpath=target.relativepath + '/conf_' + name,
-                                                      rawpath=target.relativepath + '/raw_' + name,
-                                                      procpath=target.relativepath + '/proc_' + name,
-                                                      description=description)
-                target._target.configurations.append(cls._configuration)
-                # _params = Parameters(params).create(_df, store=store)
-                if not os.path.isdir(cls._configuration.logpath):
-                    os.mkdir(cls._configuration.logpath)
-                if not os.path.isdir(cls._configuration.confpath):
-                    os.mkdir(cls._configuration.confpath)
-                if not os.path.isdir(cls._configuration.rawpath):
-                    os.mkdir(cls._configuration.rawpath)
-                if not os.path.isdir(cls._configuration.procpath):
-                    os.mkdir(cls._configuration.procpath)
+            id = kwargs.get('id', cls._configuration)
+            if isinstance(id, int):
+                cls._configuration = si.session.query(si.Configuration).filter_by(id=id).one()
+            else:
+                # gathering construction arguments
+                wpargs, args = wpargs_from_args(*args)
+                target = wpargs.get('Target', kwargs.get('target', None))
+                name = args[0] if len(args) else kwargs.get('name', None)
+                description = args[1] if len(args) > 1 else kwargs.get('description', '')
+                # querying the database for existing row or create
+                try:
+                    cls._configuration = si.session.query(si.Configuration). \
+                        filter_by(target_id=target.target_id). \
+                        filter_by(name=name).one()
+                except si.orm.exc.NoResultFound:
+                    cls._configuration = si.Configuration(name=name,
+                                                          relativepath=target.relativepath,
+                                                          logpath=target.relativepath + '/log_' + name,
+                                                          confpath=target.relativepath + '/conf_' + name,
+                                                          rawpath=target.relativepath + '/raw_' + name,
+                                                          procpath=target.relativepath + '/proc_' + name,
+                                                          description=description)
+                    target._target.configurations.append(cls._configuration)
+                    # _params = Parameters(params).create(_df, store=store)
+                    if not os.path.isdir(cls._configuration.logpath):
+                        os.mkdir(cls._configuration.logpath)
+                    if not os.path.isdir(cls._configuration.confpath):
+                        os.mkdir(cls._configuration.confpath)
+                    if not os.path.isdir(cls._configuration.rawpath):
+                        os.mkdir(cls._configuration.rawpath)
+                    if not os.path.isdir(cls._configuration.procpath):
+                        os.mkdir(cls._configuration.procpath)
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Configuration', __name__)
         return cls._inst
@@ -96,6 +101,10 @@ class SQLConfiguration:
                                              child_attr='id')
         self._configuration.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @property
+    def parents(self):
+        return self.target
 
     @property
     def name(self):
@@ -177,7 +186,7 @@ class SQLConfiguration:
 
     @property
     def dummy_task(self):
-        return self.target.pipeline.dummy_task
+        return self.pipeline.dummy_task
 
     @property
     def dataproducts(self):
@@ -197,3 +206,7 @@ class SQLConfiguration:
     @property
     def jobs(self):
         return self._jobs_proxy
+
+    def job(self, *args, **kwargs):
+        from .Job import SQLJob
+        return SQLJob(self, *args, **kwargs)

@@ -40,24 +40,29 @@ class Event:
 
 class SQLEvent(SQLOwner):
     def __new__(cls, *args, **kwargs):
-        # checking if given argument is sqlintf object
+        # checking if given argument is sqlintf object or existing id
         cls._event = args[0] if len(args) else None
         if not isinstance(cls._event, si.Event):
-            # gathering construction arguments
-            job = kwargs.get('job', args[0] if len(args) else None)
-            name = kwargs.get('name', args[1] if len(args) > 1 else None)
-            jargs = kwargs.get('jargs', '')
-            value = kwargs.get('value', '')
-            # querying the database for existing row or create
-            try:
-                cls._event = si.session.query(si.Event). \
-                    filter_by(parent_job_id=job.job_id). \
-                    filter_by(name=name).one()
-            except si.orm.exc.NoResultFound:
-                cls._event = si.Event(name=name,
-                                      jargs=jargs,
-                                      value=value)
-                job._job.child_events.append(cls._event)
+            id = kwargs.get('id', cls._event)
+            if isinstance(id, int):
+                cls._event = si.session.query(si.Event).filter_by(id=id).one()
+            else:
+                # gathering construction arguments
+                wpargs, args = wpargs_from_args(*args)
+                job = wpargs.get('Job', kwargs.get('job', None))
+                name = args[0] if len(args) else kwargs.get('name', None)
+                jargs = args[1] if len(args) > 1 else kwargs.get('jargs', '')
+                value = args[2] if len(args) > 2 else kwargs.get('value', '')
+                # querying the database for existing row or create
+                try:
+                    cls._event = si.session.query(si.Event). \
+                        filter_by(parent_job_id=job.job_id). \
+                        filter_by(name=name).one()
+                except si.orm.exc.NoResultFound:
+                    cls._event = si.Event(name=name,
+                                          jargs=jargs,
+                                          value=value)
+                    job._job.child_events.append(cls._event)
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Event', __name__)
         return cls._inst
@@ -72,6 +77,10 @@ class SQLEvent(SQLOwner):
         self.options = kwargs.get('options', {})
         self._event.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @property
+    def parents(self):
+        return self.parent_job
 
     @property
     def name(self):
@@ -105,5 +114,21 @@ class SQLEvent(SQLOwner):
         return self._event.parent_job_id
 
     @property
+    def parent_job(self):
+        if hasattr(self._event.parent_job, '_wpipe_object'):
+            return self._event.parent_job._wpipe_object
+        else:
+            from .Job import SQLJob
+            return SQLJob(self._event.parent_job)
+
+    @property
+    def config(self):
+        return self.parent_job.config
+
+    @property
     def fired_jobs(self):
         return self._fired_jobs_proxy
+
+    def fired_job(self, *args, **kwargs):
+        from .Job import SQLJob
+        return SQLJob(self, *args, **kwargs)

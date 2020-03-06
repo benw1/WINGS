@@ -23,18 +23,23 @@ class User:
 
 class SQLUser:
     def __new__(cls, *args, **kwargs):
-        # checking if given argument is sqlintf object
+        # checking if given argument is sqlintf object or existing id
         cls._user = args[0] if len(args) else None
         if not isinstance(cls._user, si.User):
-            # gathering construction arguments
-            name = kwargs.get('name', args[0] if len(args) else None)
-            # querying the database for existing row or create
-            try:
-                cls._user = si.session.query(si.User). \
-                    filter_by(name=name).one()
-            except si.orm.exc.NoResultFound:
-                cls._user = si.User(name=name)
-                si.session.add(cls._user)
+            id = kwargs.get('id', cls._user)
+            if isinstance(id, int):
+                cls._user = si.session.query(si.User).filter_by(id=id).one()
+            else:
+                # gathering construction arguments
+                wpargs, args = wpargs_from_args(*args)
+                name = args[0] if len(args) else kwargs.get('name', None)
+                # querying the database for existing row or create
+                try:
+                    cls._user = si.session.query(si.User). \
+                        filter_by(name=name).one()
+                except si.orm.exc.NoResultFound:
+                    cls._user = si.User(name=name)
+                    si.session.add(cls._user)
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'User', __name__)
         return cls._inst
@@ -44,6 +49,10 @@ class SQLUser:
             self._pipelines_proxy = ChildrenProxy(self._user, 'pipelines', 'Pipeline', __name__)
         self._user.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @property
+    def parents(self):
+        return
 
     @property
     def name(self):
@@ -69,3 +78,7 @@ class SQLUser:
     @property
     def pipelines(self):
         return self._pipelines_proxy
+
+    def pipeline(self, *args, **kwargs):
+        from .Pipeline import SQLPipeline
+        return SQLPipeline(self, *args, **kwargs)

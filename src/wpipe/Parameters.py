@@ -49,22 +49,27 @@ class Parameters:
 
 class SQLParameter:
     def __new__(cls, *args, **kwargs):
-        # checking if given argument is sqlintf object
+        # checking if given argument is sqlintf object or existing id
         cls._parameter = args[0] if len(args) else None
         if not isinstance(cls._parameter, si.Parameter):
-            # gathering construction arguments
-            config = kwargs.get('config', args[0] if len(args) else None)
-            name = kwargs.get('name', args[1] if len(args) > 1 else None)
-            value = kwargs.get('value', args[2] if len(args) > 2 else None)
-            # querying the database for existing row or create
-            try:
-                cls._parameter = si.session.query(si.Parameter). \
-                    filter_by(config_id=config.config_id). \
-                    filter_by(name=name).one()
-            except si.orm.exc.NoResultFound:
-                cls._parameter = si.Parameter(name=name,
-                                              value=str(value))
-                config._configuration.parameters.append(cls._parameter)
+            id = kwargs.get('id', cls._parameter)
+            if isinstance(id, int):
+                cls._parameter = si.session.query(si.Parameter).filter_by(id=id).one()
+            else:
+                # gathering construction arguments
+                wpargs, args = wpargs_from_args(*args)
+                config = wpargs.get('Configuration', kwargs.get('config', None))
+                name = args[0] if len(args) else kwargs.get('name', None)
+                value = args[1] if len(args) > 1 else kwargs.get('value', None)
+                # querying the database for existing row or create
+                try:
+                    cls._parameter = si.session.query(si.Parameter). \
+                        filter_by(config_id=config.config_id). \
+                        filter_by(name=name).one()
+                except si.orm.exc.NoResultFound:
+                    cls._parameter = si.Parameter(name=name,
+                                                  value=str(value))
+                    config._configuration.parameters.append(cls._parameter)
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Parameter', __name__)
         return cls._inst

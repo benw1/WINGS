@@ -33,42 +33,47 @@ class Pipeline:
 
 class SQLPipeline:
     def __new__(cls, *args, **kwargs):
-        # checking if given argument is sqlintf object
+        # checking if given argument is sqlintf object or existing id
         cls._pipeline = args[0] if len(args) else None
         if not isinstance(cls._pipeline, si.Pipeline):
-            # gathering construction arguments
-            user = kwargs.get('user', args[0] if len(args) else None)
-            name = kwargs.get('name', args[1] if len(args) > 1 else None)
-            software_root = kwargs.get('software_root', 'build')
-            data_root = kwargs.get('data_root', 'data')
-            pipe_root = kwargs.get('pipe_root', '')
-            config_root = kwargs.get('config_root', 'config')
-            description = kwargs.get('description', '')
-            # querying the database for existing row or create
-            try:
-                cls._pipeline = si.session.query(si.Pipeline). \
-                    filter_by(user_id=user.user_id). \
-                    filter_by(name=name).one()
-            except si.orm.exc.NoResultFound:
-                temp = []
-                for path in [pipe_root, software_root, data_root, config_root]:
-                    if path[:1] != '/' or path == '':
-                        path = os.getcwd() + ['', '/'][bool(path)] + path
-                    temp.append(path)
-                pipe_root, software_root, data_root, config_root = temp
-                cls._pipeline = si.Pipeline(name=name,
-                                            software_root=software_root,
-                                            data_root=data_root,
-                                            pipe_root=pipe_root,
-                                            config_root=config_root,
-                                            description=description)
-                user._user.pipelines.append(cls._pipeline)
-                if not os.path.isdir(cls._pipeline.software_root):
-                    os.mkdir(cls._pipeline.software_root)
-                if not os.path.isdir(cls._pipeline.data_root):
-                    os.mkdir(cls._pipeline.data_root)
-                if not os.path.isdir(cls._pipeline.config_root):
-                    os.mkdir(cls._pipeline.config_root)
+            id = kwargs.get('id', cls._pipeline)
+            if isinstance(id, int):
+                cls._pipeline = si.session.query(si.Pipeline).filter_by(id=id).one()
+            else:
+                # gathering construction arguments
+                wpargs, args = wpargs_from_args(*args)
+                user = wpargs.get('User', kwargs.get('user', None))
+                name = args[0] if len(args) else kwargs.get('name', None)
+                software_root = args[1] if len(args) > 1 else kwargs.get('software_root', 'build')
+                data_root = args[2] if len(args) > 2 else kwargs.get('data_root', 'data')
+                pipe_root = args[3] if len(args) > 3 else kwargs.get('pipe_root', '')
+                config_root = args[4] if len(args) > 4 else kwargs.get('config_root', 'config')
+                description = args[5] if len(args) > 5 else kwargs.get('description', '')
+                # querying the database for existing row or create
+                try:
+                    cls._pipeline = si.session.query(si.Pipeline). \
+                        filter_by(user_id=user.user_id). \
+                        filter_by(name=name).one()
+                except si.orm.exc.NoResultFound:
+                    temp = []
+                    for path in [pipe_root, software_root, data_root, config_root]:
+                        if path[:1] != '/' or path == '':
+                            path = os.getcwd() + ['', '/'][bool(path)] + path
+                        temp.append(path)
+                    pipe_root, software_root, data_root, config_root = temp
+                    cls._pipeline = si.Pipeline(name=name,
+                                                software_root=software_root,
+                                                data_root=data_root,
+                                                pipe_root=pipe_root,
+                                                config_root=config_root,
+                                                description=description)
+                    user._user.pipelines.append(cls._pipeline)
+                    if not os.path.isdir(cls._pipeline.software_root):
+                        os.mkdir(cls._pipeline.software_root)
+                    if not os.path.isdir(cls._pipeline.data_root):
+                        os.mkdir(cls._pipeline.data_root)
+                    if not os.path.isdir(cls._pipeline.config_root):
+                        os.mkdir(cls._pipeline.config_root)
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Pipeline', __name__)
         return cls._inst
@@ -83,6 +88,10 @@ class SQLPipeline:
             self._dummy_task = SQLTask(self, 'dummy')
         self._pipeline.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @property
+    def parents(self):
+        return self.user
 
     @property
     def name(self):
@@ -145,6 +154,14 @@ class SQLPipeline:
     def user_name(self):
         si.session.commit()
         return self._pipeline.user.name
+    
+    @property
+    def user(self):
+        if hasattr(self._pipeline.user, '_wpipe_object'):
+            return self._pipeline.user._wpipe_object
+        else:
+            from .User import SQLUser
+            return SQLUser(self._pipeline.user)
 
     @property
     def targets(self):
@@ -157,3 +174,11 @@ class SQLPipeline:
     @property
     def dummy_task(self):
         return self._dummy_task
+
+    def target(self, *args, **kwargs):
+        from .Target import SQLTarget
+        return SQLTarget(self, *args, **kwargs)
+
+    def task(self, *args, **kwargs):
+        from .Task import SQLTask
+        return SQLTask(self, *args, **kwargs)

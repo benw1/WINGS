@@ -25,24 +25,29 @@ class Mask():
 
 class SQLMask:
     def __new__(cls, *args, **kwargs):
-        # checking if given argument is sqlintf object
+        # checking if given argument is sqlintf object or existing id
         cls._mask = args[0] if len(args) else None
         if not isinstance(cls._mask, si.Mask):
-            # gathering construction arguments
-            task = kwargs.get('task', args[0] if len(args) else None)
-            name = kwargs.get('name', args[1] if len(args) > 1 else None)
-            source = kwargs.get('source', '')
-            value = kwargs.get('value', '')
-            # querying the database for existing row or create
-            try:
-                cls._mask = si.session.query(si.Mask). \
-                    filter_by(task_id=task.task_id). \
-                    filter_by(name=name).one()
-            except si.orm.exc.NoResultFound:
-                cls._mask = si.Mask(name=name,
-                                    source=source,
-                                    value=value)
-                task._task.masks.append(cls._mask)
+            id = kwargs.get('id', cls._mask)
+            if isinstance(id, int):
+                cls._mask = si.session.query(si.Mask).filter_by(id=id).one()
+            else:
+                # gathering construction arguments
+                wpargs, args = wpargs_from_args(*args)
+                task = wpargs.get('Task', kwargs.get('task', None))
+                name = args[0] if len(args) else kwargs.get('name', None)
+                source = args[1] if len(args) > 1 else kwargs.get('source', '')
+                value = args[2] if len(args) > 2 else kwargs.get('value', '')
+                # querying the database for existing row or create
+                try:
+                    cls._mask = si.session.query(si.Mask). \
+                        filter_by(task_id=task.task_id). \
+                        filter_by(name=name).one()
+                except si.orm.exc.NoResultFound:
+                    cls._mask = si.Mask(name=name,
+                                        source=source,
+                                        value=value)
+                    task._task.masks.append(cls._mask)
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Mask', __name__)
         return cls._inst
@@ -50,6 +55,10 @@ class SQLMask:
     def __init__(self, *args, **kwargs):
         self._mask.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @property
+    def parents(self):
+        return self.task
 
     @property
     def name(self):
@@ -86,3 +95,11 @@ class SQLMask:
     def task_id(self):
         si.session.commit()
         return self._mask.task_id
+
+    @property
+    def task(self):
+        if hasattr(self._mask.task, '_wpipe_object'):
+            return self._mask.task._wpipe_object
+        else:
+            from .Task import SQLTask
+            return SQLTask(self._mask.task)

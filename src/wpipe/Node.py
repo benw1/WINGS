@@ -24,22 +24,27 @@ class Node:
 
 class SQLNode:
     def __new__(cls, *args, **kwargs):
-        # checking if given argument is sqlintf object
+        # checking if given argument is sqlintf object or existing id
         cls._node = args[0] if len(args) else None
         if not isinstance(cls._node, si.Node):
-            # gathering construction arguments
-            name = kwargs.get('name', args[0] if len(args) else None)
-            int_ip = kwargs.get('int_ip', '')
-            ext_ip = kwargs.get('ext_ip', '')
-            # querying the database for existing row or create
-            try:
-                cls._node = si.session.query(si.Node). \
-                    filter_by(name=name).one()
-            except si.orm.exc.NoResultFound:
-                cls._node = si.Node(name=name,
-                                    int_ip=int_ip,
-                                    ext_ip=ext_ip)
-                si.session.add(cls._node)
+            id = kwargs.get('id', cls._node)
+            if isinstance(id, int):
+                cls._node = si.session.query(si.Node).filter_by(id=id).one()
+            else:
+                # gathering construction arguments
+                wpargs, args = wpargs_from_args(*args)
+                name = args[0] if len(args) else kwargs.get('name', None)
+                int_ip = args[1] if len(args) > 1 else kwargs.get('int_ip', '')
+                ext_ip = args[2] if len(args) > 2 else kwargs.get('ext_ip', '')
+                # querying the database for existing row or create
+                try:
+                    cls._node = si.session.query(si.Node). \
+                        filter_by(name=name).one()
+                except si.orm.exc.NoResultFound:
+                    cls._node = si.Node(name=name,
+                                        int_ip=int_ip,
+                                        ext_ip=ext_ip)
+                    si.session.add(cls._node)
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Node', __name__)
         return cls._inst
@@ -50,6 +55,10 @@ class SQLNode:
                                              child_attr='id')
         self._node.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @property
+    def parents(self):
+        return
 
     @property
     def name(self):
@@ -85,3 +94,7 @@ class SQLNode:
     @property
     def jobs(self):
         return self._jobs_proxy
+
+    def job(self, *args, **kwargs):
+        from .Job import SQLJob
+        return SQLJob(self, *args, **kwargs)

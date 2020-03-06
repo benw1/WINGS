@@ -30,6 +30,17 @@ def fmin_itemsize(x):
     return min_itemsize
 
 
+def key_wpipe_separator(obj):
+    return type(obj).__module__.split('.')[0] != 'wpipe'
+
+
+def wpargs_from_args(*args):
+    wpargs = sorted(args, key=key_wpipe_separator)
+    args = list(wpargs.pop() for i in range(len(wpargs)) if key_wpipe_separator(wpargs[-1]))[::-1]
+    wpargs = dict((type(wparg).__name__.replace('SQL', ''), wparg) for wparg in wpargs)
+    return wpargs, args
+
+
 def wpipe_to_sqlintf_connection(cls, cls_name, __name__):
     cls_attr = '_' + cls_name.lower()
     if hasattr(getattr(cls, cls_attr), '_wpipe_object'):

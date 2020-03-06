@@ -66,45 +66,50 @@ class DataProduct:
 
 class SQLDataProduct(SQLOwner):
     def __new__(cls, *args, **kwargs):
-        # checking if given argument is sqlintf object
+        # checking if given argument is sqlintf object or existing id
         cls._dataproduct = args[0] if len(args) else None
         if not isinstance(cls._dataproduct, si.DataProduct):
-            # gathering construction arguments
-            config = kwargs.get('config', args[0] if len(args) else None)
-            filename = kwargs.get('filename', args[1] if len(args) > 1 else None)
-            relativepath = kwargs.get('relativepath', config.relativepath)
-            group = kwargs.get('group', '')
-            data_type = kwargs.get('data_type', '')
-            subtype = kwargs.get('subtype', '')
-            filtername = kwargs.get('filtername', '')
-            ra = kwargs.get('ra', 0)
-            dec = kwargs.get('dec', 0)
-            pointing_angle = kwargs.get('pointing_angle', 0)
-            # querying the database for existing row or create
-            try:
-                cls._dataproduct = si.session.query(si.DataProduct). \
-                    filter_by(config_id=config.config_id). \
-                    filter_by(filename=filename).one()
-            except si.orm.exc.NoResultFound:
-                if '.' in filename:
-                    _suffix = filename.split('.')[-1]
-                else:
-                    _suffix = ' '
-                if _suffix not in ['fits', 'txt', 'head', 'cl',
-                                   'py', 'pyc', 'pl', 'phot', 'png', 'jpg', 'ps',
-                                   'gz', 'dat', 'lst', 'sh']:
-                    _suffix = 'other'
-                cls._dataproduct = si.DataProduct(filename=filename,
-                                                  relativepath=relativepath,
-                                                  suffix=_suffix,
-                                                  data_type=data_type,
-                                                  subtype=subtype,
-                                                  group=group,
-                                                  filtername=filtername,
-                                                  ra=ra,
-                                                  dec=dec,
-                                                  pointing_angle=pointing_angle)
-                config._config.dataproducts = cls._dataproduct
+            id = kwargs.get('id', cls._dataproduct)
+            if isinstance(id, int):
+                cls._dataproduct = si.session.query(si.DataProduct).filter_by(id=id).one()
+            else:
+                # gathering construction arguments
+                wpargs, args = wpargs_from_args(*args)
+                config = wpargs.get('Configuration', kwargs.get('config', None))
+                filename = args[0] if len(args) else kwargs.get('filename', None)
+                relativepath = args[1] if len(args) > 1 else kwargs.get('relativepath', config.relativepath)
+                group = args[2] if len(args) > 2 else kwargs.get('group', '')
+                data_type = args[3] if len(args) > 3 else kwargs.get('data_type', '')
+                subtype = args[4] if len(args) > 4 else kwargs.get('subtype', '')
+                filtername = args[5] if len(args) > 5 else kwargs.get('filtername', '')
+                ra = args[6] if len(args) > 6 else kwargs.get('ra', 0)
+                dec = args[7] if len(args) > 7 else kwargs.get('dec', 0)
+                pointing_angle = args[8] if len(args) > 8 else kwargs.get('pointing_angle', 0)
+                # querying the database for existing row or create
+                try:
+                    cls._dataproduct = si.session.query(si.DataProduct). \
+                        filter_by(config_id=config.config_id). \
+                        filter_by(filename=filename).one()
+                except si.orm.exc.NoResultFound:
+                    if '.' in filename:
+                        _suffix = filename.split('.')[-1]
+                    else:
+                        _suffix = ' '
+                    if _suffix not in ['fits', 'txt', 'head', 'cl',
+                                       'py', 'pyc', 'pl', 'phot', 'png', 'jpg', 'ps',
+                                       'gz', 'dat', 'lst', 'sh']:
+                        _suffix = 'other'
+                    cls._dataproduct = si.DataProduct(filename=filename,
+                                                      relativepath=relativepath,
+                                                      suffix=_suffix,
+                                                      data_type=data_type,
+                                                      subtype=subtype,
+                                                      group=group,
+                                                      filtername=filtername,
+                                                      ra=ra,
+                                                      dec=dec,
+                                                      pointing_angle=pointing_angle)
+                    config._config.dataproducts = cls._dataproduct
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'DataProduct', __name__)
         return cls._inst
@@ -116,6 +121,10 @@ class SQLDataProduct(SQLOwner):
         self.options = kwargs.get('options', {})
         self._dataproduct.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @property
+    def parents(self):
+        return self.config
 
     @property
     def filename(self):
@@ -184,11 +193,17 @@ class SQLDataProduct(SQLOwner):
         return self._dataproduct.config_id
 
     @property
+    def config(self):
+        if hasattr(self._dataproduct.config, '_wpipe_object'):
+            return self._dataproduct.config._wpipe_object
+        else:
+            from .Configuration import SQLConfiguration
+            return SQLConfiguration(self._dataproduct.config)
+
+    @property
     def target_id(self):
-        si.session.commit()
-        return self._dataproduct.config.target_id
+        return self.config.target_id
 
     @property
     def pipeline_id(self):
-        si.session.commit()
-        return self._dataproduct.config.target.pipeline_id
+        return self.config.pipeline_id

@@ -37,27 +37,32 @@ class Task:
 
 class SQLTask:
     def __new__(cls, *args, **kwargs):
-        # checking if given argument is sqlintf object
+        # checking if given argument is sqlintf object or existing id
         cls._task = args[0] if len(args) else None
         if not isinstance(cls._task, si.Task):
-            # gathering construction arguments
-            pipeline = kwargs.get('pipeline', args[0] if len(args) else None)
-            name = kwargs.get('name', args[1] if len(args) > 1 else None)
-            nruns = kwargs.get('nruns', 0)
-            run_time = kwargs.get('run_time', 0)
-            is_exclusive = kwargs.get('is_exclusive', 0)
-            # querying the database for existing row or create
-            try:
-                cls._task = si.session.query(si.Task). \
-                    filter_by(pipeline_id=pipeline.pipeline_id). \
-                    filter_by(name=name).one()
-            except si.orm.exc.NoResultFound:
-                cls._task = si.Task(name=name,
-                                    nruns=nruns,
-                                    run_time=run_time,
-                                    is_exclusive=is_exclusive)
-                pipeline._pipeline.tasks.append(cls._task)
-            # verifying if instance already exists and return
+            id = kwargs.get('id', cls._task)
+            if isinstance(id, int):
+                cls._task = si.session.query(si.Task).filter_by(id=id).one()
+            else:
+                # gathering construction arguments
+                wpargs, args = wpargs_from_args(*args)
+                pipeline = wpargs.get('Pipeline', kwargs.get('pipeline', None))
+                name = args[0] if len(args) else kwargs.get('name', None)
+                nruns = args[1] if len(args) > 1 else kwargs.get('nruns', 0)
+                run_time = args[2] if len(args) > 2 else kwargs.get('run_time', 0)
+                is_exclusive = args[3] if len(args) > 3 else kwargs.get('is_exclusive', 0)
+                # querying the database for existing row or create
+                try:
+                    cls._task = si.session.query(si.Task). \
+                        filter_by(pipeline_id=pipeline.pipeline_id). \
+                        filter_by(name=name).one()
+                except si.orm.exc.NoResultFound:
+                    cls._task = si.Task(name=name,
+                                        nruns=nruns,
+                                        run_time=run_time,
+                                        is_exclusive=is_exclusive)
+                    pipeline._pipeline.tasks.append(cls._task)
+        # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Task', __name__)
         return cls._inst
 
@@ -69,6 +74,10 @@ class SQLTask:
                                              child_attr='id')
         self._task.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @property
+    def parents(self):
+        return self.pipeline
 
     @property
     def name(self):
@@ -112,9 +121,25 @@ class SQLTask:
         return self._task.pipeline_id
 
     @property
+    def pipeline(self):
+        if hasattr(self._task.pipeline, '_wpipe_object'):
+            return self._task.pipeline._wpipe_object
+        else:
+            from .Pipeline import SQLPipeline
+            return SQLPipeline(self._task.pipeline)
+
+    @property
     def masks(self):
         return self._masks_proxy
 
     @property
     def jobs(self):
         return self._jobs_proxy
+
+    def mask(self, *args, **kwargs):
+        from .Mask import SQLMask
+        return SQLMask(self, *args, **kwargs)
+
+    def job(self, *args, **kwargs):
+        from .Job import SQLJob
+        return SQLJob(self, *args, **kwargs)
