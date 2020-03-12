@@ -8,7 +8,7 @@ class Owner(Base):
     type = sa.Column(sa.String(256))
     options = orm.relationship("Option", back_populates="owner")
     __mapper_args__ = {
-        'polymorphic_identity':'owner',
-        'polymorphic_on':type
+        'polymorphic_identity': 'owner',
+        'polymorphic_on': type
     }
 

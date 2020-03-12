@@ -31,8 +31,8 @@ class SQLUser:
                 cls._user = si.session.query(si.User).filter_by(id=id).one()
             else:
                 # gathering construction arguments
-                wpargs, args = wpargs_from_args(*args)
-                name = args[0] if len(args) else kwargs.get('name', None)
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
+                name = kwargs.get('name', PARSER.parse_known_args()[0].user_name if args[0] is None else args[0])
                 # querying the database for existing row or create
                 try:
                     cls._user = si.session.query(si.User). \
@@ -41,12 +41,12 @@ class SQLUser:
                     cls._user = si.User(name=name)
                     si.session.add(cls._user)
         # verifying if instance already exists and return
-        wpipe_to_sqlintf_connection(cls, 'User', __name__)
+        wpipe_to_sqlintf_connection(cls, 'User')
         return cls._inst
 
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_pipelines_proxy'):
-            self._pipelines_proxy = ChildrenProxy(self._user, 'pipelines', 'Pipeline', __name__)
+            self._pipelines_proxy = ChildrenProxy(self._user, 'pipelines', 'Pipeline')
         self._user.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 

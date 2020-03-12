@@ -1,12 +1,24 @@
+import argparse
 import sqlalchemy as sa
 import sqlalchemy.orm as orm
 from sqlalchemy.ext.declarative import declarative_base
 
-#engine_URL = 'sqlite:///:memory:'
-engine_URL = 'mysql://wpipe:W£|£3u53r@localhost/server'
+PARSER = argparse.ArgumentParser()
+PARSER.add_argument('--sqlite', '-s', dest='sqlite', action='store_true',
+                    help='Use the in-memory sql database for testing purpose')
+sqlite = PARSER.parse_known_args()[0].sqlite
+
+if sqlite:
+    engine_URL = 'sqlite:///:memory:'
+else:
+    engine_URL = 'mysql://wpipe:W£|£3u53r@localhost/server'
+
 engine = sa.create_engine(engine_URL)#, echo=True)
-engine.execute("CREATE DATABASE IF NOT EXISTS wpipe")
-engine.execute("USE wpipe")
+
+if not sqlite:
+    engine.execute("CREATE DATABASE IF NOT EXISTS wpipe")
+    engine.execute("USE wpipe")
+
 Base = declarative_base()
 
 Session = orm.sessionmaker(bind=engine)

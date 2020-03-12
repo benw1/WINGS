@@ -1,9 +1,9 @@
 from .core import *
 from .Store import Store
-from .Node import Node, SQLNode
+from .Node import Node
 from .Owner import SQLOwner
-from .Configuration import Configuration, SQLConfiguration
-from .Task import Task, SQLTask
+from .Configuration import Configuration
+from .Task import Task
 
 
 class Job:
@@ -57,19 +57,26 @@ class Job:
 class SQLJob(SQLOwner):
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
-        cls._job = args[0] if len(args)==1 else None
+        cls._job = args[0] if len(args) == 1 else None
         if not isinstance(cls._job, si.Job):
             id = kwargs.get('id', cls._job)
             if isinstance(id, int):
                 cls._job = si.session.query(si.Job).filter_by(id=id).one()
             else:
                 # gathering construction arguments
-                wpargs, args = wpargs_from_args(*args)
-                event = wpargs.get('Event', kwargs.get('event', None))
-                config = wpargs.get('Configuration', kwargs.get('config', event.config if event is not None else None))
-                task = wpargs.get('Task', kwargs.get('task', config.dummy_task))
-                node = wpargs.get('Node', kwargs.get('node', event.parent_job.node if event is not None else None))
-                state = args[0] if len(args) else kwargs.get('state', 'any')
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
+                event = kwargs.get('event', wpargs.get('Event', None))
+                config = kwargs.get('config',
+                                    wpargs.get('Configuration',
+                                               event.config if event is not None else
+                                               None))
+                task = kwargs.get('task', wpargs.get('Task', config.dummy_task))
+                from . import DefaultNode
+                node = kwargs.get('node',
+                                  wpargs.get('Node',
+                                             event.parent_job.node if event is not None else
+                                             DefaultNode))
+                state = kwargs.get('state', 'any' if args[0] is None else args[0])
                 # querying the database for existing row or create
                 try:
                     cls._job = si.session.query(si.Job). \
@@ -94,18 +101,15 @@ class SQLJob(SQLOwner):
                     cls._job.starttime = datetime.datetime.utcnow()
                     cls._job.endtime = datetime.datetime.utcnow()
         # verifying if instance already exists and return
-        wpipe_to_sqlintf_connection(cls, 'Job', __name__)
+        wpipe_to_sqlintf_connection(cls, 'Job')
         return cls._inst
 
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_child_events_proxy'):
-            self._child_events_proxy = ChildrenProxy(self._job, 'child_events', 'Event', __name__)
+            self._child_events_proxy = ChildrenProxy(self._job, 'child_events', 'Event')
         if not hasattr(self, '_owner'):
-            super().__init__()
             self._owner = self._job
-        self.options = kwargs.get('options', {})
-        self._job.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        super(SQLJob, self).__init__(kwargs.get('options', {}))
 
     @property
     def parents(self):

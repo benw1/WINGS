@@ -1,6 +1,6 @@
 from .core import *
 from .Store import Store
-from .Pipeline import Pipeline, SQLPipeline
+from .Pipeline import Pipeline
 from .Owner import SQLOwner
 
 
@@ -49,9 +49,9 @@ class SQLTarget(SQLOwner):
                 cls._target = si.session.query(si.Target).filter_by(id=id).one()
             else:
                 # gathering construction arguments
-                wpargs, args = wpargs_from_args(*args)
-                pipeline = wpargs.get('Pipeline', kwargs.get('pipeline', None))
-                name = args[0] if len(args) else kwargs.get('name', None)
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
+                pipeline = kwargs.get('pipeline', wpargs.get('Pipeline', None))
+                name = kwargs.get('name', args[0])
                 # querying the database for existing row or create
                 try:
                     cls._target = si.session.query(si.Target). \
@@ -64,18 +64,15 @@ class SQLTarget(SQLOwner):
                     if not os.path.isdir(cls._target.relativepath):
                         os.mkdir(cls._target.relativepath)
         # verifying if instance already exists and return
-        wpipe_to_sqlintf_connection(cls, 'Target', __name__)
+        wpipe_to_sqlintf_connection(cls, 'Target')
         return cls._inst
 
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_configurations_proxy'):
-            self._configurations_proxy = ChildrenProxy(self._target, 'configurations', 'Configuration', __name__)
+            self._configurations_proxy = ChildrenProxy(self._target, 'configurations', 'Configuration')
         if not hasattr(self, '_owner'):
-            super().__init__()
             self._owner = self._target
-        self.options = kwargs.get('options', {})
-        self._target.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        super(SQLTarget, self).__init__(kwargs.get('options', {}))
 
     @property
     def parents(self):

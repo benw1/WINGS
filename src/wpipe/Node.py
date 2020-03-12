@@ -1,3 +1,4 @@
+import socket
 from .core import *
 from .Store import Store
 
@@ -32,10 +33,10 @@ class SQLNode:
                 cls._node = si.session.query(si.Node).filter_by(id=id).one()
             else:
                 # gathering construction arguments
-                wpargs, args = wpargs_from_args(*args)
-                name = args[0] if len(args) else kwargs.get('name', None)
-                int_ip = args[1] if len(args) > 1 else kwargs.get('int_ip', '')
-                ext_ip = args[2] if len(args) > 2 else kwargs.get('ext_ip', '')
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=3)
+                name = kwargs.get('name', socket.gethostname() if args[0] is None else args[0])
+                int_ip = kwargs.get('int_ip', '' if args[1] is None else args[1])
+                ext_ip = kwargs.get('ext_ip', '' if args[2] is None else args[2])
                 # querying the database for existing row or create
                 try:
                     cls._node = si.session.query(si.Node). \
@@ -46,12 +47,12 @@ class SQLNode:
                                         ext_ip=ext_ip)
                     si.session.add(cls._node)
         # verifying if instance already exists and return
-        wpipe_to_sqlintf_connection(cls, 'Node', __name__)
+        wpipe_to_sqlintf_connection(cls, 'Node')
         return cls._inst
 
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_jobs_proxy'):
-            self._jobs_proxy = ChildrenProxy(self._node, 'jobs', 'Job', __name__,
+            self._jobs_proxy = ChildrenProxy(self._node, 'jobs', 'Job',
                                              child_attr='id')
         self._node.timestamp = datetime.datetime.utcnow()
         si.session.commit()

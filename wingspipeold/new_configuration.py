@@ -1,16 +1,16 @@
 #! /usr/bin/env python
-import argparse
+import argparse,os,subprocess,json
+from wpipe import *
+import glob
 
-import wpipe as wp
-import numpy as np
-
-
-def register(task):
-    _temp = task.mask(source='*', name='start', value=task.name)
-
+def register(PID,task_name):
+   myPipe = Pipeline.get(PID)
+   myTask = Task(task_name,myPipe).create()
+   _t = Task.add_mask(myTask,'*','start',task_name) 
+   return
 
 def parse_all():
-    parser = wp.PARSER
+    parser = argparse.ArgumentParser()
     parser.add_argument('--R','-R', dest='REG', action='store_true',
                         help='Specify to Register')
     parser.add_argument('--N','-n',type=str,  dest='task_name',
@@ -31,24 +31,24 @@ def parse_all():
 if __name__ == '__main__':
    args = parse_all()
    if args.REG:
-       register(wp.SQLPipeline(int(args.PID)).task(name=str(args.task_name)))
+      _t = register(int(args.PID),str(args.task_name))
    else:
       if args.config_id is None:
          exit("Need to define a configuration ID")
       config_id = args.config_id
 
       # Fetch, update params
-      params = wp.Parameters.getParam(config_id)
+      params = Parameters.getParam(config_id)
       params['oversample'] =4 
 
 
       # Fetch old config and the target
-      oldConfig = wp.Configuration.get(config_id)
-      target = wp.Target.get(oldConfig.target_id)
+      oldConfig = Configuration.get(config_id)
+      target = Target.get(oldConfig.target_id)
       target.relativepath = np.array([target.relativepath])
 
       # Create new config object in memory
-      newConfig = wp.Configuration('os4',target=target)
+      newConfig = Configuration('os4',target=target)
       newConfig.config_id = np.array([0])
 
       # Write to db, create directories

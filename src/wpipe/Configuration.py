@@ -1,6 +1,6 @@
 from .core import *
 from .Store import Store
-from .Target import Target, SQLTarget
+from .Target import Target
 
 
 # from .Parameters import SQLParameter # this will work if only
@@ -60,10 +60,10 @@ class SQLConfiguration:
                 cls._configuration = si.session.query(si.Configuration).filter_by(id=id).one()
             else:
                 # gathering construction arguments
-                wpargs, args = wpargs_from_args(*args)
-                target = wpargs.get('Target', kwargs.get('target', None))
-                name = args[0] if len(args) else kwargs.get('name', None)
-                description = args[1] if len(args) > 1 else kwargs.get('description', '')
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)
+                target = kwargs.get('target', wpargs.get('Target', None))
+                name = kwargs.get('name', args[0])
+                description = kwargs.get('description', '' if args[1] is None else args[1])
                 # querying the database for existing row or create
                 try:
                     cls._configuration = si.session.query(si.Configuration). \
@@ -88,16 +88,18 @@ class SQLConfiguration:
                     if not os.path.isdir(cls._configuration.procpath):
                         os.mkdir(cls._configuration.procpath)
         # verifying if instance already exists and return
-        wpipe_to_sqlintf_connection(cls, 'Configuration', __name__)
+        wpipe_to_sqlintf_connection(cls, 'Configuration')
         return cls._inst
 
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_dataproducts_proxy'):
-            self._dataproducts_proxy = ChildrenProxy(self._configuration, 'dataproducts', 'DataProduct', __name__,
+            self._dataproducts_proxy = ChildrenProxy(self._configuration, 'dataproducts', 'DataProduct',
                                                      child_attr='filename')
+        if not hasattr(self, '_parameters_proxy'):
+            self._parameters_proxy = DictLikeChildrenProxy(self._configuration, 'parameters', 'Parameter')
         self.parameters = kwargs.get('parameters', {})
         if not hasattr(self, '_jobs_proxy'):
-            self._jobs_proxy = ChildrenProxy(self._configuration, 'jobs', 'Job', __name__,
+            self._jobs_proxy = ChildrenProxy(self._configuration, 'jobs', 'Job',
                                              child_attr='id')
         self._configuration.timestamp = datetime.datetime.utcnow()
         si.session.commit()
@@ -194,14 +196,16 @@ class SQLConfiguration:
 
     @property
     def parameters(self):
-        si.session.commit()
-        return dict(map(lambda parameter: [parameter.name, parameter.value], self._configuration.parameters))
+        return self._parameters_proxy
 
     @parameters.setter
-    def parameters(self, parameters={}):
-        from .Parameters import SQLParameter # line to delete in final version
+    def parameters(self, parameters):
         for key, value in parameters.items():
-            SQLParameter(self, key, value)
+            self.parameter(name=key, value=value)
+
+    def parameter(self, *args, **kwargs):
+        from .Parameters import SQLParameter
+        return SQLParameter(self, *args, **kwargs)
 
     @property
     def jobs(self):

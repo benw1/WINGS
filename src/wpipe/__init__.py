@@ -14,6 +14,10 @@ from .Job import Job, SQLJob
 from .Event import Event, SQLEvent
 
 
+DefaultUser = SQLUser()
+DefaultNode = SQLNode()
+
+
 def Submit(task, job_id, event_id):
     pid = task.pipeline_id
     myPipe = Pipeline.get(pid)
@@ -27,6 +31,18 @@ def Submit(task, job_id, event_id):
     # hyak(task,job_id,event_id)
     # Let's send stuff to pbs
     # pbs(task,job_id,event_id)
+    return
+
+
+def sql_submit(task, job_id, event_id):
+    my_pipe = task.pipeline
+    executable = my_pipe.software_root + '/' + task.name
+    # subprocess.Popen([executable,'-e',str(event_id),'-j',str(job_id)],cwd=my_pipe.data_root) # This line will work with an SQL backbone, but NOT hdf5, as 2 tasks running on the same hdf5 file will collide!
+    subprocess.run([executable, '-e', str(event_id), '-j', str(job_id)], cwd=my_pipe.data_root)
+    # Let's send stuff to slurm
+    # sql_hyak(task,job_id,event_id)
+    # Let's send stuff to pbs
+    # sql_pbs(task,job_id,event_id)
     return
 
 
@@ -143,6 +159,32 @@ def fire(event):
                 return
 
 
+def sql_fire(event):
+    event_name = event.name
+    event_value = event.value
+    event_id = event.event_id
+    # print("HERE ",event.name," DONE")
+    parent_job = event.parent_job
+    try:
+        configuration = SQLConfiguration(event.options['config_id'])
+    except:
+        configuration = parent_job.config
+    # print(parent_job.pipeline_id)
+    for task in parent_job.pipeline.tasks:
+        # print(task.task_id)
+        for mask in task.masks:
+            mask_name = mask.name
+            mask_value = mask.value
+            # print("HERE",event_name,mask_name,event_value,mask_value,"DONE3")
+            if (event_name == mask_name) & ((event_value == mask_value) | (mask_value == '*')):
+                taskname = task.name
+                newjob = event.fired_job(task, configuration)
+                job_id = newjob.job_id
+                print(taskname, "-e", event_id, "-j", job_id)
+                sql_submit(task, job_id, event_id)  # pipeline should be able to run stuff and keep track if it completes
+                return
+
+
 def logprint(configuration, job, log_text):
     target_id = configuration['target_id']  # .values[0]
     pipeline_id = configuration['pipeline_id']  # .values[0]
@@ -157,6 +199,17 @@ def logprint(configuration, job, log_text):
     task = Task.get(task_id)
     task_name = task['name']
     logfile = task_name + '_j' + str(job_id) + '_e' + str(event_id) + '.log'
+    try:
+        log = open(logpath + logfile, "a")
+    except:
+        log = open(logpath + logfile, "w")
+    log.write(log_text)
+    log.close()
+
+
+def sql_logprint(configuration, job, log_text):
+    logpath = configuration.target.relativepath + '/log_' + configuration.name + '/'
+    logfile = job.task.name + '_j' + str(job.job_id) + '_e' + str(job.event_id) + '.log'
     try:
         log = open(logpath + logfile, "a")
     except:

@@ -48,12 +48,12 @@ class SQLOption:
                 cls._option = si.session.query(si.Option).filter_by(id=id).one()
             else:
                 # gathering construction arguments
-                wpargs, args = wpargs_from_args(*args)
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)
                 list(wpargs.__setitem__('Owner', wpargs[key]) for key in list(wpargs.keys())[::-1]
                      if (key in map(lambda obj: obj.__name__, si.Owner.__subclasses__())))
-                owner = wpargs.get('Owner', kwargs.get('owner', None))
-                name = args[0] if len(args) else kwargs.get('name', None)
-                value = args[1] if len(args) > 1 else kwargs.get('value', None)
+                owner = kwargs.get('owner', wpargs.get('Owner', None))
+                name = kwargs.get('name', args[0])
+                value = kwargs.get('value', args[1])
                 # querying the database for existing row or create
                 try:
                     cls._option = si.session.query(si.Option). \
@@ -64,7 +64,7 @@ class SQLOption:
                                             value=str(value))
                     owner._owner.options.append(cls._option)
         # verifying if instance already exists and return
-        wpipe_to_sqlintf_connection(cls, 'Option', __name__)
+        wpipe_to_sqlintf_connection(cls, 'Option')
         return cls._inst
 
     def __init__(self, owner, name, value):

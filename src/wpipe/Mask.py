@@ -1,6 +1,6 @@
 from .core import *
 from .Store import Store
-from .Task import Task, SQLTask
+from .Task import Task
 
 class Mask():
     def __init__(self, task=Task().new(), source='', name='', value=''):
@@ -33,11 +33,11 @@ class SQLMask:
                 cls._mask = si.session.query(si.Mask).filter_by(id=id).one()
             else:
                 # gathering construction arguments
-                wpargs, args = wpargs_from_args(*args)
-                task = wpargs.get('Task', kwargs.get('task', None))
-                name = args[0] if len(args) else kwargs.get('name', None)
-                source = args[1] if len(args) > 1 else kwargs.get('source', '')
-                value = args[2] if len(args) > 2 else kwargs.get('value', '')
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=3)
+                task = kwargs.get('task', wpargs.get('Task', None))
+                name = kwargs.get('name', args[0])
+                source = kwargs.get('source', '' if args[1] is None else args[1])
+                value = kwargs.get('value', '' if args[2] is None else args[2])
                 # querying the database for existing row or create
                 try:
                     cls._mask = si.session.query(si.Mask). \
@@ -49,7 +49,7 @@ class SQLMask:
                                         value=value)
                     task._task.masks.append(cls._mask)
         # verifying if instance already exists and return
-        wpipe_to_sqlintf_connection(cls, 'Mask', __name__)
+        wpipe_to_sqlintf_connection(cls, 'Mask')
         return cls._inst
 
     def __init__(self, *args, **kwargs):

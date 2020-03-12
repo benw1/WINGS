@@ -1,6 +1,6 @@
 from .core import *
 from .Store import Store
-from .Pipeline import Pipeline, SQLPipeline
+from .Pipeline import Pipeline
 
 
 class Task:
@@ -45,12 +45,12 @@ class SQLTask:
                 cls._task = si.session.query(si.Task).filter_by(id=id).one()
             else:
                 # gathering construction arguments
-                wpargs, args = wpargs_from_args(*args)
-                pipeline = wpargs.get('Pipeline', kwargs.get('pipeline', None))
-                name = args[0] if len(args) else kwargs.get('name', None)
-                nruns = args[1] if len(args) > 1 else kwargs.get('nruns', 0)
-                run_time = args[2] if len(args) > 2 else kwargs.get('run_time', 0)
-                is_exclusive = args[3] if len(args) > 3 else kwargs.get('is_exclusive', 0)
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=4)
+                pipeline = kwargs.get('pipeline', wpargs.get('Pipeline', None))
+                name = kwargs.get('name', args[0])
+                nruns = kwargs.get('nruns', 0 if args[1] is None else args[1])
+                run_time = kwargs.get('run_time', 0 if args[2] is None else args[2])
+                is_exclusive = kwargs.get('is_exclusive', 0 if args[3] is None else args[3])
                 # querying the database for existing row or create
                 try:
                     cls._task = si.session.query(si.Task). \
@@ -63,16 +63,17 @@ class SQLTask:
                                         is_exclusive=is_exclusive)
                     pipeline._pipeline.tasks.append(cls._task)
         # verifying if instance already exists and return
-        wpipe_to_sqlintf_connection(cls, 'Task', __name__)
+        wpipe_to_sqlintf_connection(cls, 'Task')
         return cls._inst
 
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_masks_proxy'):
-            self._masks_proxy = ChildrenProxy(self._task, 'masks', 'Mask', __name__)
+            self._masks_proxy = ChildrenProxy(self._task, 'masks', 'Mask')
         if not hasattr(self, '_jobs_proxy'):
-            self._jobs_proxy = ChildrenProxy(self._task, 'jobs', 'Job', __name__,
+            self._jobs_proxy = ChildrenProxy(self._task, 'jobs', 'Job',
                                              child_attr='id')
         self._task.timestamp = datetime.datetime.utcnow()
+        self.register()
         si.session.commit()
 
     @property
@@ -143,3 +144,12 @@ class SQLTask:
     def job(self, *args, **kwargs):
         from .Job import SQLJob
         return SQLJob(self, *args, **kwargs)
+
+    def register(self):
+        _temp = __import__(os.path.basename(self.pipeline.software_root) + '.' + self.name.replace('.py', ''),
+                           fromlist=[''])
+        if hasattr(_temp, 'register'):
+            _temp.register(self)
+        else:
+            warnings.warn("Task " + self.pipeline.software_root + '/' + self.name +
+                          " cannot be registered: no 'register' function")

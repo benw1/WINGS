@@ -18,5 +18,5 @@ class Job(Owner):
     firing_event = orm.relationship("Event", primaryjoin="Job.firing_event_id==Event.id", back_populates="fired_jobs")
     child_events = orm.relationship("Event", primaryjoin="Job.id==Event.parent_job_id", back_populates="parent_job")
     __mapper_args__ = {
-        'polymorphic_identity':'job',
+        'polymorphic_identity': 'job',
     }

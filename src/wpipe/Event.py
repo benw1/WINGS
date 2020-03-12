@@ -1,7 +1,7 @@
 from .core import *
 from .Store import Store
 from .Owner import SQLOwner
-from .Job import Job, SQLJob
+from .Job import Job
 
 
 class Event:
@@ -48,11 +48,11 @@ class SQLEvent(SQLOwner):
                 cls._event = si.session.query(si.Event).filter_by(id=id).one()
             else:
                 # gathering construction arguments
-                wpargs, args = wpargs_from_args(*args)
-                job = wpargs.get('Job', kwargs.get('job', None))
-                name = args[0] if len(args) else kwargs.get('name', None)
-                jargs = args[1] if len(args) > 1 else kwargs.get('jargs', '')
-                value = args[2] if len(args) > 2 else kwargs.get('value', '')
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=3)
+                job = kwargs.get('job', wpargs.get('Job', None))
+                name = kwargs.get('name', args[0])
+                jargs = kwargs.get('jargs', '' if args[1] is None else args[1])
+                value = kwargs.get('value', '' if args[2] is None else args[2])
                 # querying the database for existing row or create
                 try:
                     cls._event = si.session.query(si.Event). \
@@ -64,19 +64,16 @@ class SQLEvent(SQLOwner):
                                           value=value)
                     job._job.child_events.append(cls._event)
         # verifying if instance already exists and return
-        wpipe_to_sqlintf_connection(cls, 'Event', __name__)
+        wpipe_to_sqlintf_connection(cls, 'Event')
         return cls._inst
 
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_fired_jobs_proxy'):
-            self._fired_jobs_proxy = ChildrenProxy(self._event, 'fired_jobs', 'Job', __name__,
+            self._fired_jobs_proxy = ChildrenProxy(self._event, 'fired_jobs', 'Job',
                                                    child_attr='id')
         if not hasattr(self, '_owner'):
-            super().__init__()
             self._owner = self._event
-        self.options = kwargs.get('options', {})
-        self._event.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        super(SQLEvent, self).__init__(kwargs.get('options', {}))
 
     @property
     def parents(self):
@@ -132,3 +129,6 @@ class SQLEvent(SQLOwner):
     def fired_job(self, *args, **kwargs):
         from .Job import SQLJob
         return SQLJob(self, *args, **kwargs)
+
+    def fire(self):
+        return

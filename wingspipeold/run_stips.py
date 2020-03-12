@@ -1,11 +1,7 @@
 #! /usr/bin/env python
-import argparse
-import os
-import subprocess
-
-import wpipe as wp
-
-# from stips.observation_module import ObservationModule #save for when ready
+import argparse,os,subprocess
+from wpipe import *
+#from stips.observation_module import ObservationModule #save for when ready
 
 on_hyak = False
 on_pbs = False
@@ -16,21 +12,22 @@ filtdict = {'R':'F062',
             'H':'F158',
             'F':'F184'}
 
-
-def register(task):
-    _temp = task.mask(source='*', name='start', value=task.name)
-    _temp = task.mask(source='*', name='new_stips_catalog', value='*')
-
+def register(PID,task_name):
+   myPipe = Pipeline.get(PID)
+   myTask = Task(task_name,myPipe).create()
+   _t = Task.add_mask(myTask,'*','start',task_name)
+   _t = Task.add_mask(myTask,'*','new_stips_catalog','*')
+   return
 
 def hyak_stips(job_id,event_id,dp_id,stips_script):
-   myJob  = wp.Job.get(job_id)
-   myPipe = wp.Pipeline.get(int(myJob.pipeline_id))
+   myJob  = Job.get(job_id)
+   myPipe = Pipeline.get(int(myJob.pipeline_id))
 
-   catalogID = wp.Options.get('event',event_id)['dp_id']
-   catalogDP = wp.DataProduct.get(int(catalogID))
-   myTarget = wp.Target.get(int(catalogDP.target_id))
-   myConfig = wp.Configuration.get(int(catalogDP.config_id))
-   myParams = wp.Parameters.getParam(int(myConfig.config_id))
+   catalogID = Options.get('event',event_id)['dp_id']
+   catalogDP = DataProduct.get(int(catalogID))
+   myTarget = Target.get(int(catalogDP.target_id))
+   myConfig = Configuration.get(int(catalogDP.config_id))
+   myParams = Parameters.getParam(int(myConfig.config_id))
 
    fileroot = str(catalogDP.relativepath)
    filename = str(catalogDP.filename) # for example, Mixed_h15_shell_3Mpc_Z.tbl 
@@ -60,15 +57,15 @@ def hyak_stips(job_id,event_id,dp_id,stips_script):
    subprocess.run(['sbatch',slurmfile],cwd=myConfig.procpath)
 
 def pbs_stips(job_id,event_id,dp_id,stips_script):
-   myJob  = wp.Job.get(job_id)
-   myPipe = wp.Pipeline.get(int(myJob.pipeline_id))
+   myJob  = Job.get(job_id)
+   myPipe = Pipeline.get(int(myJob.pipeline_id))
    dataroot = myPipe.data_root
 
-   catalogID = wp.Options.get('event',event_id)['dp_id']
-   catalogDP = wp.DataProduct.get(int(catalogID))
-   myTarget = wp.Target.get(int(catalogDP.target_id))
-   myConfig = wp.Configuration.get(int(catalogDP.config_id))
-   myParams = wp.Parameters.getParam(int(myConfig.config_id))
+   catalogID = Options.get('event',event_id)['dp_id']
+   catalogDP = DataProduct.get(int(catalogID))
+   myTarget = Target.get(int(catalogDP.target_id))
+   myConfig = Configuration.get(int(catalogDP.config_id))
+   myParams = Parameters.getParam(int(myConfig.config_id))
    fileroot = str(catalogDP.relativepath)
    filename = str(catalogDP.filename) # for example, Mixed_h15_shell_3Mpc_Z.tbl
    filebase = filename.split('.')[0]
@@ -97,14 +94,14 @@ def pbs_stips(job_id,event_id,dp_id,stips_script):
 
 
 def run_stips(job_id,event_id,dp_id,ra_dither,dec_dither,run_id):
-   myJob  = wp.Job.get(job_id)
-   myPipe = wp.Pipeline.get(int(myJob.pipeline_id))
+   myJob  = Job.get(job_id)
+   myPipe = Pipeline.get(int(myJob.pipeline_id))
 
    catalogID = dp_id
-   catalogDP = wp.DataProduct.get(int(catalogID))
-   myTarget = wp.Target.get(int(catalogDP.target_id))
-   myConfig = wp.Configuration.get(int(catalogDP.config_id))
-   myParams = wp.Parameters.getParam(int(myConfig.config_id))
+   catalogDP = DataProduct.get(int(catalogID))
+   myTarget = Target.get(int(catalogDP.target_id))
+   myConfig = Configuration.get(int(catalogDP.config_id))
+   myParams = Parameters.getParam(int(myConfig.config_id))
    racent = float(myParams['racent'])+(float(ra_dither)/3600.0)
    deccent = float(myParams['deccent'])+(float(dec_dither)/3600.0)
    try:
@@ -128,10 +125,10 @@ def run_stips(job_id,event_id,dp_id,ra_dither,dec_dither,run_id):
       os.system("python " + stips_script)
    #dp_opt = Parameters.getParam(myConfig.config_id) # Attach config params used tp run sim to the DP
    
-   _dp = wp.DataProduct(filename='sim_'+str(dp_id)+'_0.fits',relativepath=fileroot,group='proc',subtype='stips_image',filtername=filtername,ra=myParams['racent'], dec=myParams['deccent'],configuration=myConfig).create()
+   _dp = DataProduct(filename='sim_'+str(dp_id)+'_0.fits',relativepath=fileroot,group='proc',subtype='stips_image',filtername=filtername,ra=myParams['racent'], dec=myParams['deccent'],configuration=myConfig).create()
 
 def parse_all():
-    parser = wp.PARSER
+    parser = argparse.ArgumentParser()
     parser.add_argument('--R','-R', dest='REG', action='store_true',
                         help='Specify to Register')
     parser.add_argument('--P','-p',type=int,  dest='PID',
@@ -149,47 +146,47 @@ def parse_all():
 if __name__ == '__main__':
    args = parse_all()
    if args.REG:
-      register(wp.SQLPipeline(int(args.PID)).task(name=str(args.task_name)))
+      _t = register(int(args.PID),str(args.task_name))
    else:
       job_id = int(args.job_id)
       event_id = int(args.event_id)
-      event = wp.Event.get(event_id)
-      dp_id = wp.Options.get('event',event_id)['dp_id']
+      event = Event.get(event_id)
+      dp_id = Options.get('event',event_id)['dp_id']
       parent_job_id = int(event.job_id)
-      compname = wp.Options.get('event',event_id)['name']
-      ra_dither = wp.Options.get('event',event_id)['ra_dither']
-      dec_dither = wp.Options.get('event',event_id)['dec_dither']
-      update_option = int(wp.Options.get('job',parent_job_id)[compname])
+      compname = Options.get('event',event_id)['name']
+      ra_dither = Options.get('event',event_id)['ra_dither']
+      dec_dither = Options.get('event',event_id)['dec_dither']
+      update_option = int(Options.get('job',parent_job_id)[compname])
       run_stips(job_id,event_id,dp_id,float(ra_dither),float(dec_dither),update_option)
       update_option = update_option+1
-      _update = wp.Options.addOption('job',parent_job_id,compname,update_option)
-      to_run = int(wp.Options.get('event',event_id)['to_run'])
+      _update = Options.addOption('job',parent_job_id,compname,update_option)
+      to_run = int(Options.get('event',event_id)['to_run'])
       completed = update_option
-      thisjob = wp.Job.get(job_id)
-      catalogID = wp.Options.get('event',event_id)['dp_id']
-      catalogDP = wp.DataProduct.get(int(catalogID))
-      thisconf = wp.Configuration.get(int(catalogDP.config_id))
-      myTarget = wp.Target.get(int(thisconf.target_id))
+      thisjob = Job.get(job_id)
+      catalogID = Options.get('event',event_id)['dp_id']
+      catalogDP = DataProduct.get(int(catalogID))
+      thisconf = Configuration.get(int(catalogDP.config_id))
+      myTarget = Target.get(int(thisconf.target_id))
       print(''.join(["Completed ",str(completed)," of ",str(to_run)]))
-      wp.logprint(thisconf,thisjob,''.join(["Completed ",str(completed)," of ",str(to_run),"\n"]))
+      logprint(thisconf,thisjob,''.join(["Completed ",str(completed)," of ",str(to_run),"\n"]))
       if (completed>=to_run):
-         wp.logprint(thisconf,thisjob,''.join(["Completed ",str(completed)," and to run is ",str(to_run)," firing event\n"]))
-         DP = wp.DataProduct.get(int(dp_id))
+         logprint(thisconf,thisjob,''.join(["Completed ",str(completed)," and to run is ",str(to_run)," firing event\n"]))
+         DP = DataProduct.get(int(dp_id))
          tid = int(DP.target_id)
-         #image_dps = wp.DataProduct.get({relativepath==config.procpath,subtype=='stips_image'})
+         #image_dps = DataProduct.get({relativepath==config.procpath,subtype=='stips_image'})
          path = thisconf.procpath
-         image_dps=wp.Store().select('data_products', where='config_id=='+str(thisconf.config_id)+' & subtype=='+'"stips_image"')
+         image_dps=Store().select('data_products', where='config_id=='+str(thisconf.config_id)+' & subtype=='+'"stips_image"')
          comp_name = 'completed'+myTarget['name']
          options = {comp_name:0}
-         _opt = wp.Options(options).create('job',job_id)
+         _opt = Options(options).create('job',job_id)
          total = len(image_dps)
          #print(image_dps(0))
          for index, dps in image_dps.iterrows():
             print(dps)
             dpid = int(dps.dp_id)
-            newevent = wp.Job.getEvent(thisjob,'stips_done',options={'target_id':tid,'dp_id':dpid,'name':comp_name,'to_run':total})
-            #wp.fire(newevent)
-            wp.logprint(thisconf,thisjob,'stips_done but not firing any events for now\n')
-            #wp.logprint(thisconf,thisjob,''.join(["Event= ",str(event.event_id)]))
+            newevent = Job.getEvent(thisjob,'stips_done',options={'target_id':tid,'dp_id':dpid,'name':comp_name,'to_run':total})
+            #fire(newevent)           
+            logprint(thisconf,thisjob,'stips_done but not firing any events for now\n')
+            #logprint(thisconf,thisjob,''.join(["Event= ",str(event.event_id)]))
 
    

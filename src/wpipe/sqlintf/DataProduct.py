@@ -18,5 +18,5 @@ class DataProduct(Owner):
     config_id = sa.Column(sa.Integer, sa.ForeignKey('configurations.id'))
     config = orm.relationship("Configuration", back_populates="dataproducts")
     __mapper_args__ = {
-        'polymorphic_identity':'dataproduct',
+        'polymorphic_identity': 'dataproduct',
     }

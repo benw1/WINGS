@@ -3,8 +3,14 @@ from .Options import SQLOption
 
 
 class SQLOwner:
-    def __init__(self):
-        self._owner = None
+    def __init__(self, options):
+        if not hasattr(self, '_owner'):
+            self._owner = si.Owner()
+        if not hasattr(self, '_options_proxy'):
+            self._options_proxy = DictLikeChildrenProxy(self._owner, 'options', 'Option')
+        self.options = options
+        self._owner.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
 
     @property
     def owner_id(self):
@@ -18,10 +24,12 @@ class SQLOwner:
 
     @property
     def options(self):
-        si.session.commit()
-        return dict(map(lambda option: [option.name, option.value], self._owner.options))
+        return self._options_proxy
 
     @options.setter
-    def options(self, options={}):
+    def options(self, options):
         for key, value in options.items():
-            SQLOption(self, key, value)
+            self.option(name=key, value=value)
+
+    def option(self, *args, **kwargs):
+        return SQLOption(self, *args, **kwargs)

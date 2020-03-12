@@ -74,17 +74,17 @@ class SQLDataProduct(SQLOwner):
                 cls._dataproduct = si.session.query(si.DataProduct).filter_by(id=id).one()
             else:
                 # gathering construction arguments
-                wpargs, args = wpargs_from_args(*args)
-                config = wpargs.get('Configuration', kwargs.get('config', None))
-                filename = args[0] if len(args) else kwargs.get('filename', None)
-                relativepath = args[1] if len(args) > 1 else kwargs.get('relativepath', config.relativepath)
-                group = args[2] if len(args) > 2 else kwargs.get('group', '')
-                data_type = args[3] if len(args) > 3 else kwargs.get('data_type', '')
-                subtype = args[4] if len(args) > 4 else kwargs.get('subtype', '')
-                filtername = args[5] if len(args) > 5 else kwargs.get('filtername', '')
-                ra = args[6] if len(args) > 6 else kwargs.get('ra', 0)
-                dec = args[7] if len(args) > 7 else kwargs.get('dec', 0)
-                pointing_angle = args[8] if len(args) > 8 else kwargs.get('pointing_angle', 0)
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=9)
+                config = kwargs.get('config', wpargs.get('Configuration', None))
+                filename = kwargs.get('filename', args[0])
+                relativepath = kwargs.get('relativepath', config.relativepath if args[1] is None else args[1])
+                group = kwargs.get('group', '' if args[2] is None else args[2])
+                data_type = kwargs.get('data_type', '' if args[3] is None else args[3])
+                subtype = kwargs.get('subtype', '' if args[4] is None else args[4])
+                filtername = kwargs.get('filtername', '' if args[5] is None else args[5])
+                ra = kwargs.get('ra', 0 if args[6] is None else args[6])
+                dec = kwargs.get('dec', 0 if args[7] is None else args[7])
+                pointing_angle = kwargs.get('pointing_angle', 0 if args[8] is None else args[8])
                 # querying the database for existing row or create
                 try:
                     cls._dataproduct = si.session.query(si.DataProduct). \
@@ -111,16 +111,13 @@ class SQLDataProduct(SQLOwner):
                                                       pointing_angle=pointing_angle)
                     config._config.dataproducts = cls._dataproduct
         # verifying if instance already exists and return
-        wpipe_to_sqlintf_connection(cls, 'DataProduct', __name__)
+        wpipe_to_sqlintf_connection(cls, 'DataProduct')
         return cls._inst
 
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_owner'):
-            super().__init__()
             self._owner = self._dataproduct
-        self.options = kwargs.get('options', {})
-        self._dataproduct.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        super(SQLDataProduct, self).__init__(kwargs.get('options', {}))
 
     @property
     def parents(self):

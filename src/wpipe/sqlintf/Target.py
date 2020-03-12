@@ -11,5 +11,5 @@ class Target(Owner):
     pipeline = orm.relationship("Pipeline", back_populates="targets")
     configurations = orm.relationship("Configuration", back_populates="target")
     __mapper_args__ = {
-        'polymorphic_identity':'target',
+        'polymorphic_identity': 'target',
     }
