@@ -2,7 +2,9 @@
 import time
 import datetime
 import subprocess
+import tempfile
 import os
+import glob
 import shutil
 import json
 import warnings
@@ -13,11 +15,14 @@ from . import sqlintf as si
 PARSER = si.PARSER
 PARSER.add_argument('--user', '-u', dest='user_name', type=str,
                     default=os.environ['WPIPE_USER'] if 'WPIPE_USER' in os.environ.keys()
-                    else warnings.warn("Set environment variable $WPIPE_USER to associate a default username"),
-                    help='Name of user creating this pipeline')
+                    else [warnings.warn("Set environment variable $WPIPE_USER to associate a default username"),
+                          'default'][1],
+                    help='Name of user - default to WPIPE_USER environment variable')
+PARSER.add_argument('--pipeline', '-p', dest='pipeline', type=str, default=os.getcwd(),
+                    help='Path or ID of pipeline - default to current working directory')
 
-if os.getcwd() not in map(os.path.abspath, os.sys.path):
-    os.sys.path.insert(0, os.getcwd())
+# if os.getcwd() not in map(os.path.abspath, os.sys.path):
+#     os.sys.path.insert(0, os.getcwd())
 
 pd.set_option('io.hdf.default_format', 'table')
 
@@ -45,10 +50,18 @@ def fmin_itemsize(x):
     return min_itemsize
 
 
+def as_int(string):
+    try:
+        return int(string)
+    except ValueError:
+        return
+
+
 def clean_path(path, root=''):
-    path = os.path.expandvars(os.path.expanduser(path))
-    root = os.path.expandvars(os.path.expanduser(root))
-    return os.path.abspath([root+'/', ''][os.path.isabs(path) or not(os.path.isabs(root))]+path)
+    if path is not None:
+        path = os.path.expandvars(os.path.expanduser(path))
+        root = os.path.expandvars(os.path.expanduser(root))
+        return os.path.abspath([root+'/', ''][os.path.isabs(path) or not(os.path.isabs(root))]+path)
 
 
 def key_wpipe_separator(obj):
@@ -114,5 +127,19 @@ class DictLikeChildrenProxy(ChildrenProxy):
 
     def __repr__(self):
         si.session.commit()
-        return dict(map(lambda child: (getattr(child, self._child_attr), getattr(child, self._child_value)),
-                        self.children))
+        return dict(self._items)
+
+    def __getitem__(self, item):
+        si.session.commit()
+        _temp = self._items
+        try:
+            key = val = None
+            while key != item:
+                key, val = next(_temp)
+            return val
+        except StopIteration:
+            raise KeyError(item)
+
+    @property
+    def _items(self):
+        return map(lambda child: (getattr(child, self._child_attr), getattr(child, self._child_value)), self.children)

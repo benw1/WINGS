@@ -209,7 +209,7 @@ def logprint(configuration, job, log_text):
 
 def sql_logprint(configuration, job, log_text):
     logpath = configuration.target.relativepath + '/log_' + configuration.name + '/'
-    logfile = job.task.name + '_j' + str(job.job_id) + '_e' + str(job.event_id) + '.log'
+    logfile = job.task.name + '_j' + str(job.job_id) + '_e' + str(job.firing_event_id) + '.log'
     try:
         log = open(logpath + logfile, "a")
     except:

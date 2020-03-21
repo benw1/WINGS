@@ -123,6 +123,10 @@ class SQLEvent(SQLOwner):
         return self.parent_job.config
 
     @property
+    def pipeline(self):
+        return self.parent_job.pipeline
+
+    @property
     def fired_jobs(self):
         return self._fired_jobs_proxy
 
@@ -131,4 +135,19 @@ class SQLEvent(SQLOwner):
         return SQLJob(self, *args, **kwargs)
 
     def fire(self):
-        return
+        # print("HERE ",self.name," DONE")
+        try:
+            from .Configuration import SQLConfiguration
+            configuration = SQLConfiguration(self.options['config_id'])
+        except KeyError:
+            configuration = self.config
+        # print(self.parent_job.pipeline_id)
+        for task in self.pipeline.tasks:
+            # print(task.task_id)
+            for mask in task.masks:
+                # print("HERE",self.name,mask.name,self.value,mask.value,"DONE3")
+                if (self.name == mask.name) & ((self.value == mask.value) | (mask.value == '*')):
+                    new_job = self.fired_job(task, configuration)
+                    print(task.name, "-e", self.event_id, "-j", new_job.job_id)
+                    # new_job.submit()  # pipeline should be able to run stuff and keep track if it completes
+                    return

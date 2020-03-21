@@ -77,7 +77,7 @@ class SQLDataProduct(SQLOwner):
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=9)
                 config = kwargs.get('config', wpargs.get('Configuration', None))
                 filename = kwargs.get('filename', args[0])
-                relativepath = kwargs.get('relativepath', config.relativepath if args[1] is None else args[1])
+                relativepath = kwargs.get('relativepath', config.datapath if args[1] is None else args[1])
                 group = kwargs.get('group', '' if args[2] is None else args[2])
                 data_type = kwargs.get('data_type', '' if args[3] is None else args[3])
                 subtype = kwargs.get('subtype', '' if args[4] is None else args[4])
@@ -89,6 +89,7 @@ class SQLDataProduct(SQLOwner):
                 try:
                     cls._dataproduct = si.session.query(si.DataProduct). \
                         filter_by(config_id=config.config_id). \
+                        filter_by(group=group). \
                         filter_by(filename=filename).one()
                 except si.orm.exc.NoResultFound:
                     if '.' in filename:
@@ -109,7 +110,7 @@ class SQLDataProduct(SQLOwner):
                                                       ra=ra,
                                                       dec=dec,
                                                       pointing_angle=pointing_angle)
-                    config._config.dataproducts = cls._dataproduct
+                    config._configuration.dataproducts.append(cls._dataproduct)
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'DataProduct')
         return cls._inst

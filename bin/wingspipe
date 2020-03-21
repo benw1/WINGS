@@ -1,0 +1,23 @@
+#! /usr/bin/env python
+import wpipe as wp
+
+
+def parse_all():
+    parser = wp.PARSER
+    parser.add_argument('--tasks_path', '-w', dest='tasks_path', default=None,
+                        help='Path to pipeline tasks to be registered')
+    parser.add_argument('--description', '-d', dest='description', default='',
+                        help='Optional description of this pipeline')
+    parser.add_argument('--targets', '-t', type=str, dest='data_dir',
+                        help='Path to directory with input lists')
+    parser.add_argument('--config', '-c', type=str, dest='config_file',
+                        help='Configuration File Path')
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+    args = parse_all()
+    my_pipe = wp.SQLPipeline(description=args.description)
+    my_pipe.attach_tasks(args.tasks_path)
+    my_pipe.attach_targets(args.data_dir, args.config_file)
+    my_pipe.to_json('pipe.conf', orient='records')

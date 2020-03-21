@@ -205,3 +205,16 @@ class SQLJob(SQLOwner):
     def child_event(self, *args, **kwargs):
         from .Event import SQLEvent
         return SQLEvent(self, *args, **kwargs)
+
+    def logprint(self, log_text):
+        logpath = self.config.target.datapath + '/log_' + self.config.name + '/'
+        logfile = self.task.name + '_j' + str(self.job_id) + '_e' + str(self.firing_event_id) + '.log'
+        try:
+            log = open(logpath + logfile, "a")
+        except:
+            log = open(logpath + logfile, "w")
+        log.write(log_text)
+        log.close()
+
+    def submit(self):
+        return None

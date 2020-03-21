@@ -73,7 +73,6 @@ class SQLTask:
             self._jobs_proxy = ChildrenProxy(self._task, 'jobs', 'Job',
                                              child_attr='id')
         self._task.timestamp = datetime.datetime.utcnow()
-        self.register()
         si.session.commit()
 
     @property

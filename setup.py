@@ -10,5 +10,5 @@ setup(name='wpipe',
       package_dir={'': 'src'},
       package_data={'wpipe': ['h5data/wpipe_store.h5']},
       install_requires=['numpy', 'pandas', 'tables', 'sqlalchemy', 'astropy'],
-      scripts=['bin/create_pipeline']
+      scripts=['bin/wingspipe']
       )

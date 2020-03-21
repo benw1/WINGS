@@ -10,10 +10,18 @@ sqlite = PARSER.parse_known_args()[0].sqlite
 
 if sqlite:
     engine_URL = 'sqlite:///:memory:'
+    #
+    # def open_interpreter():
+    #     import code
+    #     code.interact(local=dict(globals(), **locals()))
+    #
+    # import atexit
+    #
+    # atexit.register(open_interpreter)
 else:
     engine_URL = 'mysql://wpipe:W£|£3u53r@localhost/server'
 
-engine = sa.create_engine(engine_URL)#, echo=True)
+engine = sa.create_engine(engine_URL)  # , echo=True)
 
 if not sqlite:
     engine.execute("CREATE DATABASE IF NOT EXISTS wpipe")

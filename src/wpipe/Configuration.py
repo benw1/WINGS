@@ -71,14 +71,13 @@ class SQLConfiguration:
                         filter_by(name=name).one()
                 except si.orm.exc.NoResultFound:
                     cls._configuration = si.Configuration(name=name,
-                                                          relativepath=target.relativepath,
-                                                          logpath=target.relativepath + '/log_' + name,
-                                                          confpath=target.relativepath + '/conf_' + name,
-                                                          rawpath=target.relativepath + '/raw_' + name,
-                                                          procpath=target.relativepath + '/proc_' + name,
+                                                          datapath=target.datapath,
+                                                          logpath=target.datapath + '/log_' + name,
+                                                          confpath=target.datapath + '/conf_' + name,
+                                                          rawpath=target.dataraws,
+                                                          procpath=target.datapath + '/proc_' + name,
                                                           description=description)
                     target._target.configurations.append(cls._configuration)
-                    # _params = Parameters(params).create(_df, store=store)
                     if not os.path.isdir(cls._configuration.logpath):
                         os.mkdir(cls._configuration.logpath)
                     if not os.path.isdir(cls._configuration.confpath):
@@ -101,6 +100,11 @@ class SQLConfiguration:
         if not hasattr(self, '_jobs_proxy'):
             self._jobs_proxy = ChildrenProxy(self._configuration, 'jobs', 'Job',
                                              child_attr='id')
+        if not hasattr(self, '_raw_dp'):
+            self._raw_dp = self.dataproduct(filename=self._configuration.target.name, relativepath=self.rawpath,
+                                            group='raw')
+        if not hasattr(self, '_dummy_job'):
+            self._dummy_job = self.job()
         self._configuration.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
@@ -130,9 +134,9 @@ class SQLConfiguration:
         return self._configuration.timestamp
 
     @property
-    def relativepath(self):
+    def datapath(self):
         si.session.commit()
-        return self._configuration.relativepath
+        return self._configuration.datapath
 
     @property
     def logpath(self):
@@ -191,10 +195,6 @@ class SQLConfiguration:
         return self.pipeline.dummy_task
 
     @property
-    def dataproducts(self):
-        return self._dataproducts_proxy
-
-    @property
     def parameters(self):
         return self._parameters_proxy
 
@@ -203,13 +203,29 @@ class SQLConfiguration:
         for key, value in parameters.items():
             self.parameter(name=key, value=value)
 
-    def parameter(self, *args, **kwargs):
-        from .Parameters import SQLParameter
-        return SQLParameter(self, *args, **kwargs)
+    @property
+    def dataproducts(self):
+        return self._dataproducts_proxy
+
+    @property
+    def raw_dataproduct(self):
+        return self._raw_dp
 
     @property
     def jobs(self):
         return self._jobs_proxy
+
+    @property
+    def dummy_job(self):
+        return self._dummy_job
+
+    def parameter(self, *args, **kwargs):
+        from .Parameters import SQLParameter
+        return SQLParameter(self, *args, **kwargs)
+
+    def dataproduct(self, *args, **kwargs):
+        from .DataProduct import SQLDataProduct
+        return SQLDataProduct(self, *args, **kwargs)
 
     def job(self, *args, **kwargs):
         from .Job import SQLJob
