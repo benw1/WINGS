@@ -103,10 +103,13 @@ class SQLConfiguration:
         if not hasattr(self, '_raw_dp'):
             self._raw_dp = self.dataproduct(filename=self._configuration.target.name, relativepath=self.rawpath,
                                             group='raw')
-        if not hasattr(self, '_dummy_job'):
-            self._dummy_job = self.job()
         self._configuration.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @classmethod
+    def select(cls, **kwargs):
+        cls._temp = si.session.query(si.Configuration).filter_by(**kwargs)
+        return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -214,10 +217,6 @@ class SQLConfiguration:
     @property
     def jobs(self):
         return self._jobs_proxy
-
-    @property
-    def dummy_job(self):
-        return self._dummy_job
 
     def parameter(self, *args, **kwargs):
         from .Parameters import SQLParameter

@@ -77,7 +77,7 @@ class SQLDataProduct(SQLOwner):
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=9)
                 config = kwargs.get('config', wpargs.get('Configuration', None))
                 filename = kwargs.get('filename', args[0])
-                relativepath = kwargs.get('relativepath', config.datapath if args[1] is None else args[1])
+                relativepath = clean_path(kwargs.get('relativepath', config.datapath if args[1] is None else args[1]))
                 group = kwargs.get('group', '' if args[2] is None else args[2])
                 data_type = kwargs.get('data_type', '' if args[3] is None else args[3])
                 subtype = kwargs.get('subtype', '' if args[4] is None else args[4])
@@ -120,6 +120,11 @@ class SQLDataProduct(SQLOwner):
             self._owner = self._dataproduct
         super(SQLDataProduct, self).__init__(kwargs.get('options', {}))
 
+    @classmethod
+    def select(cls, **kwargs):
+        cls._temp = si.session.query(si.DataProduct).filter_by(**kwargs)
+        return list(map(cls, cls._temp.all()))
+
     @property
     def parents(self):
         return self.config
@@ -131,6 +136,7 @@ class SQLDataProduct(SQLOwner):
 
     @filename.setter
     def filename(self, filename):
+        os.rename(self.relativepath+'/'+self._dataproduct.filename, self.relativepath+'/'+filename)
         self._dataproduct.name = filename
         self._dataproduct.timestamp = datetime.datetime.utcnow()
         si.session.commit()
@@ -197,6 +203,10 @@ class SQLDataProduct(SQLOwner):
         else:
             from .Configuration import SQLConfiguration
             return SQLConfiguration(self._dataproduct.config)
+
+    @property
+    def target(self):
+        return self.config.target
 
     @property
     def target_id(self):

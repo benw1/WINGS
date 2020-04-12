@@ -48,18 +48,21 @@ class SQLEvent(SQLOwner):
                 cls._event = si.session.query(si.Event).filter_by(id=id).one()
             else:
                 # gathering construction arguments
-                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=3)
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=4)
                 job = kwargs.get('job', wpargs.get('Job', None))
                 name = kwargs.get('name', args[0])
-                jargs = kwargs.get('jargs', '' if args[1] is None else args[1])
-                value = kwargs.get('value', '' if args[2] is None else args[2])
+                tag = kwargs.get('tag', '' if args[1] is None else args[1])
+                jargs = kwargs.get('jargs', '' if args[2] is None else args[2])
+                value = kwargs.get('value', '' if args[3] is None else args[3])
                 # querying the database for existing row or create
                 try:
                     cls._event = si.session.query(si.Event). \
                         filter_by(parent_job_id=job.job_id). \
-                        filter_by(name=name).one()
+                        filter_by(name=name). \
+                        filter_by(tag=tag).one()
                 except si.orm.exc.NoResultFound:
                     cls._event = si.Event(name=name,
+                                          tag=tag,
                                           jargs=jargs,
                                           value=value)
                     job._job.child_events.append(cls._event)
@@ -75,6 +78,11 @@ class SQLEvent(SQLOwner):
             self._owner = self._event
         super(SQLEvent, self).__init__(kwargs.get('options', {}))
 
+    @classmethod
+    def select(cls, **kwargs):
+        cls._temp = si.session.query(si.Event).filter_by(**kwargs)
+        return list(map(cls, cls._temp.all()))
+
     @property
     def parents(self):
         return self.parent_job
@@ -87,6 +95,17 @@ class SQLEvent(SQLOwner):
     @name.setter
     def name(self, name):
         self._event.name = name
+        self._event.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
+    @property
+    def tag(self):
+        si.session.commit()
+        return self._event.name
+
+    @tag.setter
+    def tag(self, tag):
+        self._event.tag = tag
         self._event.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
@@ -148,6 +167,6 @@ class SQLEvent(SQLOwner):
                 # print("HERE",self.name,mask.name,self.value,mask.value,"DONE3")
                 if (self.name == mask.name) & ((self.value == mask.value) | (mask.value == '*')):
                     new_job = self.fired_job(task, configuration)
-                    print(task.name, "-e", self.event_id, "-j", new_job.job_id)
-                    # new_job.submit()  # pipeline should be able to run stuff and keep track if it completes
+                    print(task.name, "-j", new_job.job_id)
+                    new_job.submit()  # pipeline should be able to run stuff and keep track if it completes
                     return

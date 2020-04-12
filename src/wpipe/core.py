@@ -7,6 +7,7 @@ import os
 import glob
 import shutil
 import json
+import ast
 import warnings
 import numpy as np
 import pandas as pd
@@ -57,6 +58,13 @@ def as_int(string):
         return
 
 
+def try_scalar(string):
+    try:
+        return ast.literal_eval(string)
+    except (ValueError, NameError, SyntaxError):
+        return string
+
+
 def clean_path(path, root=''):
     if path is not None:
         path = os.path.expandvars(os.path.expanduser(path))
@@ -70,9 +78,9 @@ def key_wpipe_separator(obj):
 
 def initialize_args(args, kwargs, nargs):
     wpargs = sorted(args, key=key_wpipe_separator)
-    args = list(wpargs.pop() for i in range(len(wpargs)) if key_wpipe_separator(wpargs[-1]))[::-1]
+    args = list(wpargs.pop() for _i in range(len(wpargs)) if key_wpipe_separator(wpargs[-1]))[::-1]
     wpargs = dict((type(wparg).__name__.replace('SQL', ''), wparg) for wparg in wpargs)
-    kwargs = dict((key,item) for key,item in kwargs.items() if item is not None)
+    kwargs = dict((key, item) for key, item in kwargs.items() if item is not None)
     args += max(nargs-len(args), 0)*[None]
     return wpargs, args, kwargs
 
@@ -109,11 +117,18 @@ class ChildrenProxy:
             yield self[i]
 
     def __getitem__(self, item):
-        si.session.commit()
-        if hasattr(self.children[item], '_wpipe_object'):
-            return self.children[item]._wpipe_object
+        if np.ndim(item) == 0:
+            si.session.commit()
+            if hasattr(self.children[item], '_wpipe_object'):
+                return self.children[item]._wpipe_object
+            else:
+                return getattr(os.sys.modules['wpipe'], 'SQL' + self._cls_name)(self.children[item])
         else:
-            return getattr(os.sys.modules['wpipe'], 'SQL' + self._cls_name)(self.children[item])
+            return np.array([self[i] for i in range(len(self))])[item].tolist()
+
+    def __getattr__(self, item):
+        if hasattr(getattr(os.sys.modules['wpipe'], 'SQL' + self._cls_name), item):
+            return np.array([getattr(self[i], item) for i in range(len(self))])
 
     @property
     def children(self):
@@ -136,7 +151,21 @@ class DictLikeChildrenProxy(ChildrenProxy):
             key = val = None
             while key != item:
                 key, val = next(_temp)
-            return val
+            return try_scalar(val)
+        except StopIteration:
+            raise KeyError(item)
+
+    def __setitem__(self, item, value):
+        si.session.commit()
+        _temp = self._items
+        try:
+            key = None
+            count = -1
+            while key != item:
+                key, val = next(_temp)
+                count += 1
+            child = self.children[count]
+            setattr(child, self._child_value, value)
         except StopIteration:
             raise KeyError(item)
 

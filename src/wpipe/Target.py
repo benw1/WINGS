@@ -81,6 +81,11 @@ class SQLTarget(SQLOwner):
             self._default_conf = self.configuration('default')
         super(SQLTarget, self).__init__(kwargs.get('options', {}))
 
+    @classmethod
+    def select(cls, **kwargs):
+        cls._temp = si.session.query(si.Target).filter_by(**kwargs)
+        return list(map(cls, cls._temp.all()))
+
     @property
     def parents(self):
         return self.pipeline

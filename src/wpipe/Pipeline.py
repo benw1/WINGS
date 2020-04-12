@@ -94,8 +94,15 @@ class SQLPipeline:
             self._tasks_proxy = ChildrenProxy(self._pipeline, 'tasks', 'Task')
         if not hasattr(self, '_dummy_task'):
             self._dummy_task = self.task('__init__.py')
+        if not hasattr(self, '_dummy_job'):
+            self._dummy_job = self.dummy_task.job()
         self._pipeline.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @classmethod
+    def select(cls, **kwargs):
+        cls._temp = si.session.query(si.Pipeline).filter_by(**kwargs)
+        return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -183,6 +190,10 @@ class SQLPipeline:
     def dummy_task(self):
         return self._dummy_task
 
+    @property
+    def dummy_job(self):
+        return self._dummy_job
+
     def target(self, *args, **kwargs):
         from .Target import SQLTarget
         return SQLTarget(self, *args, **kwargs)
@@ -200,6 +211,7 @@ class SQLPipeline:
                             index=[0]).to_json(*args, **kwargs)
 
     def attach_tasks(self, tasks_path):
+        tasks_path = clean_path(tasks_path)
         if tasks_path is not None:
             for task_path in os.listdir(tasks_path):
                 shutil.copy2(tasks_path+'/'+task_path, self.software_root)
@@ -209,10 +221,14 @@ class SQLPipeline:
                  and os.access(self.software_root+'/'+task_path, os.X_OK)]
 
     def attach_targets(self, data_dir, config_file=None):
+        data_dir = clean_path(data_dir)
         if data_dir is not None:
             for target_file in os.listdir(data_dir):
                 shutil.copy2(data_dir+'/'+target_file, self.data_root)
-        _temp = [self.target(data_dir).configure_target(config_file)
-                 for data_dir in os.listdir(self.data_root)
-                 if os.path.isfile(self.data_root+'/'+data_dir)
-                 and os.access(self.data_root+'/'+data_dir, os.R_OK)]
+        _temp = [self.target(target_file).configure_target(config_file)
+                 for target_file in os.listdir(self.data_root)
+                 if os.path.isfile(self.data_root+'/'+target_file)
+                 and os.access(self.data_root+'/'+target_file, os.R_OK)]
+
+    def run_pipeline(self):
+        self.dummy_job.child_event('__init__').fire()

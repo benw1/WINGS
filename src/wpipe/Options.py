@@ -71,6 +71,11 @@ class SQLOption:
         self._option.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
+    @classmethod
+    def select(cls, **kwargs):
+        cls._temp = si.session.query(si.Option).filter_by(**kwargs)
+        return list(map(cls, cls._temp.all()))
+
     @property
     def name(self):
         si.session.commit()
