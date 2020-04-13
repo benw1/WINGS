@@ -1,14 +1,14 @@
 from .core import *
 
 
-class SQLOption:
+class Option:
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._option = args[0] if len(args) else None
         if not isinstance(cls._option, si.Option):
-            id = kwargs.get('id', cls._option)
-            if isinstance(id, int):
-                cls._option = si.session.query(si.Option).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._option)
+            if isinstance(keyid, int):
+                cls._option = si.session.query(si.Option).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)

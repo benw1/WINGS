@@ -22,9 +22,9 @@ def register(task):
 
 
 def hyak_stips(event_id, dp_id, stips_script):
-    my_event = wp.SQLEvent(event_id)
+    my_event = wp.Event(event_id)
     catalog_id = my_event.options['dp_id']
-    catalog_dp = wp.SQLDataProduct(catalog_id)
+    catalog_dp = wp.DataProduct(catalog_id)
     my_config = catalog_dp.config
     slurmfile = stips_script + '.slurm'
     with open(slurmfile, 'w') as f:
@@ -50,9 +50,9 @@ def hyak_stips(event_id, dp_id, stips_script):
 
 
 def pbs_stips(event_id, dp_id, stips_script):
-    my_event = wp.SQLEvent(event_id)
+    my_event = wp.Event(event_id)
     catalog_id = my_event.options['dp_id']
-    catalog_dp = wp.SQLDataProduct(catalog_id)
+    catalog_dp = wp.DataProduct(catalog_id)
     my_config = catalog_dp.config
     filename = str(catalog_dp.filename)  # for example, Mixed_h15_shell_3Mpc_Z.tbl
     filebase = filename.split('.')[0]
@@ -81,7 +81,7 @@ def pbs_stips(event_id, dp_id, stips_script):
 
 
 def run_stips(event_id, dp_id, ra_dith, dec_dith, run_id):
-    catalog_dp = wp.SQLDataProduct(dp_id)
+    catalog_dp = wp.DataProduct(dp_id)
     my_config = catalog_dp.config
     my_params = my_config.parameters
     racent = float(my_params['racent']) + (float(ra_dith) / 3600.0)
@@ -145,7 +145,7 @@ def parse_all():
 if __name__ == '__main__':
     args = parse_all()
     this_job_id = args.job_id
-    this_job = wp.SQLJob(this_job_id)
+    this_job = wp.Job(this_job_id)
     this_event = this_job.firing_event
     this_event_id = this_event.event_id
     this_dp_id = this_event.options['dp_id']
@@ -161,17 +161,17 @@ if __name__ == '__main__':
     to_run = this_event.options['to_run']
     completed = update_option
     catalogID = this_event.options['dp_id']
-    catalogDP = wp.SQLDataProduct(catalogID)
+    catalogDP = wp.DataProduct(catalogID)
     this_conf = catalogDP.config
     this_target = this_conf.target
     print(''.join(["Completed ", str(completed), " of ", str(to_run)]))
     this_job.logprint(''.join(["Completed ", str(completed), " of ", str(to_run), "\n"]))
     if completed >= to_run:
         this_job.logprint(''.join(["Completed ", str(completed), " and to run is ", str(to_run), " firing event\n"]))
-        DP = wp.SQLDataProduct(this_dp_id)
+        DP = wp.DataProduct(this_dp_id)
         tid = DP.target_id
         path = this_conf.procpath
-        image_dps = wp.SQLDataProduct.select(config_id=this_conf.config_id, subtype="stips_image")
+        image_dps = wp.DataProduct.select(config_id=this_conf.config_id, subtype="stips_image")
         comp_name = 'completed' + this_target.name
         options = {comp_name: 0}
         this_job.options = options

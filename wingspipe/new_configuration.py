@@ -22,7 +22,7 @@ if __name__ == '__main__':
     config_id = args.config_id
 
     # Fetch old config and the target
-    oldConfig = wp.SQLConfiguration(config_id)
+    oldConfig = wp.Configuration(config_id)
     target = oldConfig.target
 
     # Fetch, update params

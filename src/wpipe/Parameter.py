@@ -1,14 +1,14 @@
 from .core import *
 
 
-class SQLParameter:
+class Parameter:
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._parameter = args[0] if len(args) else None
         if not isinstance(cls._parameter, si.Parameter):
-            id = kwargs.get('id', cls._parameter)
-            if isinstance(id, int):
-                cls._parameter = si.session.query(si.Parameter).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._parameter)
+            if isinstance(keyid, int):
+                cls._parameter = si.session.query(si.Parameter).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)
@@ -83,5 +83,5 @@ class SQLParameter:
         if hasattr(self._parameter.config, '_wpipe_object'):
             return self._parameter.config._wpipe_object
         else:
-            from .Configuration import SQLConfiguration
-            return SQLConfiguration(self._parameter.config)
+            from .Configuration import Configuration
+            return Configuration(self._parameter.config)

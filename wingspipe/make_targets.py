@@ -52,6 +52,6 @@ def parse_all():
 
 if __name__ == '__main__':
     args = parse_all()
-    discover_targets(wp.SQLPipeline(), wp.SQLJob(args.job_id))
+    discover_targets(wp.Pipeline(), wp.Job(args.job_id))
     # placeholder for additional steps
     print('done')

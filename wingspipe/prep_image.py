@@ -39,7 +39,7 @@ def prep_images(config):
 
 
 def send(dpid, conf, comp_name, total, job):
-    dp = wp.SQLDataProduct(int(dpid))
+    dp = wp.DataProduct(int(dpid))
     target_id = conf.target_id
     filepath = dp.relativepath + '/' + dp.filename
     event = job.child_event('stips_done', tag=dpid,
@@ -61,7 +61,7 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
     new_image_name = targetname + '_' + filtname + ".fits"
     imgpath = config.procpath + '/' + new_image_name
     # CHANGE FILENAME IN DATA PRODUCT.  ASK RUBAB
-    dp = wp.SQLDataProduct(int(dp_id))
+    dp = wp.DataProduct(int(dp_id))
     dp.filename = new_image_name
     # fixwcs(imagepath)
     _t1 = [dolphot_path + 'wfirstmask', '-exptime=' + str(my_params['exptime']), '-rdnoise=41.73', imgpath]
@@ -116,17 +116,17 @@ def parse_all():
 if __name__ == '__main__':
     args = parse_all()
     if args.config_id:
-        this_config = wp.SQLConfiguration(args.config_id)
+        this_config = wp.Configuration(args.config_id)
         prep_images(this_config)
     elif args.target_id:
-        this_target = wp.SQLTarget(args.target_id)
+        this_target = wp.Target(args.target_id)
         all_conf = this_target.configurations
         for this_config in all_conf:
             print(this_config)
             prep_images(this_config)
     else:
         this_job_id = args.job_id
-        this_job = wp.SQLJob(this_job_id)
+        this_job = wp.Job(this_job_id)
         this_event = this_job.firing_event
         this_event_id = this_event.event_id
         this_config = this_job.config
@@ -134,7 +134,7 @@ if __name__ == '__main__':
         this_dp_id = this_event.options['dp_id']
         tid = this_event.options['target_id']
         this_target = this_config.target
-        this_dp = wp.SQLDataProduct(this_dp_id)
+        this_dp = wp.DataProduct(this_dp_id)
         filtername = this_dp.filtername
         imagepath = this_dp.relativepath + '/' + this_dp.filename
         prep_image(imagepath, filtername, this_config, this_job, this_dp_id)
@@ -147,7 +147,7 @@ if __name__ == '__main__':
         to_run = this_event.options['to_run']
         completed = update_option
         catalogID = this_event.options['dp_id']
-        catalogDP = wp.SQLDataProduct(catalogID)
+        catalogDP = wp.DataProduct(catalogID)
         this_conf = catalogDP.config
         print(''.join(["Completed ", str(completed), " of ", str(to_run)]))
         this_job.logprint(''.join(["Completed ", str(completed), " of ", str(to_run), "\n"]))

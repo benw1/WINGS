@@ -11,7 +11,7 @@ def register(task):
 
 
 def run_dolphot(dp_id):
-    param_dp = wp.SQLDataProduct(dp_id)
+    param_dp = wp.DataProduct(dp_id)
     my_target = param_dp.target
     my_config = param_dp.config
     targname = my_target.name
@@ -26,7 +26,7 @@ def run_dolphot(dp_id):
 
 
 def hyak_dolphot(dp_id):
-    param_dp = wp.SQLDataProduct(dp_id)
+    param_dp = wp.DataProduct(dp_id)
     parameter_file = param_dp.relativepath + '/' + param_dp.filename
     my_target = param_dp.target
     my_config = param_dp.config
@@ -77,7 +77,7 @@ def parse_all():
 if __name__ == '__main__':
     args = parse_all()
     this_job_id = args.job_id
-    this_job = wp.SQLJob(this_job_id)
+    this_job = wp.Job(this_job_id)
     this_event = this_job.firing_event
     this_event_id = this_event.event_id
     this_dp_id = this_event.options['dp_id']

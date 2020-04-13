@@ -1,20 +1,14 @@
 from .core import *
 
 
-# from .Parameters import SQLParameter # this will work if only
-#                                        importing working with SQL,
-#                                        right now it can't work
-#                                        due to the existing class
-
-
-class SQLConfiguration:
+class Configuration:
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._configuration = args[0] if len(args) else None
         if not isinstance(cls._configuration, si.Configuration):
-            id = kwargs.get('id', cls._configuration)
-            if isinstance(id, int):
-                cls._configuration = si.session.query(si.Configuration).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._configuration)
+            if isinstance(keyid, int):
+                cls._configuration = si.session.query(si.Configuration).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)
@@ -139,8 +133,8 @@ class SQLConfiguration:
         if hasattr(self._configuration.target, '_wpipe_object'):
             return self._configuration.target._wpipe_object
         else:
-            from .Target import SQLTarget
-            return SQLTarget(self._configuration.target)
+            from .Target import Target
+            return Target(self._configuration.target)
 
     @property
     def pipeline_id(self):
@@ -176,13 +170,13 @@ class SQLConfiguration:
         return self._jobs_proxy
 
     def parameter(self, *args, **kwargs):
-        from .Parameter import SQLParameter
-        return SQLParameter(self, *args, **kwargs)
+        from .Parameter import Parameter
+        return Parameter(self, *args, **kwargs)
 
     def dataproduct(self, *args, **kwargs):
-        from .DataProduct import SQLDataProduct
-        return SQLDataProduct(self, *args, **kwargs)
+        from .DataProduct import DataProduct
+        return DataProduct(self, *args, **kwargs)
 
     def job(self, *args, **kwargs):
-        from .Job import SQLJob
-        return SQLJob(self, *args, **kwargs)
+        from .Job import Job
+        return Job(self, *args, **kwargs)

@@ -1,15 +1,15 @@
 from .core import *
-from .Owner import SQLOwner
+from .Owner import Owner
 
 
-class SQLTarget(SQLOwner):
+class Target(Owner):
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._target = args[0] if len(args) else None
         if not isinstance(cls._target, si.Target):
-            id = kwargs.get('id', cls._target)
-            if isinstance(id, int):
-                cls._target = si.session.query(si.Target).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._target)
+            if isinstance(keyid, int):
+                cls._target = si.session.query(si.Target).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
@@ -42,7 +42,7 @@ class SQLTarget(SQLOwner):
             self._owner = self._target
         if not hasattr(self, '_default_conf'):
             self._default_conf = self.configuration('default')
-        super(SQLTarget, self).__init__(kwargs.get('options', {}))
+        super(Target, self).__init__(kwargs.get('options', {}))
 
     @classmethod
     def select(cls, **kwargs):
@@ -94,8 +94,8 @@ class SQLTarget(SQLOwner):
         if hasattr(self._target.pipeline, '_wpipe_object'):
             return self._target.pipeline._wpipe_object
         else:
-            from .Pipeline import SQLPipeline
-            return SQLPipeline(self._target.pipeline)
+            from .Pipeline import Pipeline
+            return Pipeline(self._target.pipeline)
 
     @property
     def configurations(self):
@@ -106,8 +106,8 @@ class SQLTarget(SQLOwner):
         return self._default_conf
 
     def configuration(self, *args, **kwargs):
-        from .Configuration import SQLConfiguration
-        return SQLConfiguration(self, *args, **kwargs)
+        from .Configuration import Configuration
+        return Configuration(self, *args, **kwargs)
 
     def configure_target(self, config_file, default=True):
         if config_file is not None:

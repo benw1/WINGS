@@ -1,15 +1,15 @@
 from .core import *
-from .Owner import SQLOwner
+from .Owner import Owner
 
 
-class SQLJob(SQLOwner):
+class Job(Owner):
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._job = args[0] if len(args) == 1 else None
         if not isinstance(cls._job, si.Job):
-            id = kwargs.get('id', cls._job)
-            if isinstance(id, int):
-                cls._job = si.session.query(si.Job).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._job)
+            if isinstance(keyid, int):
+                cls._job = si.session.query(si.Job).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
@@ -61,7 +61,7 @@ class SQLJob(SQLOwner):
             self._child_events_proxy = ChildrenProxy(self._job, 'child_events', 'Event')
         if not hasattr(self, '_owner'):
             self._owner = self._job
-        super(SQLJob, self).__init__(kwargs.get('options', {}))
+        super(Job, self).__init__(kwargs.get('options', {}))
 
     @classmethod
     def select(cls, **kwargs):
@@ -102,8 +102,8 @@ class SQLJob(SQLOwner):
         if hasattr(self._job.task, '_wpipe_object'):
             return self._job.task._wpipe_object
         else:
-            from .Task import SQLTask
-            return SQLTask(self._job.task)
+            from .Task import Task
+            return Task(self._job.task)
 
     @property
     def node_id(self):
@@ -116,8 +116,8 @@ class SQLJob(SQLOwner):
             if hasattr(self._job.node, '_wpipe_object'):
                 return self._job.node._wpipe_object
             else:
-                from .Node import SQLNode
-                return SQLNode(self._job.node)
+                from .Node import Node
+                return Node(self._job.node)
 
     @property
     def config_id(self):
@@ -130,8 +130,8 @@ class SQLJob(SQLOwner):
             if hasattr(self._job.config, '_wpipe_object'):
                 return self._job.config._wpipe_object
             else:
-                from .Configuration import SQLConfiguration
-                return SQLConfiguration(self._job.config)
+                from .Configuration import Configuration
+                return Configuration(self._job.config)
 
     @property
     def pipeline_id(self):
@@ -160,16 +160,16 @@ class SQLJob(SQLOwner):
             if hasattr(self._job.firing_event, '_wpipe_object'):
                 return self._job.firing_event._wpipe_object
             else:
-                from .Event import SQLEvent
-                return SQLEvent(self._job.firing_event)
+                from .Event import Event
+                return Event(self._job.firing_event)
 
     @property
     def child_events(self):
         return self._child_events_proxy
 
     def child_event(self, *args, **kwargs):
-        from .Event import SQLEvent
-        return SQLEvent(self, *args, **kwargs)
+        from .Event import Event
+        return Event(self, *args, **kwargs)
 
     def logprint(self, log_text):
         logpath = self.config.target.datapath + '/log_' + self.config.name + '/'

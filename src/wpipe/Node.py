@@ -2,14 +2,14 @@ from .core import *
 import socket
 
 
-class SQLNode:
+class Node:
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._node = args[0] if len(args) else None
         if not isinstance(cls._node, si.Node):
-            id = kwargs.get('id', cls._node)
-            if isinstance(id, int):
-                cls._node = si.session.query(si.Node).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._node)
+            if isinstance(keyid, int):
+                cls._node = si.session.query(si.Node).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=3)
@@ -81,5 +81,5 @@ class SQLNode:
         return self._jobs_proxy
 
     def job(self, *args, **kwargs):
-        from .Job import SQLJob
-        return SQLJob(self, *args, **kwargs)
+        from .Job import Job
+        return Job(self, *args, **kwargs)

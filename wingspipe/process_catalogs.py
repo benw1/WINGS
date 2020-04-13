@@ -20,8 +20,8 @@ def register(task):
 
 
 def process_fixed_catalog(my_job_id, my_dp_id):
-    my_job = wp.SQLJob(my_job_id)
-    catalog_dp = wp.SQLDataProduct(my_dp_id)
+    my_job = wp.Job(my_job_id)
+    catalog_dp = wp.DataProduct(my_dp_id)
     my_target = catalog_dp.target
     # print("NAME",my_target.name)
     my_config = catalog_dp.config
@@ -149,8 +149,8 @@ def read_fixed(filepath, my_config, my_job):
 
 
 def process_match_catalog(my_job_id, my_dp_id):
-    my_job = wp.SQLJob(my_job_id)
-    catalog_dp = wp.SQLDataProduct(my_dp_id)
+    my_job = wp.Job(my_job_id)
+    catalog_dp = wp.DataProduct(my_dp_id)
     my_target = catalog_dp.target
     # print("NAME",my_target.name)
     my_config = catalog_dp.config
@@ -384,11 +384,11 @@ def parse_all():
 if __name__ == '__main__':
     args = parse_all()
     if args.config_id:
-        this_config = wp.SQLConfiguration(int(args.config_id))
+        this_config = wp.Configuration(int(args.config_id))
         link_stips_catalogs(this_config)
     else:
         job_id = args.job_id
-        this_job = wp.SQLJob(job_id)
+        this_job = wp.Job(job_id)
         event = this_job.firing_event
         dp_id = event.options['dp_id']
         if 'match' in event.name:

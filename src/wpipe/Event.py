@@ -1,15 +1,15 @@
 from .core import *
-from .Owner import SQLOwner
+from .Owner import Owner
 
 
-class SQLEvent(SQLOwner):
+class Event(Owner):
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._event = args[0] if len(args) else None
         if not isinstance(cls._event, si.Event):
-            id = kwargs.get('id', cls._event)
-            if isinstance(id, int):
-                cls._event = si.session.query(si.Event).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._event)
+            if isinstance(keyid, int):
+                cls._event = si.session.query(si.Event).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=4)
@@ -40,7 +40,7 @@ class SQLEvent(SQLOwner):
                                                    child_attr='id')
         if not hasattr(self, '_owner'):
             self._owner = self._event
-        super(SQLEvent, self).__init__(kwargs.get('options', {}))
+        super(Event, self).__init__(kwargs.get('options', {}))
 
     @classmethod
     def select(cls, **kwargs):
@@ -98,8 +98,8 @@ class SQLEvent(SQLOwner):
         if hasattr(self._event.parent_job, '_wpipe_object'):
             return self._event.parent_job._wpipe_object
         else:
-            from .Job import SQLJob
-            return SQLJob(self._event.parent_job)
+            from .Job import Job
+            return Job(self._event.parent_job)
 
     @property
     def config(self):
@@ -114,14 +114,14 @@ class SQLEvent(SQLOwner):
         return self._fired_jobs_proxy
 
     def fired_job(self, *args, **kwargs):
-        from .Job import SQLJob
-        return SQLJob(self, *args, **kwargs)
+        from .Job import Job
+        return Job(self, *args, **kwargs)
 
     def fire(self):
         # print("HERE ",self.name," DONE")
         try:
-            from .Configuration import SQLConfiguration
-            configuration = SQLConfiguration(self.options['config_id'])
+            from .Configuration import Configuration
+            configuration = Configuration(self.options['config_id'])
         except KeyError:
             configuration = self.config
         # print(self.parent_job.pipeline_id)

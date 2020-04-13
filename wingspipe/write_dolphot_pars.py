@@ -45,39 +45,39 @@ def write_dolphot_pars(target, config, thisjob):
     nimg = len(dataname)
     # my_params = config.parameters
     # refimage = my_params['refimage']  #will make this more flexible later
-    refdp = wp.SQLDataProduct(hinds[0])
+    refdp = wp.DataProduct(hinds[0])
     refimage = str(refdp.filename)
     with open(parfile_path, 'w') as d:
         d.write("Nimg = " + str(nimg) + "\n" +
                 "img0_file = " + refimage[:-5] + "\n")
         zim = []
         for zind in zinds:
-            imdp = wp.SQLDataProduct(zind)
+            imdp = wp.DataProduct(zind)
             image = str(imdp.filename)
             zim = [zim, image]
         zim = zim[1:]
         yim = []
         for yind in yinds:
-            imdp = wp.SQLDataProduct(yind)
+            imdp = wp.DataProduct(yind)
             image = str(imdp.filename)
             yim = [yim, image]
         yim = yim[1:]
         jim = []
         for jind in jinds:
-            imdp = wp.SQLDataProduct(jind)
+            imdp = wp.DataProduct(jind)
             image = str(imdp.filename)
             jim = [jim, image]
         jim = jim[1:]
         him = []
         for hind in hinds:
-            imdp = wp.SQLDataProduct(hind)
+            imdp = wp.DataProduct(hind)
             image = str(imdp.filename)
             him = [him, image]
         him = him[1:]
         fim = []
         for find in finds:
             fim = []
-            imdp = wp.SQLDataProduct(find)
+            imdp = wp.DataProduct(find)
             image = str(imdp.filename)
             fim = [fim, image]
         fim = fim[1:]
@@ -156,7 +156,7 @@ def parse_all():
 if __name__ == '__main__':
     args = parse_all()
     this_job_id = args.job_id
-    this_job = wp.SQLJob(this_job_id)
+    this_job = wp.Job(this_job_id)
     this_event = this_job.firing_event
     this_event_id = this_event.event_id
     this_config = this_job.config

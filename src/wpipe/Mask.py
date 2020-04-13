@@ -1,14 +1,14 @@
 from .core import *
 
 
-class SQLMask:
+class Mask:
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._mask = args[0] if len(args) else None
         if not isinstance(cls._mask, si.Mask):
-            id = kwargs.get('id', cls._mask)
-            if isinstance(id, int):
-                cls._mask = si.session.query(si.Mask).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._mask)
+            if isinstance(keyid, int):
+                cls._mask = si.session.query(si.Mask).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=3)
@@ -84,5 +84,5 @@ class SQLMask:
         if hasattr(self._mask.task, '_wpipe_object'):
             return self._mask.task._wpipe_object
         else:
-            from .Task import SQLTask
-            return SQLTask(self._mask.task)
+            from .Task import Task
+            return Task(self._mask.task)

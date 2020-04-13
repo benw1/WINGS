@@ -1,4 +1,3 @@
-import time
 import datetime
 import subprocess
 import tempfile
@@ -55,7 +54,7 @@ def key_wpipe_separator(obj):
 def initialize_args(args, kwargs, nargs):
     wpargs = sorted(args, key=key_wpipe_separator)
     args = list(wpargs.pop() for _i in range(len(wpargs)) if key_wpipe_separator(wpargs[-1]))[::-1]
-    wpargs = dict((type(wparg).__name__.replace('SQL', ''), wparg) for wparg in wpargs)
+    wpargs = dict((type(wparg).__name__, wparg) for wparg in wpargs)
     kwargs = dict((key, item) for key, item in kwargs.items() if item is not None)
     args += max(nargs-len(args), 0)*[None]
     return wpargs, args, kwargs
@@ -66,7 +65,7 @@ def wpipe_to_sqlintf_connection(cls, cls_name):
     if hasattr(getattr(cls, cls_attr), '_wpipe_object'):
         cls._inst = getattr(cls, cls_attr)._wpipe_object
     else:
-        cls._inst = super(getattr(os.sys.modules['wpipe'], 'SQL' + cls_name), cls).__new__(cls)
+        cls._inst = super(getattr(os.sys.modules['wpipe'], cls_name), cls).__new__(cls)
         getattr(cls, cls_attr)._wpipe_object = cls._inst
         setattr(cls._inst, cls_attr, getattr(cls, cls_attr))
 
@@ -98,12 +97,12 @@ class ChildrenProxy:
             if hasattr(self.children[item], '_wpipe_object'):
                 return self.children[item]._wpipe_object
             else:
-                return getattr(os.sys.modules['wpipe'], 'SQL' + self._cls_name)(self.children[item])
+                return getattr(os.sys.modules['wpipe'], self._cls_name)(self.children[item])
         else:
             return np.array([self[i] for i in range(len(self))])[item].tolist()
 
     def __getattr__(self, item):
-        if hasattr(getattr(os.sys.modules['wpipe'], 'SQL' + self._cls_name), item):
+        if hasattr(getattr(os.sys.modules['wpipe'], self._cls_name), item):
             return np.array([getattr(self[i], item) for i in range(len(self))])
 
     @property

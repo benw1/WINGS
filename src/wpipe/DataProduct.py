@@ -1,15 +1,15 @@
 from .core import *
-from .Owner import SQLOwner
+from .Owner import Owner
 
 
-class SQLDataProduct(SQLOwner):
+class DataProduct(Owner):
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._dataproduct = args[0] if len(args) else None
         if not isinstance(cls._dataproduct, si.DataProduct):
-            id = kwargs.get('id', cls._dataproduct)
-            if isinstance(id, int):
-                cls._dataproduct = si.session.query(si.DataProduct).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._dataproduct)
+            if isinstance(keyid, int):
+                cls._dataproduct = si.session.query(si.DataProduct).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=9)
@@ -56,7 +56,7 @@ class SQLDataProduct(SQLOwner):
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_owner'):
             self._owner = self._dataproduct
-        super(SQLDataProduct, self).__init__(kwargs.get('options', {}))
+        super(DataProduct, self).__init__(kwargs.get('options', {}))
 
     @classmethod
     def select(cls, **kwargs):
@@ -139,8 +139,8 @@ class SQLDataProduct(SQLOwner):
         if hasattr(self._dataproduct.config, '_wpipe_object'):
             return self._dataproduct.config._wpipe_object
         else:
-            from .Configuration import SQLConfiguration
-            return SQLConfiguration(self._dataproduct.config)
+            from .Configuration import Configuration
+            return Configuration(self._dataproduct.config)
 
     @property
     def target(self):

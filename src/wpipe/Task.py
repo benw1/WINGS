@@ -1,14 +1,14 @@
 from .core import *
 
 
-class SQLTask:
+class Task:
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._task = args[0] if len(args) else None
         if not isinstance(cls._task, si.Task):
-            id = kwargs.get('id', cls._task)
-            if isinstance(id, int):
-                cls._task = si.session.query(si.Task).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._task)
+            if isinstance(keyid, int):
+                cls._task = si.session.query(si.Task).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=4)
@@ -96,8 +96,8 @@ class SQLTask:
         if hasattr(self._task.pipeline, '_wpipe_object'):
             return self._task.pipeline._wpipe_object
         else:
-            from .Pipeline import SQLPipeline
-            return SQLPipeline(self._task.pipeline)
+            from .Pipeline import Pipeline
+            return Pipeline(self._task.pipeline)
 
     @property
     def masks(self):
@@ -108,12 +108,12 @@ class SQLTask:
         return self._jobs_proxy
 
     def mask(self, *args, **kwargs):
-        from .Mask import SQLMask
-        return SQLMask(self, *args, **kwargs)
+        from .Mask import Mask
+        return Mask(self, *args, **kwargs)
 
     def job(self, *args, **kwargs):
-        from .Job import SQLJob
-        return SQLJob(self, *args, **kwargs)
+        from .Job import Job
+        return Job(self, *args, **kwargs)
 
     def register(self):
         _temp = __import__(os.path.basename(self.pipeline.software_root) + '.' + self.name.replace('.py', ''),

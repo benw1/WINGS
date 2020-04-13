@@ -1,14 +1,14 @@
 from .core import *
 
 
-class SQLUser:
+class User:
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._user = args[0] if len(args) else None
         if not isinstance(cls._user, si.User):
-            id = kwargs.get('id', cls._user)
-            if isinstance(id, int):
-                cls._user = si.session.query(si.User).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._user)
+            if isinstance(keyid, int):
+                cls._user = si.session.query(si.User).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
@@ -65,5 +65,5 @@ class SQLUser:
         return self._pipelines_proxy
 
     def pipeline(self, *args, **kwargs):
-        from .Pipeline import SQLPipeline
-        return SQLPipeline(self, *args, **kwargs)
+        from .Pipeline import Pipeline
+        return Pipeline(self, *args, **kwargs)

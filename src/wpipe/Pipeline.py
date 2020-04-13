@@ -1,14 +1,14 @@
 from .core import *
 
 
-class SQLPipeline:
+class Pipeline:
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._pipeline = args[0] if len(args) else as_int(PARSER.parse_known_args()[0].pipeline)
         if not isinstance(cls._pipeline, si.Pipeline):
-            id = kwargs.get('id', cls._pipeline)
-            if isinstance(id, int):
-                cls._pipeline = si.session.query(si.Pipeline).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._pipeline)
+            if isinstance(keyid, int):
+                cls._pipeline = si.session.query(si.Pipeline).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=7)
@@ -145,8 +145,8 @@ class SQLPipeline:
         if hasattr(self._pipeline.user, '_wpipe_object'):
             return self._pipeline.user._wpipe_object
         else:
-            from .User import SQLUser
-            return SQLUser(self._pipeline.user)
+            from .User import User
+            return User(self._pipeline.user)
 
     @property
     def targets(self):
@@ -165,12 +165,12 @@ class SQLPipeline:
         return self._dummy_job
 
     def target(self, *args, **kwargs):
-        from .Target import SQLTarget
-        return SQLTarget(self, *args, **kwargs)
+        from .Target import Target
+        return Target(self, *args, **kwargs)
 
     def task(self, *args, **kwargs):
-        from .Task import SQLTask
-        return SQLTask(self, *args, **kwargs)
+        from .Task import Task
+        return Task(self, *args, **kwargs)
 
     def to_json(self, *args, **kwargs):
         si.session.commit()
