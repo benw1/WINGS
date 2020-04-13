@@ -1,5 +1,5 @@
 from .core import *
-from .Options import SQLOption
+from .Option import SQLOption
 
 
 class SQLOwner:
