@@ -2,25 +2,25 @@ from .core import *
 from .Option import Option
 
 
-class Owner:
+class OptOwner:
     def __init__(self, options):
-        if not hasattr(self, '_owner'):
-            self._owner = si.Owner()
+        if not hasattr(self, '_optowner'):
+            self._optowner = si.OptOwner()
         if not hasattr(self, '_options_proxy'):
-            self._options_proxy = DictLikeChildrenProxy(self._owner, 'options', 'Option')
+            self._options_proxy = DictLikeChildrenProxy(self._optowner, 'options', 'Option')
         self.options = options
-        self._owner.timestamp = datetime.datetime.utcnow()
+        self._optowner.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
     @property
-    def owner_id(self):
+    def optowner_id(self):
         si.session.commit()
-        return self._owner.id
+        return self._optowner.id
 
     @property
     def timestamp(self):
         si.session.commit()
-        return self._owner.timestamp
+        return self._optowner.timestamp
 
     @property
     def options(self):

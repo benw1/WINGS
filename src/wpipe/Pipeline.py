@@ -11,7 +11,7 @@ class Pipeline:
                 cls._pipeline = si.session.query(si.Pipeline).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
-                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=7)
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=8)
                 from . import DefaultUser
                 user = kwargs.get('user', wpargs.get('User', DefaultUser))
                 pipe_root = clean_path(kwargs.get('pipe_root',
@@ -21,14 +21,17 @@ class Pipeline:
                 software_root = clean_path(kwargs.get('software_root',
                                                       'build' if args[2] is None else args[2]),
                                            root=pipe_root)
+                input_root = clean_path(kwargs.get('input_root',
+                                                   'input' if args[3] is None else args[3]),
+                                        root=pipe_root)
                 data_root = clean_path(kwargs.get('data_root',
-                                                  'data' if args[3] is None else args[3]),
+                                                  'data' if args[4] is None else args[4]),
                                        root=pipe_root)
                 config_root = clean_path(kwargs.get('config_root',
-                                                    'config' if args[4] is None else args[4]),
+                                                    'config' if args[5] is None else args[5]),
                                          root=pipe_root)
                 description = kwargs.get('description',
-                                         '' if args[5] is None else args[5])
+                                         '' if args[6] is None else args[6])
                 # querying the database for existing row or create
                 try:
                     cls._pipeline = si.session.query(si.Pipeline). \
@@ -38,6 +41,7 @@ class Pipeline:
                     cls._pipeline = si.Pipeline(name=name,
                                                 pipe_root=pipe_root,
                                                 software_root=software_root,
+                                                input_root=input_root,
                                                 data_root=data_root,
                                                 config_root=config_root,
                                                 description=description)
@@ -47,6 +51,8 @@ class Pipeline:
                     if not os.path.isfile(cls._pipeline.software_root+'/__init__.py'):
                         with open(cls._pipeline.software_root+'/__init__.py', 'w') as file:
                             file.write("def register(task):\n    return")
+                    if not os.path.isdir(cls._pipeline.input_root):
+                        os.mkdir(cls._pipeline.input_root)
                     if not os.path.isdir(cls._pipeline.data_root):
                         os.mkdir(cls._pipeline.data_root)
                     if not os.path.isdir(cls._pipeline.config_root):
@@ -58,12 +64,12 @@ class Pipeline:
     def __init__(self, *args, **kwargs):
         if self.pipe_root not in map(os.path.abspath, os.sys.path):
             os.sys.path.insert(0, self.pipe_root)
-        if not hasattr(self, '_targets_proxy'):
-            self._targets_proxy = ChildrenProxy(self._pipeline, 'targets', 'Target')
+        if not hasattr(self, '_inputs_proxy'):
+            self._inputs_proxy = ChildrenProxy(self._pipeline, 'inputs', 'Input')
         if not hasattr(self, '_tasks_proxy'):
             self._tasks_proxy = ChildrenProxy(self._pipeline, 'tasks', 'Task')
         if not hasattr(self, '_dummy_task'):
-            self._dummy_task = self.task('__init__.py')
+            self._dummy_task = self.task(self.software_root+'/__init__.py')
         if not hasattr(self, '_dummy_job'):
             self._dummy_job = self.dummy_task.job()
         self._pipeline.timestamp = datetime.datetime.utcnow()
@@ -110,6 +116,11 @@ class Pipeline:
         return self._pipeline.software_root
 
     @property
+    def input_root(self):
+        si.session.commit()
+        return self._pipeline.input_root
+
+    @property
     def data_root(self):
         si.session.commit()
         return self._pipeline.data_root
@@ -149,8 +160,8 @@ class Pipeline:
             return User(self._pipeline.user)
 
     @property
-    def targets(self):
-        return self._targets_proxy
+    def inputs(self):
+        return self._inputs_proxy
 
     @property
     def tasks(self):
@@ -164,9 +175,9 @@ class Pipeline:
     def dummy_job(self):
         return self._dummy_job
 
-    def target(self, *args, **kwargs):
-        from .Target import Target
-        return Target(self, *args, **kwargs)
+    def input(self, *args, **kwargs):
+        from .Input import Input
+        return Input(self, *args, **kwargs)
 
     def task(self, *args, **kwargs):
         from .Task import Task
@@ -183,22 +194,16 @@ class Pipeline:
     def attach_tasks(self, tasks_path):
         tasks_path = clean_path(tasks_path)
         if tasks_path is not None:
-            for task_path in os.listdir(tasks_path):
-                shutil.copy2(tasks_path+'/'+task_path, self.software_root)
-        _temp = [self.task(task_path).register()
-                 for task_path in os.listdir(self.software_root)
-                 if os.path.isfile(self.software_root+'/'+task_path)
-                 and os.access(self.software_root+'/'+task_path, os.X_OK)]
+            for task_path in glob.glob(tasks_path+'/*'):
+                if os.path.isfile(task_path) and os.access(task_path, os.X_OK):
+                    self.task(task_path).register()
 
-    def attach_targets(self, data_dir, config_file=None):
-        data_dir = clean_path(data_dir)
-        if data_dir is not None:
-            for target_file in os.listdir(data_dir):
-                shutil.copy2(data_dir+'/'+target_file, self.data_root)
-        _temp = [self.target(target_file).configure_target(config_file)
-                 for target_file in os.listdir(self.data_root)
-                 if os.path.isfile(self.data_root+'/'+target_file)
-                 and os.access(self.data_root+'/'+target_file, os.R_OK)]
+    def attach_inputs(self, inputs_path, config_file=None):
+        inputs_path = clean_path(inputs_path)
+        if inputs_path is not None:
+            for input_path in glob.glob(inputs_path+'/*'):
+                if os.access(inputs_path, os.R_OK):
+                    self.input(input_path).make_config(config_file)
 
     def run_pipeline(self):
         self.dummy_job.child_event('__init__').fire()

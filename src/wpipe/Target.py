@@ -1,8 +1,8 @@
 from .core import *
-from .Owner import Owner
+from .OptOwner import OptOwner
 
 
-class Target(Owner):
+class Target(OptOwner):
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._target = args[0] if len(args) else None
@@ -13,24 +13,22 @@ class Target(Owner):
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
-                pipeline = kwargs.get('pipeline', wpargs.get('Pipeline', None))
-                name = kwargs.get('name', args[0])
+                input = kwargs.get('input', wpargs.get('Input', None))
+                name = kwargs.get('name', input.name if args[0] is None else args[0])
                 # querying the database for existing row or create
                 try:
                     cls._target = si.session.query(si.Target). \
-                        filter_by(pipeline_id=pipeline.pipeline_id). \
+                        filter_by(input_id=input.input_id). \
                         filter_by(name=name).one()
                 except si.orm.exc.NoResultFound:
-                    filebase, fileext = os.path.splitext(name)
                     cls._target = si.Target(name=name,
-                                            datapath=pipeline.data_root+'/'+filebase+'_data',
-                                            dataraws=pipeline.data_root+'/'+filebase+'_data/raw')
-                    pipeline._pipeline.targets.append(cls._target)
+                                            datapath=input.pipeline.data_root+'/'+name,
+                                            dataraws=input.rawspath)
+                    input._input.targets.append(cls._target)
                     if not os.path.isdir(cls._target.datapath):
                         os.mkdir(cls._target.datapath)
                     if not os.path.isdir(cls._target.dataraws):
                         os.mkdir(cls._target.dataraws)
-                shutil.move(pipeline.data_root+'/'+name, cls._target.dataraws+'/'+name)
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Target')
         return cls._inst
@@ -38,10 +36,11 @@ class Target(Owner):
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_configurations_proxy'):
             self._configurations_proxy = ChildrenProxy(self._target, 'configurations', 'Configuration')
-        if not hasattr(self, '_owner'):
-            self._owner = self._target
+        if not hasattr(self, '_optowner'):
+            self._optowner = self._target
         if not hasattr(self, '_default_conf'):
             self._default_conf = self.configuration('default')
+        self.configure_target()
         super(Target, self).__init__(kwargs.get('options', {}))
 
     @classmethod
@@ -51,7 +50,7 @@ class Target(Owner):
 
     @property
     def parents(self):
-        return self.pipeline
+        return self.input
 
     @property
     def name(self):
@@ -80,22 +79,25 @@ class Target(Owner):
         return self._target.dataraws
 
     @property
-    def configpath(self):
+    def input_id(self):
         si.session.commit()
-        return self._target.configpath
+        return self._target.input_id
+
+    @property
+    def input(self):
+        if hasattr(self._target.input, '_wpipe_object'):
+            return self._target.input._wpipe_object
+        else:
+            from .Input import Input
+            return Input(self._target.input)
 
     @property
     def pipeline_id(self):
-        si.session.commit()
-        return self._target.pipeline_id
+        return self.input.pipeline_id
 
     @property
     def pipeline(self):
-        if hasattr(self._target.pipeline, '_wpipe_object'):
-            return self._target.pipeline._wpipe_object
-        else:
-            from .Pipeline import Pipeline
-            return Pipeline(self._target.pipeline)
+        return self.input.pipeline
 
     @property
     def configurations(self):
@@ -109,13 +111,7 @@ class Target(Owner):
         from .Configuration import Configuration
         return Configuration(self, *args, **kwargs)
 
-    def configure_target(self, config_file, default=True):
-        if config_file is not None:
-            conf_filename = config_file.split('/')[-1]
-            if default:
-                config = self.default_conf
-            else:
-                config = self.configuration(conf_filename.split('.')[0])
-            shutil.copy2(config_file, config.confpath)
-            config.parameters = json.load(open(config.confpath+'/'+conf_filename))[0]
-            _dp = config.dataproduct(filename=conf_filename, relativepath=config.confpath, group='conf')
+    def configure_target(self):
+        for confdp in self.input.confdataproducts:
+            self.configuration(os.path.splitext(confdp.filename)[0],
+                               parameters=json.load(open(confdp.relativepath+'/'+confdp.filename))[0])

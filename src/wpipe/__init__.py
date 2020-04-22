@@ -2,6 +2,7 @@ from .core import *
 from .User import User
 from .Node import Node
 from .Pipeline import Pipeline
+from .Input import Input
 from .Option import Option
 from .Target import Target
 from .Configuration import Configuration

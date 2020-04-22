@@ -47,6 +47,12 @@ def clean_path(path, root=''):
         return os.path.abspath([root+'/', ''][os.path.isabs(path) or not(os.path.isabs(root))]+path)
 
 
+def split_path(path):
+    path, ext = os.path.splitext(path)
+    base, name = os.path.split(path)
+    return base, name, ext
+
+
 def key_wpipe_separator(obj):
     return type(obj).__module__.split('.')[0] != 'wpipe'
 

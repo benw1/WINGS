@@ -1,8 +1,8 @@
 from .core import *
-from .Owner import Owner
+from .OptOwner import OptOwner
 
 
-class Event(Owner):
+class Event(OptOwner):
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._event = args[0] if len(args) else None
@@ -38,8 +38,8 @@ class Event(Owner):
         if not hasattr(self, '_fired_jobs_proxy'):
             self._fired_jobs_proxy = ChildrenProxy(self._event, 'fired_jobs', 'Job',
                                                    child_attr='id')
-        if not hasattr(self, '_owner'):
-            self._owner = self._event
+        if not hasattr(self, '_optowner'):
+            self._optowner = self._event
         super(Event, self).__init__(kwargs.get('options', {}))
 
     @classmethod

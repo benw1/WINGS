@@ -12,25 +12,25 @@ class Option:
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)
-                list(wpargs.__setitem__('Owner', wpargs[key]) for key in list(wpargs.keys())[::-1]
-                     if (key in map(lambda obj: obj.__name__, si.Owner.__subclasses__())))
-                owner = kwargs.get('owner', wpargs.get('Owner', None))
+                list(wpargs.__setitem__('OptOwner', wpargs[key]) for key in list(wpargs.keys())[::-1]
+                     if (key in map(lambda obj: obj.__name__, si.OptOwner.__subclasses__())))
+                optowner = kwargs.get('optowner', wpargs.get('OptOwner', None))
                 name = kwargs.get('name', args[0])
                 value = kwargs.get('value', args[1])
                 # querying the database for existing row or create
                 try:
                     cls._option = si.session.query(si.Option). \
-                        filter_by(owner_id=owner.owner_id). \
+                        filter_by(optowner_id=optowner.optowner_id). \
                         filter_by(name=name).one()
                 except si.orm.exc.NoResultFound:
                     cls._option = si.Option(name=name,
                                             value=str(value))
-                    owner._owner.options.append(cls._option)
+                    optowner._optowner.options.append(cls._option)
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Option')
         return cls._inst
 
-    def __init__(self, owner, name, value):
+    def __init__(self, optowner, name, value):
         self._option.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
@@ -72,11 +72,11 @@ class Option:
         si.session.commit()
 
     @property
-    def owner(self):
+    def optowner(self):
         si.session.commit()
         return self._option.type
 
     @property
-    def owner_id(self):
+    def optowner_id(self):
         si.session.commit()
-        return self._option.owner_id
+        return self._option.optowner_id

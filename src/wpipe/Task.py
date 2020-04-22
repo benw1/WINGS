@@ -13,7 +13,7 @@ class Task:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=4)
                 pipeline = kwargs.get('pipeline', wpargs.get('Pipeline', None))
-                name = kwargs.get('name', args[0])
+                base, name = os.path.split(clean_path(kwargs.get('path', args[0])))
                 nruns = kwargs.get('nruns', 0 if args[1] is None else args[1])
                 run_time = kwargs.get('run_time', 0 if args[2] is None else args[2])
                 is_exclusive = kwargs.get('is_exclusive', 0 if args[3] is None else args[3])
@@ -28,6 +28,8 @@ class Task:
                                         run_time=run_time,
                                         is_exclusive=is_exclusive)
                     pipeline._pipeline.tasks.append(cls._task)
+                    if base != pipeline.software_root:
+                        shutil.copy2(base+'/'+name, pipeline.software_root+'/')
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Task')
         return cls._inst

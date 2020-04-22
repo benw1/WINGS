@@ -1,7 +1,8 @@
 from .core import *
+from .DPOwner import DPOwner
 
 
-class Configuration:
+class Configuration(DPOwner):
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._configuration = args[0] if len(args) else None
@@ -23,18 +24,22 @@ class Configuration:
                 except si.orm.exc.NoResultFound:
                     cls._configuration = si.Configuration(name=name,
                                                           datapath=target.datapath,
-                                                          logpath=target.datapath + '/log_' + name,
                                                           confpath=target.datapath + '/conf_' + name,
-                                                          rawpath=target.dataraws,
+                                                          rawpath=target.datapath + '/raw_' + name,
+                                                          logpath=target.datapath + '/log_' + name,
                                                           procpath=target.datapath + '/proc_' + name,
                                                           description=description)
                     target._target.configurations.append(cls._configuration)
-                    if not os.path.isdir(cls._configuration.logpath):
-                        os.mkdir(cls._configuration.logpath)
                     if not os.path.isdir(cls._configuration.confpath):
                         os.mkdir(cls._configuration.confpath)
+                    confdp = target.input.dataproduct(filename=name+'.conf', group='conf')
+                    confdp.symlink(cls._configuration.confpath, dpowner=cls._configuration, group='conf')
                     if not os.path.isdir(cls._configuration.rawpath):
                         os.mkdir(cls._configuration.rawpath)
+                    for rawdp in target.input.rawdataproducts:
+                        rawdp.symlink(cls._configuration.rawpath, dpowner=cls._configuration, group='raw')
+                    if not os.path.isdir(cls._configuration.logpath):
+                        os.mkdir(cls._configuration.logpath)
                     if not os.path.isdir(cls._configuration.procpath):
                         os.mkdir(cls._configuration.procpath)
         # verifying if instance already exists and return
@@ -42,20 +47,15 @@ class Configuration:
         return cls._inst
 
     def __init__(self, *args, **kwargs):
-        if not hasattr(self, '_dataproducts_proxy'):
-            self._dataproducts_proxy = ChildrenProxy(self._configuration, 'dataproducts', 'DataProduct',
-                                                     child_attr='filename')
         if not hasattr(self, '_parameters_proxy'):
             self._parameters_proxy = DictLikeChildrenProxy(self._configuration, 'parameters', 'Parameter')
         self.parameters = kwargs.get('parameters', {})
         if not hasattr(self, '_jobs_proxy'):
             self._jobs_proxy = ChildrenProxy(self._configuration, 'jobs', 'Job',
                                              child_attr='id')
-        if not hasattr(self, '_raw_dp'):
-            self._raw_dp = self.dataproduct(filename=self._configuration.target.name, relativepath=self.rawpath,
-                                            group='raw')
-        self._configuration.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        if not hasattr(self, '_dpowner'):
+            self._dpowner = self._configuration
+        super(Configuration, self).__init__()
 
     @classmethod
     def select(cls, **kwargs):
@@ -83,19 +83,9 @@ class Configuration:
         return self._configuration.id
 
     @property
-    def timestamp(self):
-        si.session.commit()
-        return self._configuration.timestamp
-
-    @property
     def datapath(self):
         si.session.commit()
         return self._configuration.datapath
-
-    @property
-    def logpath(self):
-        si.session.commit()
-        return self._configuration.logpath
 
     @property
     def confpath(self):
@@ -106,6 +96,11 @@ class Configuration:
     def rawpath(self):
         si.session.commit()
         return self._configuration.rawpath
+
+    @property
+    def logpath(self):
+        si.session.commit()
+        return self._configuration.logpath
 
     @property
     def procpath(self):
@@ -137,6 +132,14 @@ class Configuration:
             return Target(self._configuration.target)
 
     @property
+    def input_id(self):
+        return self.target.input_id
+
+    @property
+    def input(self):
+        return self.target.input
+
+    @property
     def pipeline_id(self):
         return self.target.pipeline_id
 
@@ -158,24 +161,12 @@ class Configuration:
             self.parameter(name=key, value=value)
 
     @property
-    def dataproducts(self):
-        return self._dataproducts_proxy
-
-    @property
-    def raw_dataproduct(self):
-        return self._raw_dp
-
-    @property
     def jobs(self):
         return self._jobs_proxy
 
     def parameter(self, *args, **kwargs):
         from .Parameter import Parameter
         return Parameter(self, *args, **kwargs)
-
-    def dataproduct(self, *args, **kwargs):
-        from .DataProduct import DataProduct
-        return DataProduct(self, *args, **kwargs)
 
     def job(self, *args, **kwargs):
         from .Job import Job
