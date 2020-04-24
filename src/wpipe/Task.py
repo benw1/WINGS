@@ -1,48 +1,14 @@
 from .core import *
-from .Store import Store
-from .Pipeline import Pipeline
 
 
 class Task:
-    def __init__(self, name='any',
-                 pipeline=Pipeline().new(),
-                 nruns=0, run_time=0,
-                 is_exclusive=0):
-        self.name = np.array([str(name)])
-        self.pipeline_id = np.array([int(pipeline.pipeline_id)])
-        self.task_id = np.array([int(0)])
-        self.nruns = np.array([int(nruns)])
-        self.run_time = np.array([float(run_time)])
-        self.is_exclusive = np.array([bool(is_exclusive)])
-        self.timestamp = pd.to_datetime(time.time(), unit='s')
-
-    def new(self):
-        _df = pd.DataFrame.from_dict(self.__dict__)
-        _df.index = pd.MultiIndex.from_arrays(arrays=[np.array([int(self.pipeline_id)]),
-                                                      np.array([int(self.task_id)])], names=('pipelineID', 'taskID'))
-        return update_time(_df)
-
-    def create(self, store=Store()):
-        _df = store.create('tasks', 'task_id', self)
-        return _df
-
-    def add_mask(task, source='any', name='any', value='0', store=Store()):
-        from . import Mask
-        return Mask(task, source, name, value).create(store=store)
-
-    def get(task_id, store=Store()):
-        x = store.select('tasks', 'task_id==' + str(task_id))
-        return x.loc[x.index.values[0]]
-
-
-class SQLTask:
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._task = args[0] if len(args) else None
         if not isinstance(cls._task, si.Task):
-            id = kwargs.get('id', cls._task)
-            if isinstance(id, int):
-                cls._task = si.session.query(si.Task).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._task)
+            if isinstance(keyid, int):
+                cls._task = si.session.query(si.Task).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=4)
@@ -74,6 +40,11 @@ class SQLTask:
                                              child_attr='id')
         self._task.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @classmethod
+    def select(cls, **kwargs):
+        cls._temp = si.session.query(si.Task).filter_by(**kwargs)
+        return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -125,8 +96,8 @@ class SQLTask:
         if hasattr(self._task.pipeline, '_wpipe_object'):
             return self._task.pipeline._wpipe_object
         else:
-            from .Pipeline import SQLPipeline
-            return SQLPipeline(self._task.pipeline)
+            from .Pipeline import Pipeline
+            return Pipeline(self._task.pipeline)
 
     @property
     def masks(self):
@@ -137,12 +108,12 @@ class SQLTask:
         return self._jobs_proxy
 
     def mask(self, *args, **kwargs):
-        from .Mask import SQLMask
-        return SQLMask(self, *args, **kwargs)
+        from .Mask import Mask
+        return Mask(self, *args, **kwargs)
 
     def job(self, *args, **kwargs):
-        from .Job import SQLJob
-        return SQLJob(self, *args, **kwargs)
+        from .Job import Job
+        return Job(self, *args, **kwargs)
 
     def register(self):
         _temp = __import__(os.path.basename(self.pipeline.software_root) + '.' + self.name.replace('.py', ''),

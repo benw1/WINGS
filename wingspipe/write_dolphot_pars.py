@@ -1,6 +1,4 @@
 #! /usr/bin/env python
-import argparse
-
 import wpipe as wp
 
 
@@ -10,84 +8,84 @@ def register(task):
 
 
 def write_dolphot_pars(target, config, thisjob):
-    parfile_name = target['name'] + ".param"
+    parfile_name = target.name + ".param"
     parfile_path = config.confpath + '/' + parfile_name
-    wp.logprint(config, thisjob, ''.join(["Writing dolphot pars now in ", parfile_path, "\n"]))
-    myDP = wp.Store().select('data_products').loc[config.pipeline_id, config.target_id, config.config_id, :]
-    datadp = myDP[myDP['subtype'] == 'dolphot_data']
-    datadpid = list(set(datadp['dp_id']))
-    dataname = set(datadp['filename'])
+    thisjob.logprint(''.join(["Writing dolphot pars now in ", parfile_path, "\n"]))
+    my_dp = config.dataproducts
+    datadp = my_dp[my_dp.subtype == 'dolphot_data']
+    datadpid = [_dp.dp_id for _dp in datadp]
+    dataname = [_dp.filename for _dp in datadp]
     zinds = []
     yinds = []
     jinds = []
     hinds = []
     finds = []
     count = -1
-    for dpid in datadpid:
+    for dp in datadp:
+        dp_id = dp.dp_id
         count += 1
-        dp = wp.DataProduct.get(dpid)
         filt = str(dp.filtername)
-        if "Z087" in filt:
-            zinds = [zinds, dpid]
-        if "Y106" in filt:
-            yinds = [yinds, dpid]
-        if "J129" in filt:
-            jinds = [jinds, dpid]
-        if "H158" in filt:
-            hinds = [hinds, dpid]
+        if "F087" in filt:
+            zinds = [zinds, dp_id]
+        if "F106" in filt:
+            yinds = [yinds, dp_id]
+        if "F129" in filt:
+            jinds = [jinds, dp_id]
+        if "F158" in filt:
+            hinds = [hinds, dp_id]
         if "F184" in filt:
-            finds = [finds, dpid]
+            finds = [finds, dp_id]
     zinds = zinds[1:]
     yinds = yinds[1:]
     jinds = jinds[1:]
     hinds = hinds[1:]
     finds = finds[1:]
 
-    print("INDS ", zinds, yinds, jinds, hinds, hinds[0], finds, datadpid)
+    print("INDS ", zinds, yinds, jinds, hinds, hinds, finds, datadpid)
     nimg = len(dataname)
-    myParams = wp.Parameters.getParam(int(config.config_id))
-    # refimage = myParams['refimage']  #will make this more flexible later
-    refdp = wp.DataProduct.get(hinds[0])
+    # my_params = config.parameters
+    # refimage = my_params['refimage']  #will make this more flexible later
+    refdp = wp.DataProduct(hinds[0])
     refimage = str(refdp.filename)
     with open(parfile_path, 'w') as d:
         d.write("Nimg = " + str(nimg) + "\n" +
                 "img0_file = " + refimage[:-5] + "\n")
         zim = []
         for zind in zinds:
-            imdp = wp.DataProduct.get(zind)
+            imdp = wp.DataProduct(zind)
             image = str(imdp.filename)
             zim = [zim, image]
         zim = zim[1:]
         yim = []
         for yind in yinds:
-            imdp = wp.DataProduct.get(yind)
+            imdp = wp.DataProduct(yind)
             image = str(imdp.filename)
             yim = [yim, image]
         yim = yim[1:]
         jim = []
         for jind in jinds:
-            imdp = wp.DataProduct.get(jind)
+            imdp = wp.DataProduct(jind)
             image = str(imdp.filename)
             jim = [jim, image]
         jim = jim[1:]
         him = []
         for hind in hinds:
-            imdp = wp.DataProduct.get(hind)
+            imdp = wp.DataProduct(hind)
             image = str(imdp.filename)
             him = [him, image]
         him = him[1:]
         fim = []
         for find in finds:
             fim = []
-            imdp = wp.DataProduct.get(find)
+            imdp = wp.DataProduct(find)
             image = str(imdp.filename)
             fim = [fim, image]
         fim = fim[1:]
-        zims = set(zim)
-        yims = set(yim)
-        jims = set(jim)
-        hims = set(him)
-        fims = set(fim)
+        # zims = set(zim)
+        # yims = set(yim)
+        # jims = set(jim)
+        # hims = set(him)
+        # fims = set(fim)
         images = [zim, yim, jim, him, fim]
         i = 0
         for iimage in images:
@@ -142,21 +140,13 @@ def write_dolphot_pars(target, config, thisjob):
                 "FlagMask = 4            #photometry quality flags to reject when combining magnitudes\n" +
                 "CombineChi = 0          #combined magnitude weights uses chi? (int 0=no, 1=yes)\n" +
                 "InterpPSFlib = 0        #interpolate PSF library spatially\n")
-    _dp = wp.DataProduct(filename=parfile_name, relativepath=config.confpath, subtype="dolphot_parameters",
-                         group='conf', configuration=config).create()
+    _dp = config.dataproduct(filename=parfile_name, relativepath=config.confpath,
+                             subtype="dolphot_parameters", group='conf')
     return _dp
 
 
 def parse_all():
     parser = wp.PARSER
-    parser.add_argument('--R', '-R', dest='REG', action='store_true',
-                        help='Specify to Register')
-    parser.add_argument('--P', '-p', type=int, dest='PID',
-                        help='Pipeline ID')
-    parser.add_argument('--N', '-n', type=str, dest='task_name',
-                        help='Name of Task to be Registered')
-    parser.add_argument('--E', '-e', type=int, dest='event_id',
-                        help='Event ID')
     parser.add_argument('--J', '-j', type=int, dest='job_id',
                         help='Job ID')
 
@@ -165,19 +155,16 @@ def parse_all():
 
 if __name__ == '__main__':
     args = parse_all()
-    if args.REG:
-        register(wp.SQLPipeline(int(args.PID)).task(name=str(args.task_name)))
-    else:
-        job_id = int(args.job_id)
-        event_id = int(args.event_id)
-        event = wp.Event.get(event_id)
-        thisjob = wp.Job.get(job_id)
-        config = wp.Configuration.get(int(thisjob.config_id))
-        tid = config.target_id
-        target = wp.Target.get(int(config.target_id))
-        paramdp = write_dolphot_pars(target, config, thisjob)
-        dpid = int(paramdp.dp_id)
-        wp.logprint(config, thisjob, ''.join(["Parameter file DPID ", str(dpid), "\n"]))
-        newevent = wp.Job.getEvent(thisjob, 'parameters_written', options={'target_id': tid, 'dp_id': dpid})
-        wp.fire(newevent)
-        wp.logprint(config, thisjob, 'parameters_written\n')
+    this_job_id = args.job_id
+    this_job = wp.Job(this_job_id)
+    this_event = this_job.firing_event
+    this_event_id = this_event.event_id
+    this_config = this_job.config
+    this_target = this_config.target
+    tid = this_target.target_id
+    paramdp = write_dolphot_pars(this_target, this_config, this_job)
+    dpid = int(paramdp.dp_id)
+    this_job.logprint(''.join(["Parameter file DPID ", str(dpid), "\n"]))
+    newevent = this_job.child_event('parameters_written', options={'target_id': tid, 'dp_id': dpid})
+    newevent.fire()
+    this_job.logprint('parameters_written\n')

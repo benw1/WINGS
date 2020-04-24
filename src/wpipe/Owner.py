@@ -1,8 +1,8 @@
 from .core import *
-from .Options import SQLOption
+from .Option import Option
 
 
-class SQLOwner:
+class Owner:
     def __init__(self, options):
         if not hasattr(self, '_owner'):
             self._owner = si.Owner()
@@ -32,4 +32,4 @@ class SQLOwner:
             self.option(name=key, value=value)
 
     def option(self, *args, **kwargs):
-        return SQLOption(self, *args, **kwargs)
+        return Option(self, *args, **kwargs)

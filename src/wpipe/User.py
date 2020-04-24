@@ -1,34 +1,14 @@
 from .core import *
-from .Store import Store
 
 
 class User:
-    def __init__(self, name='any'):
-        self.name = np.array([str(name)], dtype='<U20')
-        self.user_id = np.array([int(0)])
-        self.timestamp = pd.to_datetime(time.time(), unit='s')
-
-    def new(self):
-        _df = pd.DataFrame.from_dict(self.__dict__)
-        _df.index = _df.user_id
-        return update_time(_df)
-
-    def create(self, store=Store()):
-        return store.create('users', 'user_id', self)
-
-    def get(user_name, store=Store()):
-        x = store.select('users', 'name=="' + str(user_name) + '"')
-        return x.loc[x.index.values[0]]
-
-
-class SQLUser:
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._user = args[0] if len(args) else None
         if not isinstance(cls._user, si.User):
-            id = kwargs.get('id', cls._user)
-            if isinstance(id, int):
-                cls._user = si.session.query(si.User).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._user)
+            if isinstance(keyid, int):
+                cls._user = si.session.query(si.User).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
@@ -49,6 +29,11 @@ class SQLUser:
             self._pipelines_proxy = ChildrenProxy(self._user, 'pipelines', 'Pipeline')
         self._user.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @classmethod
+    def select(cls, **kwargs):
+        cls._temp = si.session.query(si.User).filter_by(**kwargs)
+        return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -80,5 +65,5 @@ class SQLUser:
         return self._pipelines_proxy
 
     def pipeline(self, *args, **kwargs):
-        from .Pipeline import SQLPipeline
-        return SQLPipeline(self, *args, **kwargs)
+        from .Pipeline import Pipeline
+        return Pipeline(self, *args, **kwargs)

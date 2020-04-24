@@ -1,51 +1,14 @@
 from .core import *
-from .Store import Store
 
 
-# What is this for?
-class Options:
-    def __init__(self, opts={'any': 0}):
-        self.__dict__ = opts
-
-    def new(self, owner=str('any' + 250 * ' '), owner_id=0):
-        name = np.array(list(self.__dict__.keys()))
-        value = np.array(list(self.__dict__.values()))
-        _df = pd.DataFrame(data=np.array([name, value]).T,
-                           columns=['name', 'value']).sort_values('name')
-        owner = np.repeat(str(owner), len(name))
-        owner_id = np.repeat(int(owner_id), len(name))
-        arrays = [owner, owner_id]
-        _df.index = pd.MultiIndex.from_arrays(arrays, names=('owner', 'owner_id'))
-        return _df
-
-    def create(self, owner='any', owner_id=0, store=Store()):
-        _df = self.new(owner, owner_id)
-        with pd.HDFStore(str(store.path), 'r+') as myStore:
-            myStore.append('options', _df, min_itemsize=fmin_itemsize(_df),
-                           complevel=9, complib='blosc:blosclz')
-        return _df
-
-    def get(owner, owner_id, store=Store()):
-        x = store.select('options').loc[str(owner)].loc[int(owner_id)]
-        if x.shape == (2,):
-            return dict(zip([x['name']], [x['value']]))
-        else:
-            return dict(zip(x['name'].values, x['value'].values))
-
-    def addOption(owner, owner_id, key, value, store=Store()):
-        _opt = Options.get(owner, int(owner_id))
-        _opt[key] = value
-        return store.update('options', Options(_opt).new(owner, int(owner_id)))
-
-
-class SQLOption:
+class Option:
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._option = args[0] if len(args) else None
         if not isinstance(cls._option, si.Option):
-            id = kwargs.get('id', cls._option)
-            if isinstance(id, int):
-                cls._option = si.session.query(si.Option).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._option)
+            if isinstance(keyid, int):
+                cls._option = si.session.query(si.Option).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)
@@ -70,6 +33,11 @@ class SQLOption:
     def __init__(self, owner, name, value):
         self._option.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @classmethod
+    def select(cls, **kwargs):
+        cls._temp = si.session.query(si.Option).filter_by(**kwargs)
+        return list(map(cls, cls._temp.all()))
 
     @property
     def name(self):

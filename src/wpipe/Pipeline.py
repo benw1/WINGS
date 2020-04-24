@@ -1,44 +1,14 @@
 from .core import *
-from .Store import Store
-from .User import User
 
 
 class Pipeline:
-    def __init__(self, user=User().new(), name='any', software_root='',
-                 data_root='', pipe_root='', config_root='',
-                 description=''):
-        self.name = np.array([str(name)])
-        self.user_name = np.array([str(user['name'])])
-        self.user_id = np.array([int(user.user_id)])
-        self.pipeline_id = np.array([int(0)])
-        self.software_root = np.array([str(software_root)])
-        self.data_root = np.array([str(data_root)])
-        self.pipe_root = np.array([str(pipe_root)])
-        self.config_root = np.array([str(config_root)])
-        self.description = np.array([str(description)])
-        self.timestamp = pd.to_datetime(time.time(), unit='s')
-
-    def new(self):
-        _df = pd.DataFrame.from_dict(self.__dict__)
-        _df.index = _df.pipeline_id
-        return update_time(_df)
-
-    def create(self, store=Store()):
-        _df = store.create('pipelines', 'pipeline_id', self)
-        return _df
-
-    def get(pipeline_id, store=Store()):
-        return store.select('pipelines').loc[int(pipeline_id)]
-
-
-class SQLPipeline:
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._pipeline = args[0] if len(args) else as_int(PARSER.parse_known_args()[0].pipeline)
         if not isinstance(cls._pipeline, si.Pipeline):
-            id = kwargs.get('id', cls._pipeline)
-            if isinstance(id, int):
-                cls._pipeline = si.session.query(si.Pipeline).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._pipeline)
+            if isinstance(keyid, int):
+                cls._pipeline = si.session.query(si.Pipeline).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=7)
@@ -94,8 +64,15 @@ class SQLPipeline:
             self._tasks_proxy = ChildrenProxy(self._pipeline, 'tasks', 'Task')
         if not hasattr(self, '_dummy_task'):
             self._dummy_task = self.task('__init__.py')
+        if not hasattr(self, '_dummy_job'):
+            self._dummy_job = self.dummy_task.job()
         self._pipeline.timestamp = datetime.datetime.utcnow()
         si.session.commit()
+
+    @classmethod
+    def select(cls, **kwargs):
+        cls._temp = si.session.query(si.Pipeline).filter_by(**kwargs)
+        return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -168,8 +145,8 @@ class SQLPipeline:
         if hasattr(self._pipeline.user, '_wpipe_object'):
             return self._pipeline.user._wpipe_object
         else:
-            from .User import SQLUser
-            return SQLUser(self._pipeline.user)
+            from .User import User
+            return User(self._pipeline.user)
 
     @property
     def targets(self):
@@ -183,13 +160,17 @@ class SQLPipeline:
     def dummy_task(self):
         return self._dummy_task
 
+    @property
+    def dummy_job(self):
+        return self._dummy_job
+
     def target(self, *args, **kwargs):
-        from .Target import SQLTarget
-        return SQLTarget(self, *args, **kwargs)
+        from .Target import Target
+        return Target(self, *args, **kwargs)
 
     def task(self, *args, **kwargs):
-        from .Task import SQLTask
-        return SQLTask(self, *args, **kwargs)
+        from .Task import Task
+        return Task(self, *args, **kwargs)
 
     def to_json(self, *args, **kwargs):
         si.session.commit()
@@ -200,6 +181,7 @@ class SQLPipeline:
                             index=[0]).to_json(*args, **kwargs)
 
     def attach_tasks(self, tasks_path):
+        tasks_path = clean_path(tasks_path)
         if tasks_path is not None:
             for task_path in os.listdir(tasks_path):
                 shutil.copy2(tasks_path+'/'+task_path, self.software_root)
@@ -209,10 +191,14 @@ class SQLPipeline:
                  and os.access(self.software_root+'/'+task_path, os.X_OK)]
 
     def attach_targets(self, data_dir, config_file=None):
+        data_dir = clean_path(data_dir)
         if data_dir is not None:
             for target_file in os.listdir(data_dir):
                 shutil.copy2(data_dir+'/'+target_file, self.data_root)
-        _temp = [self.target(data_dir).configure_target(config_file)
-                 for data_dir in os.listdir(self.data_root)
-                 if os.path.isfile(self.data_root+'/'+data_dir)
-                 and os.access(self.data_root+'/'+data_dir, os.R_OK)]
+        _temp = [self.target(target_file).configure_target(config_file)
+                 for target_file in os.listdir(self.data_root)
+                 if os.path.isfile(self.data_root+'/'+target_file)
+                 and os.access(self.data_root+'/'+target_file, os.R_OK)]
+
+    def run_pipeline(self):
+        self.dummy_job.child_event('__init__').fire()

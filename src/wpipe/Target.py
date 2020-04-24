@@ -1,52 +1,15 @@
 from .core import *
-from .Store import Store
-from .Pipeline import Pipeline
-from .Owner import SQLOwner
+from .Owner import Owner
 
 
-class Target:
-    def __init__(self, name='any',
-                 pipeline=Pipeline().new()):
-        self.name = np.array([str(name)])
-        self.pipeline_id = np.array([int(pipeline.pipeline_id)])
-        self.target_id = np.array([int(0)])
-        myPipe = Pipeline.get(self.pipeline_id)
-        self.relativepath = np.array([str(myPipe.data_root) + '/' + str(self.name[0])])
-        self.timestamp = pd.to_datetime(time.time(), unit='s')
-
-    def new(self):
-        _df = pd.DataFrame.from_dict(self.__dict__)
-        _df.index = pd.MultiIndex.from_arrays(arrays=[np.array([int(self.pipeline_id)]),
-                                                      np.array([int(self.target_id)])],
-                                              names=('pipelineID', 'targetID'))
-        return update_time(_df)
-
-    def create(self, options={'any': 0}, ret_opt=False, create_dir=False, store=Store()):
-        from . import Options
-        _df = store.create('targets', 'target_id', self)
-        _opt = Options(options).create('target', int(_df.target_id), store=store)
-
-        if create_dir:
-            _t = subprocess.run(['mkdir', '-p', str(self.relativepath[0])], stdout=subprocess.PIPE)
-
-        if ret_opt:
-            return _df, _opt
-        else:
-            return _df
-
-    def get(target_id, store=Store()):
-        x = store.select('targets', 'target_id==' + str(target_id))
-        return x.loc[x.index.values[0]]
-
-
-class SQLTarget(SQLOwner):
+class Target(Owner):
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._target = args[0] if len(args) else None
         if not isinstance(cls._target, si.Target):
-            id = kwargs.get('id', cls._target)
-            if isinstance(id, int):
-                cls._target = si.session.query(si.Target).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._target)
+            if isinstance(keyid, int):
+                cls._target = si.session.query(si.Target).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
@@ -79,7 +42,12 @@ class SQLTarget(SQLOwner):
             self._owner = self._target
         if not hasattr(self, '_default_conf'):
             self._default_conf = self.configuration('default')
-        super(SQLTarget, self).__init__(kwargs.get('options', {}))
+        super(Target, self).__init__(kwargs.get('options', {}))
+
+    @classmethod
+    def select(cls, **kwargs):
+        cls._temp = si.session.query(si.Target).filter_by(**kwargs)
+        return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -126,8 +94,8 @@ class SQLTarget(SQLOwner):
         if hasattr(self._target.pipeline, '_wpipe_object'):
             return self._target.pipeline._wpipe_object
         else:
-            from .Pipeline import SQLPipeline
-            return SQLPipeline(self._target.pipeline)
+            from .Pipeline import Pipeline
+            return Pipeline(self._target.pipeline)
 
     @property
     def configurations(self):
@@ -138,8 +106,8 @@ class SQLTarget(SQLOwner):
         return self._default_conf
 
     def configuration(self, *args, **kwargs):
-        from .Configuration import SQLConfiguration
-        return SQLConfiguration(self, *args, **kwargs)
+        from .Configuration import Configuration
+        return Configuration(self, *args, **kwargs)
 
     def configure_target(self, config_file, default=True):
         if config_file is not None:

@@ -1,65 +1,32 @@
 from .core import *
-from .Store import Store
-from .Owner import SQLOwner
-from .Job import Job
+from .Owner import Owner
 
 
-class Event:
-    def __init__(self, name='', value='', jargs='', job=Job().new()):
-        self.job_id = np.array([int(job.job_id)])
-        self.jargs = np.array([str(jargs)])
-        self.name = np.array([str(name)])
-        self.value = np.array([str(value)])
-        self.event_id = np.array([int(0)])
-
-    def new(self):
-        _df = pd.DataFrame.from_dict(self.__dict__)
-        _df.index = _df.event_id
-        return update_time(_df)
-
-    def create(self, options={'any': 0}, ret_opt=False, store=Store()):
-        from . import Options
-        _df = store.create('events', 'event_id', self)
-        _opt = Options(options).create('event', int(_df.event_id), store=store)
-        if ret_opt:
-            return _df, _opt
-        else:
-            return _df
-
-    def get(event_id, store=Store()):
-        return store.select('events').loc[int(event_id)]
-
-    def run_complete(event_id=0, store=Store()):
-        from . import Options
-        event = Event.get(int(event_id))
-        job_id = int(event.job_id)
-        jobOpt = Options.get('job', int(job_id))
-        jobOpt['completed'] = int(jobOpt['completed']) + 1
-        return store.update('options', Options(jobOpt).new('job', job_id))
-
-
-class SQLEvent(SQLOwner):
+class Event(Owner):
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._event = args[0] if len(args) else None
         if not isinstance(cls._event, si.Event):
-            id = kwargs.get('id', cls._event)
-            if isinstance(id, int):
-                cls._event = si.session.query(si.Event).filter_by(id=id).one()
+            keyid = kwargs.get('id', cls._event)
+            if isinstance(keyid, int):
+                cls._event = si.session.query(si.Event).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
-                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=3)
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=4)
                 job = kwargs.get('job', wpargs.get('Job', None))
                 name = kwargs.get('name', args[0])
-                jargs = kwargs.get('jargs', '' if args[1] is None else args[1])
-                value = kwargs.get('value', '' if args[2] is None else args[2])
+                tag = kwargs.get('tag', '' if args[1] is None else args[1])
+                jargs = kwargs.get('jargs', '' if args[2] is None else args[2])
+                value = kwargs.get('value', '' if args[3] is None else args[3])
                 # querying the database for existing row or create
                 try:
                     cls._event = si.session.query(si.Event). \
                         filter_by(parent_job_id=job.job_id). \
-                        filter_by(name=name).one()
+                        filter_by(name=name). \
+                        filter_by(tag=tag).one()
                 except si.orm.exc.NoResultFound:
                     cls._event = si.Event(name=name,
+                                          tag=tag,
                                           jargs=jargs,
                                           value=value)
                     job._job.child_events.append(cls._event)
@@ -73,7 +40,12 @@ class SQLEvent(SQLOwner):
                                                    child_attr='id')
         if not hasattr(self, '_owner'):
             self._owner = self._event
-        super(SQLEvent, self).__init__(kwargs.get('options', {}))
+        super(Event, self).__init__(kwargs.get('options', {}))
+
+    @classmethod
+    def select(cls, **kwargs):
+        cls._temp = si.session.query(si.Event).filter_by(**kwargs)
+        return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -87,6 +59,17 @@ class SQLEvent(SQLOwner):
     @name.setter
     def name(self, name):
         self._event.name = name
+        self._event.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
+    @property
+    def tag(self):
+        si.session.commit()
+        return self._event.name
+
+    @tag.setter
+    def tag(self, tag):
+        self._event.tag = tag
         self._event.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
@@ -115,8 +98,8 @@ class SQLEvent(SQLOwner):
         if hasattr(self._event.parent_job, '_wpipe_object'):
             return self._event.parent_job._wpipe_object
         else:
-            from .Job import SQLJob
-            return SQLJob(self._event.parent_job)
+            from .Job import Job
+            return Job(self._event.parent_job)
 
     @property
     def config(self):
@@ -131,14 +114,14 @@ class SQLEvent(SQLOwner):
         return self._fired_jobs_proxy
 
     def fired_job(self, *args, **kwargs):
-        from .Job import SQLJob
-        return SQLJob(self, *args, **kwargs)
+        from .Job import Job
+        return Job(self, *args, **kwargs)
 
     def fire(self):
         # print("HERE ",self.name," DONE")
         try:
-            from .Configuration import SQLConfiguration
-            configuration = SQLConfiguration(self.options['config_id'])
+            from .Configuration import Configuration
+            configuration = Configuration(self.options['config_id'])
         except KeyError:
             configuration = self.config
         # print(self.parent_job.pipeline_id)
@@ -148,6 +131,6 @@ class SQLEvent(SQLOwner):
                 # print("HERE",self.name,mask.name,self.value,mask.value,"DONE3")
                 if (self.name == mask.name) & ((self.value == mask.value) | (mask.value == '*')):
                     new_job = self.fired_job(task, configuration)
-                    print(task.name, "-e", self.event_id, "-j", new_job.job_id)
-                    # new_job.submit()  # pipeline should be able to run stuff and keep track if it completes
+                    print(task.name, "-j", new_job.job_id)
+                    new_job.submit()  # pipeline should be able to run stuff and keep track if it completes
                     return
