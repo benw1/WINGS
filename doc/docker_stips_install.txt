@@ -1,0 +1,16 @@
+Installing Docker Engine
+------------------------
+1. Follow the instructions here for your Linux distro (Debian/Ubuntu/RedHat):
+    https://docs.docker.com/install/
+
+2. Once Docker Engine you can start building but we want access to Docker images via DockerHub or another service.
+
+3. I got a permission denied when I tried to run docker images; skip if this doesn't happen for you.
+   Try restarting your computer to see if this fixes the issue.  Otherwise follow these instructions:
+   https://www.digitalocean.com/community/questions/how-to-fix-docker-got-permission-denied-while-trying-to-connect-to-the-docker-daemon-socket
+
+3. Now we follow the instructions for STIPS to build their docker image locally. Doesn't appear they host a docker
+   image anywhere.  This process takes a few minutes as it builds all the layers.
+   https://stsci-stips.readthedocs.io/en/latest/installation.html#installing-using-docker
+
+4. Running docker images shows there is a docker image named stips that we will use in our Docker file.
