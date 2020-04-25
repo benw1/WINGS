@@ -12,9 +12,9 @@ COPY . /app/WINGS
 
 # This part doesn't correctly install too the right conda environment
 # Run python setup
-RUN cd /app/WINGS \
-    pip install mysql-connector \
-    python setup.py install
+RUN conda install -c bioconda mysqlclient
+RUN conda install -c anaconda mysql-connector-python
+RUN pip install /app/WINGS
 
 # expose the port we need
 EXPOSE 3306
