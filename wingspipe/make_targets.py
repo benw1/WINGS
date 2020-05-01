@@ -1,135 +1,57 @@
 #! /usr/bin/env python
-import argparse,os,subprocess,json
-from wpipe import *
 import numpy as np
-import glob
+import wpipe as wp
 
-def register(PID,task_name):
-   myPipe = Pipeline.get(PID)
-   myTask = Task(task_name,myPipe).create()
-   _t = Task.add_mask(myTask,'*','start',task_name) 
-   return
 
-def discover_targets(Pipe,config_file,data_dir):
-   myPipe = Pipe
-   myTarget = Target(name='start_targ', pipeline=myPipe).create()
-   targlist,ras,decs = get_targ_list(data_dir)
-   _c = Configuration(name='test_config',target=myTarget).create()
-   config_id = _c['config_id'].values[0]
-   myConfig = Configuration.get(config_id)
-   params={'a':0,'x':12,'note':'testing this'}
-   myParams = Parameters(params).create(myConfig)
-   _job = Job(config=myConfig).create() #need to create dummy job to keep track of events
-   job_id = int(_job.job_id)
-   myJob = Job.get(job_id)
-   count=-1
-   for targ in targlist:
-      count+=1
-      myTarget = Target(name=targ,pipeline=myPipe).create(create_dir=True)
-      #print("NAME",myTarget.name[0])
-      _params = json.load(open(config_file))[0]
-      if float(ras[count]) > 0.0:
-          print("GOT RA")
-          _params['racent'] = float(ras[count])
-          _params['deccent'] = float(decs[count])
-      conffilename = config_file.split('/')[-1]
-      confname = conffilename.split('.')[0]
-      conf = Configuration(name=confname,target=myTarget).create(params=_params,create_dir=True)
-      confret = Configuration.get(int(conf['config_id'].item()))
-      targid = myTarget['target_id'].item()
-      logprint(confret,myJob,''.join(['Target ',targ,' with ID ',str(targid),' created with Configuration ',confname,' and ID ',str(confret.config_id)," and RA ",str(_params['racent'])]))
-      _t = subprocess.run(['cp',config_file,conf.confpath.values[0]+'/'],stdout=subprocess.PIPE)
-      _dp = DataProduct(filename=conffilename,relativepath=myPipe.config_root,group='conf',configuration=conf).create()
-      targetfiles = get_target_files(data_dir,targ)
-      comp_name = 'completed'+targ
-      options = {comp_name:0}
-      _opt = Options(options).create('job',job_id)
-      for files in targetfiles:
-          subprocess.run(['cp',files,conf.rawpath.values[0]],stdout=subprocess.PIPE)
-          filename = files.split('/')[-1]
-          _dp = DataProduct(filename=filename,relativepath=conf.rawpath.values[0],group='raw',configuration=conf).create()
-          testtarg =  Target.get(int(_dp.target_id))
-          send(_dp,conf,comp_name,len(targetfiles),myJob) #send catalog to next step
-   return
+def register(task):
+    _temp = task.mask(source='*', name='start', value=task.name)
+    _temp = task.mask(source='*', name='__init__', value='*')
 
-def get_targ_list(data_dir):
-   if os.path.exists(data_dir+"/targets"):
-      alldata = np.loadtxt(data_dir+"/targets",dtype=str)
-      data= alldata[:,0]
-      ras = alldata[:,1]
-      decs = alldata[:,2]
-   else:     
-      data  = os.listdir(data_dir)
-      shape = np.shape(data)
-      ras = np.zeros(shape)
-      decs = np.zeros(shape)
-   target_names= []
-   for dat in data:
-      # each prefix is a target
-      checkname = dat.split('.')[:-1][0]
-      if checkname in target_names:
-         continue
-      target_names.append(dat.split('.')[:-1][0])
-   return target_names,ras,decs
 
-def get_target_files(data_dir,targ):
-   targfiles = glob.glob(data_dir+'/'+targ+'*')
-   return targfiles
-       
-def send(dp,conf,comp_name,total,job):
-   filepath = dp.relativepath[0]+'/'+dp.filename[0]
-   dpid = int(dp.dp_id)
-   confid = int(conf.config_id)
-   print('TEST',dp.filename[0],filepath)
-   data = np.loadtxt(filepath, dtype=str, usecols=0)
-   if 'type' in str(data[0]):
-      print('File ',filepath,' has type keyword, assuming STIPS-ready')
-      event = Job.getEvent(job,'new_stips_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name})
-      fire(event)
-   elif 'ra' in str(data[0]):
-      print('File ',filepath,' has ra keyword, assuming positions defined')
-      event = Job.getEvent(job,'new_fixed_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name})
-      fire(event)
+def discover_targets(pipeline, this_job):
+    for my_target in pipeline.targets:
+        # print("NAME", my_target.name)
+        comp_name = 'completed_' + my_target.name
+        this_job.options = {comp_name: 0}
+        for conf in my_target.configurations:
+            target_dps = [dp for dp in conf.dataproducts if dp.group == 'raw']
+            for target_dp in target_dps:
+                send(target_dp, conf, comp_name, len(target_dps), this_job)  # send catalog to next step
 
-   else:
-      print('File ',filepath,' does not have type keyword, assuming MATCH output')
-      event = Job.getEvent(job,'new_match_catalog',options={'dp_id':dpid,'to_run':total,'name':comp_name, 'config_id':confid})
-      fire(event)
-   return 
-   
-    
+
+def send(dp, conf, comp_name, total, job):
+    filepath = dp.relativepath + '/' + dp.filename
+    dpid = dp.dp_id
+    confid = conf.config_id
+    print('TEST', dp.filename, filepath)
+    data = np.loadtxt(filepath, dtype=str, usecols=0)
+    if 'type' in str(data[0]):
+        print('File ', filepath, ' has type keyword, assuming STIPS-ready')
+        event = job.child_event('new_stips_catalog', jargs='0', value='0',
+                                options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'config_id': confid})
+        event.fire()
+    elif 'ra' in str(data[0]):
+        print('File ', filepath, ' has ra keyword, assuming positions defined')
+        event = job.child_event('new_fixed_catalog', jargs='0', value='0',
+                                options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'config_id': confid})
+        event.fire()
+
+    else:
+        print('File ', filepath, ' does not have type keyword, assuming MATCH output')
+        event = job.child_event('new_match_catalog', jargs='0', value='0',
+                                options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'config_id': confid})
+        event.fire()
+
+
 def parse_all():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--R','-R', dest='REG', action='store_true',
-                        help='Specify to Register')
-    parser.add_argument('--N','-n',type=str,  dest='task_name',
-                        help='Name of Task to be Registered')
-    parser.add_argument('--P','-p',type=int,  dest='PID',
-                        help='Pipeline ID')
-    parser.add_argument('--C','-c',type=str,  dest='config_file',
-                        help='Configuration File Path')
-    parser.add_argument('--T','-t',type=str,  dest='data_dir',
-                        help='Path to directory with input lists')
-    parser.add_argument('--E','-e',type=int,  dest='event_id',
-                        help='Event ID')
-    parser.add_argument('--J','-j',type=int,  dest='job_id',
-                        help='Job ID')
+    parser = wp.PARSER
+    parser.add_argument('--job', '-j', type=int, dest='job_id',
+                        help='This job ID')
     return parser.parse_args()
 
- 
-if __name__ == '__main__':
-   args = parse_all()
-   if args.REG:
-      _t = register(int(args.PID),str(args.task_name))
-   else:
-      if args.PID is None:
-         exit("Need to define a pipeline ID")
-      if args.config_file is None:
-         exit("Need to define a configuration file")
-      if args.data_dir is None:
-         exit("Need to define a directory with input star lists")
-      myPipe = Pipeline.get(args.PID)
-      discover_targets(myPipe,args.config_file,args.data_dir)
 
-   # placeholder for additional steps
-   print('done')
+if __name__ == '__main__':
+    args = parse_all()
+    discover_targets(wp.Pipeline(), wp.Job(args.job_id))
+    # placeholder for additional steps
+    print('done')

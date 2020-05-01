@@ -1,38 +1,121 @@
 from .core import *
-from .Store import Store
-from .Pipeline import Pipeline
+from .Owner import Owner
 
-class Target():
-    def __init__(self, name='any',
-                 pipeline=Pipeline().new()):
-        self.name = np.array([str(name)])
-        self.pipeline_id = np.array([int(pipeline.pipeline_id)])
-        self.target_id = np.array([int(0)])
-        myPipe = Pipeline.get(self.pipeline_id)
-        self.relativepath = np.array([str(myPipe.data_root) + '/' + str(self.name[0])])
-        self.timestamp = pd.to_datetime(time.time(), unit='s')
-        return None
 
-    def new(self):
-        _df = pd.DataFrame.from_dict(self.__dict__)
-        _df.index = pd.MultiIndex.from_arrays(arrays=[np.array([int(self.pipeline_id)]),
-                                                      np.array([int(self.target_id)])],
-                                              names=('pipelineID', 'targetID'))
-        return update_time(_df)
+class Target(Owner):
+    def __new__(cls, *args, **kwargs):
+        # checking if given argument is sqlintf object or existing id
+        cls._target = args[0] if len(args) else None
+        if not isinstance(cls._target, si.Target):
+            keyid = kwargs.get('id', cls._target)
+            if isinstance(keyid, int):
+                cls._target = si.session.query(si.Target).filter_by(id=keyid).one()
+            else:
+                # gathering construction arguments
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
+                pipeline = kwargs.get('pipeline', wpargs.get('Pipeline', None))
+                name = kwargs.get('name', args[0])
+                # querying the database for existing row or create
+                try:
+                    cls._target = si.session.query(si.Target). \
+                        filter_by(pipeline_id=pipeline.pipeline_id). \
+                        filter_by(name=name).one()
+                except si.orm.exc.NoResultFound:
+                    filebase, fileext = os.path.splitext(name)
+                    cls._target = si.Target(name=name,
+                                            datapath=pipeline.data_root+'/'+filebase+'_data',
+                                            dataraws=pipeline.data_root+'/'+filebase+'_data/raw')
+                    pipeline._pipeline.targets.append(cls._target)
+                    if not os.path.isdir(cls._target.datapath):
+                        os.mkdir(cls._target.datapath)
+                    if not os.path.isdir(cls._target.dataraws):
+                        os.mkdir(cls._target.dataraws)
+                shutil.move(pipeline.data_root+'/'+name, cls._target.dataraws+'/'+name)
+        # verifying if instance already exists and return
+        wpipe_to_sqlintf_connection(cls, 'Target')
+        return cls._inst
 
-    def create(self, options={'any': 0}, ret_opt=False, create_dir=False, store=Store()):
-        from . import Options
-        _df = store.create('targets', 'target_id', self)
-        _opt = Options(options).create('target', int(_df.target_id), store=store)
+    def __init__(self, *args, **kwargs):
+        if not hasattr(self, '_configurations_proxy'):
+            self._configurations_proxy = ChildrenProxy(self._target, 'configurations', 'Configuration')
+        if not hasattr(self, '_owner'):
+            self._owner = self._target
+        if not hasattr(self, '_default_conf'):
+            self._default_conf = self.configuration('default')
+        super(Target, self).__init__(kwargs.get('options', {}))
 
-        if create_dir:
-            _t = subprocess.run(['mkdir', '-p', str(self.relativepath[0])], stdout=subprocess.PIPE)
+    @classmethod
+    def select(cls, **kwargs):
+        cls._temp = si.session.query(si.Target).filter_by(**kwargs)
+        return list(map(cls, cls._temp.all()))
 
-        if ret_opt:
-            return _df, _opt
+    @property
+    def parents(self):
+        return self.pipeline
+
+    @property
+    def name(self):
+        si.session.commit()
+        return self._target.name
+
+    @name.setter
+    def name(self, name):
+        self._target.name = name
+        self._target.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
+    @property
+    def target_id(self):
+        si.session.commit()
+        return self._target.id
+
+    @property
+    def datapath(self):
+        si.session.commit()
+        return self._target.datapath
+
+    @property
+    def dataraws(self):
+        si.session.commit()
+        return self._target.dataraws
+
+    @property
+    def configpath(self):
+        si.session.commit()
+        return self._target.configpath
+
+    @property
+    def pipeline_id(self):
+        si.session.commit()
+        return self._target.pipeline_id
+
+    @property
+    def pipeline(self):
+        if hasattr(self._target.pipeline, '_wpipe_object'):
+            return self._target.pipeline._wpipe_object
         else:
-            return _df
+            from .Pipeline import Pipeline
+            return Pipeline(self._target.pipeline)
 
-    def get(target_id, store=Store()):
-        x = store.select('targets', 'target_id==' + str(target_id))
-        return x.loc[x.index.values[0]]
+    @property
+    def configurations(self):
+        return self._configurations_proxy
+
+    @property
+    def default_conf(self):
+        return self._default_conf
+
+    def configuration(self, *args, **kwargs):
+        from .Configuration import Configuration
+        return Configuration(self, *args, **kwargs)
+
+    def configure_target(self, config_file, default=True):
+        if config_file is not None:
+            conf_filename = config_file.split('/')[-1]
+            if default:
+                config = self.default_conf
+            else:
+                config = self.configuration(conf_filename.split('.')[0])
+            shutil.copy2(config_file, config.confpath)
+            config.parameters = json.load(open(config.confpath+'/'+conf_filename))[0]
+            _dp = config.dataproduct(filename=conf_filename, relativepath=config.confpath, group='conf')
