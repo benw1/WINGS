@@ -6,6 +6,7 @@ RUN mkdir /app \
 
 # I like emacs
 RUN apt-get install -y emacs vim
+RUN apt install -y net-tools
 
 # Lets copy over all the files
 COPY . /app/WINGS
