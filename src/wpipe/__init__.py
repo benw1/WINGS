@@ -1,3 +1,35 @@
+#!/usr/bin/env python
+"""
+Wpipe
+=====
+Provides a suite of classes to deploy the WINGS pipeline functionalities.
+
+How to use
+----------
+
+####
+
+Available subpackages
+---------------------
+sqlintf
+    Suite of classes connected to the database tables
+    - powered by the module `SQLAlchemy`
+
+Utilities
+---------
+PARSER
+    pre-instantiated parser powered by the module `argparse`
+
+DefaultUser
+    User object constructed at wpipe importation (see User doc Notes)
+
+DefaultNode
+    Node object constructed at wpipe importation (see Node doc Notes)
+
+__version__
+    Wpipe version string
+"""
+from .__version__ import __version__
 from .core import *
 from .User import User
 from .Node import Node

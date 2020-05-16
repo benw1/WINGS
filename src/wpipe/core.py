@@ -1,14 +1,22 @@
+#!/usr/bin/env python
+"""
+Contains the core import statements and developing tools of Wpipe
+
+Please note that this module is private. All functions and objects
+are available in the main ``wpipe`` namespace - use that instead.
+"""
+import os
 import datetime
 import subprocess
-import tempfile
-import os
 import glob
 import shutil
+import warnings
 import json
 import ast
-import warnings
+
 import numpy as np
 import pandas as pd
+
 from . import sqlintf as si
 
 PARSER = si.PARSER
