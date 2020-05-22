@@ -137,8 +137,6 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, run_id):
 
 def parse_all():
     parser = wp.PARSER
-    parser.add_argument('--job', '-j', type=int, dest='job_id',
-                        help='This job ID')
     return parser.parse_args()
 
 

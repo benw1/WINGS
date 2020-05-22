@@ -131,12 +131,27 @@ class DataProduct(OptOwner):
         pipeline_id : int
             Primary key id of the table row of parent pipeline.
         optowner_id : int
-            Points to attribute target_id.
+            Points to attribute dp_id.
         options : core.DictLikeChildrenProxy object
             Dictionary of Option objects owned by the target.
 
         How to use
         ----------
+        A DataProduct object constructs from dataproduct owner, that can be
+        either an Input object or a Configuration object: this can be
+        achieved either by using the dataproduct generating object method of
+        such dataproduct owner object, or alternatively by using the
+        DataProduct class constructor giving it the dataproduct owner object
+        (Input or Configuration) as argument. In both cases, the signature
+        must also contain the filename of the data file as well as its group:
+
+        >>> my_dp = my_input.dataproduct(filename, group)
+        or
+        >>> my_dp = my_config.dataproduct(filename, group)
+        or
+        >>> my_dp = wp.DataProduct(my_input, filename, group)
+        or
+        >>> my_dp = wp.DataProduct(my_config, filename, group)
     """
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id

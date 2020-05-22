@@ -66,8 +66,6 @@ def parse_all():
     parser = wp.PARSER
     parser.add_argument('--E', '-e', type=int, dest='event_id',
                         help='Event ID')
-    parser.add_argument('--J', '-j', type=int, dest='job_id',
-                        help='Job ID')
     parser.add_argument('--DP', '-dp', type=int, dest='dp_id',
                         help='Dataproduct ID')
 

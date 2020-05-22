@@ -91,7 +91,7 @@ class Event(OptOwner):
         fired_jobs : core.ChildrenProxy object
             List of Job objects owned by the event.
         optowner_id : int
-            Points to attribute target_id.
+            Points to attribute event_id.
         options : core.DictLikeChildrenProxy object
             Dictionary of Option objects owned by the target.
 

@@ -7,7 +7,93 @@ Provides a suite of classes to deploy the WINGS pipeline functionalities.
 How to use
 ----------
 
-####
+Wpipe handles the building and running of a WINGS pipeline and track its
+jobbing through a shared SQL database. It does so via a suite of classes that
+represent each of the SQL database tables and the necessary entities of a
+WINGS pipeline. These classes represent namely:
+- the user that owns the pipeline (User),
+- the pipeline itself (Pipeline),
+- the tasks that compose the pipeline software (Task),
+- the masks that are associated to a task (Mask)
+- the input set of data given to the pipeline (Input),
+- the targets that an input contains (Target),
+- the configuration for such targets (Configuration),
+- the parameters that constitute a configuration (Parameter),
+- the dataproducts that constitute an input or a configuration (DataProduct),
+- the jobs that are submitted by the pipeline from specific events (Job),
+- the events that are fired by the pipeline jobbing (Event),
+- the options that may be given to any target, job, event or dataproduct
+(Option).
+
+The core running of the pipeline is handled by its jobbing. This goes through
+the firing of events that search for tasks with matching masks. These events
+subsequently submit those tasks as new jobs that themselves fire new events to
+submit other jobs. This chaining between events submitting jobs and jobs
+firing events constitutes the pipeline running. When a job is submitted, the
+script of the corresponding task is executed through the system or submitted
+to the scheduler with command-line arguments recognized by Wpipe PARSER. For
+this reason, the script must be beforehand coded so that it imports the Wpipe
+module and use that PARSER.
+
+Among these command-line arguments, the key id in the SQL database of the
+corresponding submitted job is passed through and shall be used to construct
+the corresponding Job object in that new python instance to fire new events.
+The shared SQL database also help to further communicate between python
+instances notably via the options that can be assigned to the jobs and events.
+Each of the Wpipe classes have written-in documentations for further
+instructions for how to use them.
+
++ wingspipe
+
+To exploit Wpipe functionalities, it is recommended to use the command-line
+executable wingspipe, installed with Wpipe. 2 things need to be prepared
+before calling the command: the set of tasks that will build the pipeline
+software and the set of data input that the software will run with.
+
+For the former set of tasks, these shall be python scripts with read and
+execution permissions, and with the only requirement in the format that it
+must implement a single-argument function register. This function gives the
+possibility to set Mask objects to the corresponding Task, treating the latter
+as the argument of the function. All these tasks must be placed in a same
+directory, which path must be given to the wingspipe command-line argument
+--tasks_path or -w.
+
+In the case of the data input, if a single data file is needed, then the path
+to this file must be given to the wingspipe command-line argument --inputs or
+-i. If more files are needed, it is also possible to put all of them with
+characterizing names in a directory and enter its path in the command-line
+argument of wingspipe. This directory can also contain any configuration file
+with extension '.conf', otherwise configuration files can also be added to the
+--config or -c command-line argument.
+
+The wingspipe command may be used as many times as necessary to add more tasks
+or inputs to the pipeline. Once the pipeline is completely built, it can be
+started by adding the wingspipe command-line flag --run or -r. This will call
+the Pipeline object method run_pipeline which submits the pipeline dummy_job,
+firing an event with name '__init__'. Accordingly with the Wpipe jobbing, when
+fired, this event searches for the task with mask of name '__init__', meaning
+that the script corresponding to the first task to be submitted in the
+pipeline shall be written to register this mask.
+
++ sqlintf
+
+Of the Wpipe classes, each constructed object ultimately represents a row of
+the corresponding SQL table after construction. The constructor notably
+queries the database for rows with key column entries that correspond to those
+given in its call signature, or create a new row if that query doesn't return.
+In this way, each object made out of that suite of classes uniquely represents
+a row of the shared SQL database in a single python instance, and conversely.
+
+The entire connection with the SQL database is powered by the third-party
+module SQLAlchemy and is implemented via the subpackage sqlintf. In practice,
+no one should ever need to use this subpackage, it contains the tools to
+initialize the database connection and query it, as well as duplicates of each
+of the Wpipe classes. These duplicates form the SQL interface for the Wpipe
+classes, as in constructing an object of these duplicates is equivalent to
+adding a new row to the database table. These duplicates also are the classes
+of the returned object when querying the database for existing rows:
+accordingly, the Wpipe classes have been coded to query for existing rows, or
+to create new rows otherwise.
 
 Available subpackages
 ---------------------

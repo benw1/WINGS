@@ -103,8 +103,6 @@ def fixwcs(imgpath):
 
 def parse_all():
     parser = wp.PARSER
-    parser.add_argument('--job', '-j', type=int, dest='job_id',
-                        help='This job ID')
     parser.add_argument('--config', '-c', type=int, dest='config_id',
                         help='Configuration ID')
     parser.add_argument('--target', '-t', type=int, dest='target_id',

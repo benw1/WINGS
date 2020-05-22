@@ -46,8 +46,6 @@ def send(dp, conf, comp_name, total, job):
 
 def parse_all():
     parser = wp.PARSER
-    parser.add_argument('--job', '-j', type=int, dest='job_id',
-                        help='This job ID')
     return parser.parse_args()
 
 
