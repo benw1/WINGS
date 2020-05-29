@@ -115,7 +115,7 @@ DefaultNode
 __version__
     Wpipe version string
 """
-from .__version__ import __version__
+from .__metadata__ import *
 from .core import *
 from .User import User
 from .Node import Node

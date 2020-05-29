@@ -37,5 +37,4 @@ if not sqlite:
 
 Base = declarative_base()
 
-Session = orm.sessionmaker(bind=engine)
-session = Session()
+session = orm.sessionmaker(bind=engine)()

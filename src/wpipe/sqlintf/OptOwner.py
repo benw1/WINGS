@@ -1,7 +1,20 @@
-from .core import *
+#!/usr/bin/env python
+"""
+Contains the sqlintf.OptOwner class definition
+
+Please note that this module is private. The sqlintf.OptOwner class is
+available in the ``wpipe.sqlintf`` namespace - use that instead.
+"""
+from .core import sa, orm, Base
 
 
 class OptOwner(Base):
+    """
+        A OptOwner object represents a row of the `optowners` table.
+
+        DO NOT USE CONSTRUCTOR: constructing a OptOwner object adds a new row
+        to the database: USE INSTEAD ITS WPIPE COUNTERPART.
+    """
     __tablename__ = 'optowners'
     id = sa.Column(sa.Integer, primary_key=True)
     timestamp = sa.Column(sa.TIMESTAMP)

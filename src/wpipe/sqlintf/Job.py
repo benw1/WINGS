@@ -1,8 +1,21 @@
-from .core import *
+#!/usr/bin/env python
+"""
+Contains the sqlintf.Job class definition
+
+Please note that this module is private. The sqlintf.Job class is
+available in the ``wpipe.sqlintf`` namespace - use that instead.
+"""
+from .core import sa, orm
 from .OptOwner import OptOwner
 
 
 class Job(OptOwner):
+    """
+        A Job object represents a row of the `jobs` table.
+
+        DO NOT USE CONSTRUCTOR: constructing a Job object adds a new row
+        to the database: USE INSTEAD ITS WPIPE COUNTERPART.
+    """
     __tablename__ = 'jobs'
     id = sa.Column(sa.Integer, sa.ForeignKey('optowners.id'), primary_key=True)
     state = sa.Column(sa.String(256))

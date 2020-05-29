@@ -1,8 +1,21 @@
-from .core import *
+#!/usr/bin/env python
+"""
+Contains the sqlintf.Configuration class definition
+
+Please note that this module is private. The sqlintf.Configuration class is
+available in the ``wpipe.sqlintf`` namespace - use that instead.
+"""
+from .core import sa, orm
 from .DPOwner import DPOwner
 
 
 class Configuration(DPOwner):
+    """
+        A Configuration object represents a row of the `configurations` table.
+
+        DO NOT USE CONSTRUCTOR: constructing a Configuration object adds a new
+        row to the database: USE INSTEAD ITS WPIPE COUNTERPART.
+    """
     __tablename__ = 'configurations'
     id = sa.Column(sa.Integer, sa.ForeignKey('dpowners.id'), primary_key=True)
     name = sa.Column(sa.String(256))

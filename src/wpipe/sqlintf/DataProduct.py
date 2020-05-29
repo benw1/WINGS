@@ -1,8 +1,21 @@
-from .core import *
+#!/usr/bin/env python
+"""
+Contains the sqlintf.DataProduct class definition
+
+Please note that this module is private. The sqlintf.DataProduct class is
+available in the ``wpipe.sqlintf`` namespace - use that instead.
+"""
+from .core import sa, orm
 from .OptOwner import OptOwner
 
 
 class DataProduct(OptOwner):
+    """
+        A DataProduct object represents a row of the `dataproducts` table.
+
+        DO NOT USE CONSTRUCTOR: constructing a DataProduct object adds a new
+        row to the database: USE INSTEAD ITS WPIPE COUNTERPART.
+    """
     __tablename__ = 'dataproducts'
     id = sa.Column(sa.Integer, sa.ForeignKey('optowners.id'), primary_key=True)
     filename = sa.Column(sa.String(256))
