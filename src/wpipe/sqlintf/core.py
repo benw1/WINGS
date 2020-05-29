@@ -1,4 +1,12 @@
+#!/usr/bin/env python
+"""
+Contains the core import statements and developing tools of sqlintf
+
+Please note that this module is private. All functions and objects
+are available in the main ``sqlintf`` namespace - use that instead.
+"""
 import argparse
+
 import sqlalchemy as sa
 import sqlalchemy.orm as orm
 from sqlalchemy.ext.declarative import declarative_base

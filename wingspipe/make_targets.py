@@ -9,7 +9,8 @@ def register(task):
 
 
 def discover_targets(pipeline, this_job):
-    for my_target in pipeline.targets:
+    for my_input in pipeline.inputs:
+        my_target = my_input.target()
         # print("NAME", my_target.name)
         comp_name = 'completed_' + my_target.name
         this_job.options = {comp_name: 0}
@@ -45,8 +46,6 @@ def send(dp, conf, comp_name, total, job):
 
 def parse_all():
     parser = wp.PARSER
-    parser.add_argument('--job', '-j', type=int, dest='job_id',
-                        help='This job ID')
     return parser.parse_args()
 
 

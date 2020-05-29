@@ -1,14 +1,14 @@
 from .core import *
 
 
-class Owner(Base):
-    __tablename__ = 'owners'
+class DPOwner(Base):
+    __tablename__ = 'dpowners'
     id = sa.Column(sa.Integer, primary_key=True)
     timestamp = sa.Column(sa.TIMESTAMP)
     type = sa.Column(sa.String(256))
-    options = orm.relationship("Option", back_populates="owner")
+    dataproducts = orm.relationship("DataProduct", back_populates="dpowner")
     __mapper_args__ = {
-        'polymorphic_identity': 'owner',
+        'polymorphic_identity': 'dpowner',
         'polymorphic_on': type
     }
 

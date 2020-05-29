@@ -10,7 +10,7 @@ import numpy as np
 if __name__ == '__main__':
     from wingtips import WingTips as wtips
 else:
-    from .wingtips import WingTips as wtips
+    from wpipe.wingtips import WingTips as wtips
 
 
 def register(task):
@@ -261,7 +261,7 @@ def read_match(filepath, cols, my_config, my_job):
 def getgalradec(infile, ra, dec, magni, background):
     filt = 'Z087'
     zp_ab = np.array([26.365, 26.357, 26.320, 26.367, 25.913])
-    starpre = '_'.join(infile.split('.')[:-1])
+    starpre = '.'.join(infile.split('.')[:-1])
     filedir = background + '/'
     outfile = starpre + '_' + filt + '.tbl'
     flux = wtips.get_counts(magni[:, 0], zp_ab[0])
@@ -275,7 +275,7 @@ def getgalradec(infile, ra, dec, magni, background):
 def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, starsonly, filtsinm):
     filternames = ['R062', 'Z087', 'Y106', 'J129', 'H158', 'F184']
     zp_ab = np.array([26.5, 26.365, 26.357, 26.320, 26.367, 25.913])
-    starpre = '_'.join(infile.split('.')[:-1])
+    starpre = '.'.join(infile.split('.')[:-1])
     filedir = '/'.join(infile.split('/')[:-1]) + '/'
     outfiles = []
     filters = []
@@ -376,8 +376,6 @@ def parse_all():
     parser = wp.PARSER
     parser.add_argument('--config', '-c', type=int, dest='config_id',
                         help='Configuration ID')
-    parser.add_argument('--job', '-j', type=int, dest='job_id',
-                        help='This job ID')
     return parser.parse_args()
 
 

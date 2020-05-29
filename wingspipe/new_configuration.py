@@ -10,8 +10,6 @@ def parse_all():
     parser = wp.PARSER
     parser.add_argument('--config', '-c', type=str, dest='config_id',
                         help='Configuration ID to be copied')
-    parser.add_argument('--job', '-j', type=int, dest='job_id',
-                        help='Job ID')
     return parser.parse_args()
 
 

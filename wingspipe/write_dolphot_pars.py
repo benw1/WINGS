@@ -147,9 +147,6 @@ def write_dolphot_pars(target, config, thisjob):
 
 def parse_all():
     parser = wp.PARSER
-    parser.add_argument('--J', '-j', type=int, dest='job_id',
-                        help='Job ID')
-
     return parser.parse_args()
 
 

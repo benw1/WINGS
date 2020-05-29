@@ -1,10 +1,10 @@
 from .core import *
-from .Owner import Owner
+from .OptOwner import OptOwner
 
 
-class Event(Owner):
+class Event(OptOwner):
     __tablename__ = 'events'
-    id = sa.Column(sa.Integer, sa.ForeignKey('owners.id'), primary_key=True)
+    id = sa.Column(sa.Integer, sa.ForeignKey('optowners.id'), primary_key=True)
     name = sa.Column(sa.String(256))
     tag = sa.Column(sa.String(256))
     jargs = sa.Column(sa.String(256))

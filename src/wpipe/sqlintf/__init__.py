@@ -2,8 +2,10 @@ from .core import *
 from .User import User
 from .Node import Node
 from .Pipeline import Pipeline
-from .Owner import Owner
+from .DPOwner import DPOwner
+from .Input import Input
 from .Option import Option
+from .OptOwner import OptOwner
 from .Target import Target
 from .Configuration import Configuration
 from .Parameter import Parameter

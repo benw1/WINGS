@@ -1,14 +1,22 @@
+#!/usr/bin/env python
+"""
+Contains the core import statements and developing tools of Wpipe
+
+Please note that this module is private. All functions and objects
+are available in the main ``wpipe`` namespace - use that instead.
+"""
+import os
 import datetime
 import subprocess
-import tempfile
-import os
 import glob
 import shutil
+import warnings
 import json
 import ast
-import warnings
+
 import numpy as np
 import pandas as pd
+
 from . import sqlintf as si
 
 PARSER = si.PARSER
@@ -19,6 +27,7 @@ PARSER.add_argument('--user', '-u', dest='user_name', type=str,
                     help='Name of user - default to WPIPE_USER environment variable')
 PARSER.add_argument('--pipeline', '-p', dest='pipeline', type=str, default=os.getcwd(),
                     help='Path or ID of pipeline - default to current working directory')
+PARSER.add_argument('--job', '-j', dest='job_id', type=int, help='ID of this job')
 
 # if os.getcwd() not in map(os.path.abspath, os.sys.path):
 #     os.sys.path.insert(0, os.getcwd())
@@ -45,6 +54,12 @@ def clean_path(path, root=''):
         path = os.path.expandvars(os.path.expanduser(path))
         root = os.path.expandvars(os.path.expanduser(root))
         return os.path.abspath([root+'/', ''][os.path.isabs(path) or not(os.path.isabs(root))]+path)
+
+
+def split_path(path):
+    path, ext = os.path.splitext(path)
+    base, name = os.path.split(path)
+    return base, name, ext
 
 
 def key_wpipe_separator(obj):

@@ -8,7 +8,7 @@ def parse_all():
                         help='Path to pipeline tasks to be registered')
     parser.add_argument('--description', '-d', dest='description', default='',
                         help='Optional description of this pipeline')
-    parser.add_argument('--targets', '-t', type=str, dest='data_dir',
+    parser.add_argument('--inputs', '-i', type=str, dest='inputs_path',
                         help='Path to directory with input lists')
     parser.add_argument('--config', '-c', type=str, dest='config_file',
                         help='Configuration File Path')
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     else:
         my_pipe = wp.Pipeline(description=args.description)
     my_pipe.attach_tasks(args.tasks_path)
-    my_pipe.attach_targets(args.data_dir, args.config_file)
+    my_pipe.attach_inputs(args.inputs_path, args.config_file)
     my_pipe.to_json('pipe.conf', orient='records')
     if args.run:
         my_pipe.run_pipeline()
