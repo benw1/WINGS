@@ -5,7 +5,9 @@ Contains the Task class definition
 Please note that this module is private. The Task class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import *
+from .core import os, shutil, warnings, datetime, si
+from .core import ChildrenProxy
+from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path
 
 
 class Task:

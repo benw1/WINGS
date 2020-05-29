@@ -5,7 +5,9 @@ Contains the Input class definition
 Please note that this module is private. The Input class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import *
+from .core import os, glob, shutil, datetime, si
+from .core import ChildrenProxy
+from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path
 from .DPOwner import DPOwner
 
 

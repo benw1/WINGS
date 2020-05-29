@@ -6,7 +6,8 @@ Please note that this module is private. The OptOwnwer class is not meant to
 be used by itself, but through its inherited classes Target, Job, Event and
 DataProduct.
 """
-from .core import *
+from .core import datetime, si
+from .core import DictLikeChildrenProxy
 from .Option import Option
 
 

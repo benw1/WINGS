@@ -5,7 +5,8 @@ Contains the DPOwner class definition
 Please note that this module is private. The DPOwnwer class is not meant to
 be used by itself, but through its inherited classes Input and Configurations.
 """
-from .core import *
+from .core import datetime, si
+from .core import ChildrenProxy
 
 
 class DPOwner:

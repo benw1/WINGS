@@ -5,7 +5,10 @@ Contains the Pipeline class definition
 Please note that this module is private. The Pipeline class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import *
+from .core import os, glob, datetime, pd, si
+from .core import ChildrenProxy
+from .core import initialize_args, wpipe_to_sqlintf_connection, as_int, clean_path
+from .core import PARSER
 
 
 class Pipeline:
