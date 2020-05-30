@@ -127,8 +127,6 @@ class Pipeline:
         -p/--pipeline, but it defaults to the current working directory
         returned by os.cwd().
 
-        How to use
-        ----------
         A Pipeline object can be constructed without giving any parameter:
         in such case, it is automatically associated to the user DefaultUser
         and the pipe_root is given by the PARSER.pipeline entry.

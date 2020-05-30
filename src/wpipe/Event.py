@@ -92,8 +92,8 @@ class Event(OptOwner):
         options : core.DictLikeChildrenProxy object
             Dictionary of Option objects owned by the target.
 
-        How to use
-        ----------
+        Notes
+        -----
         An Event object requires a Job object to construct: this can be
         achieved either by using the object method Job.child_event, or
         alternatively by using the Event class constructor giving it the Job

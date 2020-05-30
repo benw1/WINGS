@@ -106,8 +106,8 @@ class Job(OptOwner):
         options : core.DictLikeChildrenProxy object
             Dictionary of Option objects owned by the target.
 
-        How to use
-        ----------
+        Notes
+        -----
         Job objects are at the heart of Wpipe functionalities, as they handle
         the pipeline jobbing. A Job is constructed with a combination of
         parent Wpipe objects among 4 of them:

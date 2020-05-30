@@ -97,8 +97,8 @@ class Input(DPOwner):
         dataproducts : core.ChildrenProxy object
             List of DataProduct objects owned by the input.
 
-        How to use
-        ----------
+        Notes
+        -----
         An Input object requires a Pipeline object to construct: it is notably
         recommended to use the method attach_inputs of that Pipeline object
         for constructing a collection of inputs associated to the pipeline.

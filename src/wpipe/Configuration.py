@@ -52,8 +52,8 @@ class Configuration(DPOwner):
         parameters was given to the constructor, the __init__ method
         constructs a set of Parameter objects owned by the configuration.
 
-        Parameters
-        ----------
+        Notes
+        -----
         target : Target object
             Target owning this input.
         name : string

@@ -131,8 +131,8 @@ class DataProduct(OptOwner):
         options : core.DictLikeChildrenProxy object
             Dictionary of Option objects owned by the target.
 
-        How to use
-        ----------
+        Notes
+        -----
         A DataProduct object constructs from dataproduct owner, that can be
         either an Input object or a Configuration object: this can be
         achieved either by using the dataproduct generating object method of

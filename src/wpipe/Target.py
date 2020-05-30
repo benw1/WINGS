@@ -92,8 +92,8 @@ class Target(OptOwner):
         options : core.DictLikeChildrenProxy object
             Dictionary of Option objects owned by the target.
 
-        How to use
-        ----------
+        Notes
+        -----
         As a Target object requires an Input object to construct, one can
         either use the Input object method target, or use the Target class
         constructor with the Input object as argument. In both cases, the

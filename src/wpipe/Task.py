@@ -81,8 +81,8 @@ class Task:
         jobs : core.ChildrenProxy object
             List of Job objects owned by the task.
 
-        How to use
-        ----------
+        Notes
+        -----
         A Task object requires a Pipeline object to construct: it is notably
         recommended to use the method attach_tasks of that Pipeline object
         for constructing a collection of tasks associated to the pipeline.
