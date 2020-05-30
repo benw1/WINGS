@@ -13,11 +13,7 @@ from .OptOwner import OptOwner
 
 class Target(OptOwner):
     """
-        A Target object represents a specific target defined by its input
-        and its name.
-
-        Construction
-        ------------
+        Represents an input's target.
 
         Call signatures::
 

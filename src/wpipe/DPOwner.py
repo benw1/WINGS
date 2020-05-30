@@ -11,6 +11,8 @@ from .core import ChildrenProxy
 
 class DPOwner:
     """
+        Represents a dataproduct owner.
+
         The DPOwner class is a special base class from which are inherited
         the 2 classes Input and Configuration to give them the capability
         to parent dataproducts. Please refer to their respective documentation

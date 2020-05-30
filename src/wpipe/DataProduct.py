@@ -12,12 +12,7 @@ from .OptOwner import OptOwner
 
 class DataProduct(OptOwner):
     """
-        A DataProduct object represents a data file in the pipeline, either
-        owned by a pipeline input or a target configuration, defined by its
-        parent input or configuration, its filename and its group.
-
-        Construction
-        ------------
+        Represents a dataproduct owned by a configuration or an input.
 
         Call signatures::
 

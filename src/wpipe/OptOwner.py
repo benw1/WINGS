@@ -13,6 +13,8 @@ from .Option import Option
 
 class OptOwner:
     """
+        Represents an option owner.
+
         The OptOwner class is a special base class from which are inherited
         the 4 classes Target, Job, Event and DataProduct to give them the
         capability to parent options. Please refer to their respective

@@ -11,11 +11,7 @@ from .core import initialize_args, wpipe_to_sqlintf_connection
 
 class Mask:
     """
-        A Mask object represents a mask associated to a pipeline task, and is
-        accordingly defined by its task and its name.
-
-        Construction
-        ------------
+        Represents a mask associated to a task.
 
         Call signatures::
 

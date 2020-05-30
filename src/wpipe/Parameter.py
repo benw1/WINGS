@@ -11,11 +11,7 @@ from .core import initialize_args, wpipe_to_sqlintf_connection
 
 class Parameter:
     """
-        A Parameter object represents a parameter of a target configuration,
-        and is accordingly defined by its configuration and its name.
-
-        Construction
-        ------------
+        Represents a configuration's parameter.
 
         Call signatures::
 

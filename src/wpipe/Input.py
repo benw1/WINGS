@@ -13,12 +13,7 @@ from .DPOwner import DPOwner
 
 class Input(DPOwner):
     """
-        An Input object represents a pipeline input of data, binding the
-        gathered raw data and configuration file, defined by its pipeline
-        and its name.
-
-        Construction
-        ------------
+        Represents a pipeline's input.
 
         Call signatures::
 

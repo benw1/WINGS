@@ -13,12 +13,7 @@ from .OptOwner import OptOwner
 
 class Event(OptOwner):
     """
-        An Event object represents an event to fire a new job of the task
-        which mask signature corresponds to the given name and value, and is
-        defined by its parent job, the above-named given name and a tag.
-
-        Construction
-        ------------
+        Represents a fired event of a WINGS pipeline.
 
         Call signatures::
 

@@ -13,11 +13,7 @@ from .DPOwner import DPOwner
 
 class Configuration(DPOwner):
     """
-        A Configuration object represents a set of parameters configuring
-        a target, and is defined by its target and its name.
-
-        Construction
-        ------------
+        Represents target's configuration.
 
         Call signatures::
 

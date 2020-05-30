@@ -12,11 +12,7 @@ from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path
 
 class Task:
     """
-        A Task object represents a scripted task built by the pipeline in its
-        software_root, defined by its pipeline and its name.
-
-        Construction
-        ------------
+        Represents a pipeline's task.
 
         Call signatures::
 

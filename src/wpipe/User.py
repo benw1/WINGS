@@ -13,10 +13,7 @@ from .core import PARSER
 
 class User:
     """
-        A User object represents a wingspipe user defined by its name.
-
-        Construction
-        ------------
+        Represents a wingspipe user.
 
         Call signatures::
 

@@ -13,12 +13,7 @@ from .OptOwner import OptOwner
 
 class Job(OptOwner):
     """
-        A Job object represents the job running a specific task given a
-        specific target configuration, and is defined by its task, and in most
-        cases, a firing event, a configuration, and/or a node.
-
-        Construction
-        ------------
+        Represents a submitted job of a WINGS pipeline.
 
         Call signatures::
 

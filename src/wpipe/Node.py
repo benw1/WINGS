@@ -13,11 +13,7 @@ import socket
 
 class Node:
     """
-        A Node object represents a node, defined by its name, of the machine
-        where the pipeline is built.
-
-        Construction
-        ------------
+        Represents a node of the local machine.
 
         Call signatures::
 

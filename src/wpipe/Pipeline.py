@@ -13,11 +13,7 @@ from .core import PARSER
 
 class Pipeline:
     """
-        A Pipeline object represents a wingspipe pipeline defined by
-        its user and its path.
-
-        Construction
-        ------------
+        Represents a WINGS pipeline.
 
         Call signatures::
 
