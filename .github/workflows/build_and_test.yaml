@@ -18,8 +18,8 @@ jobs:
       mysql:
         image: mysql:5.7.29
         env:
-          MYSQL\_ROOT\_PASSWORD: password
-          MYSQL\_DATABASE: server
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: server
         ports:
          - 8000:3306
     steps:
