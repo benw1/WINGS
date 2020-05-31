@@ -33,7 +33,6 @@ jobs:
         docker ps -a
         sleep 30
         docker ps -a
-        cd temp
         wingspipe
     - name: Build Documentation
       run: echo "build that documentation"
