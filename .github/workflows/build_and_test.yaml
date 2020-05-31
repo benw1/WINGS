@@ -29,7 +29,11 @@ jobs:
       run: |
         ./scripts/run_mysql_container.sh
     - name: Attempt to run wingspipe
-      run: wingspipe
+      run: |
+        sleep 5
+        ls ./temp
+        ls ~/docker/storage
+        wingspipe
       working-directory: ./temp
     - name: Build Documentation
       run: echo "build that documentation"
