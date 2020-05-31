@@ -31,7 +31,7 @@ if sqlite:
 
 elif PARSER.parse_known_args()[0].test:
     print("We are testing")
-    engine_URL = "mysql+pymysql://root:password@localhost:8000/server"
+    engine_URL = "mysql+mysqlconnector://root:password@localhost:8000/server"
 else:
     engine_URL = 'mysql://wpipe:W£|£3u53r@localhost/server'
 
