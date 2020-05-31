@@ -40,7 +40,8 @@ jobs:
         sleep 5
         which wingspipe
         mysql --host localhost -P8000 --protocol=tcp -uroot -ppassword -e "SHOW DATABASES"
-        ./bin/wingspipe
+        cd ./temp
+        wingspipe
     - name: Build Documentation
       run: echo "build that documentation"
     - name: Clean up
