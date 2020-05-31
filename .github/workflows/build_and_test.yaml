@@ -36,7 +36,6 @@ jobs:
         mkdir ./temp
     - name: Attempt to run wingspipe
       run: |
-        sleep 5
         cd ./temp
         wingspipe
     - name: Build Documentation

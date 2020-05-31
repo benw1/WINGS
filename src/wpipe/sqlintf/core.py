@@ -33,7 +33,7 @@ else:
 #     engine = sa.create_engine(engine_URL)  # , echo=True)
 # except sa.exc.DatabaseError: # revert to some default on error
 #     engine = sa.create_engine("mysql+mysqlconnector://root:password@localhost:8000/server")
-engine = sa.create_engine("mysql++pymsql://root:password@localhost:8000/server")
+engine = sa.create_engine("mysql+pymsql://root:password@localhost:8000/server")
 
 
 if not sqlite:
