@@ -32,7 +32,7 @@ else:
 engine = None
 try:
     engine = sa.create_engine(engine_URL)  # , echo=True)
-except: # revert to some default on error
+except sa.exc.OperationalError: # revert to some default on error
     print("We got here")
     engine = sa.create_engine("mysql+pymysql://root:password@localhost:8000/server")
 # engine = sa.create_engine("mysql+pymysql://root:password@localhost:8000/server")
