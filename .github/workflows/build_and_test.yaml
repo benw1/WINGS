@@ -31,7 +31,7 @@ jobs:
     - name: Attempt to run wingspipe
       run: |
         docker ps -a
-        sleep 5
+        sleep 30
         docker ps -a
         cd temp
         wingspipe
