@@ -33,7 +33,7 @@ jobs:
         docker ps -a
         sleep 5
         which wingspipe
-        /bin/wingspipe
+        ./bin/wingspipe
     - name: Build Documentation
       run: echo "build that documentation"
     - name: Clean up
