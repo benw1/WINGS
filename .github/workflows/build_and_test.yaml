@@ -36,10 +36,7 @@ jobs:
         mkdir ./temp
     - name: Attempt to run wingspipe
       run: |
-        docker ps -a
         sleep 5
-        which wingspipe
-        mysql --host localhost -P8000 --protocol=tcp -uroot -ppassword -e "SHOW DATABASES"
         cd ./temp
         wingspipe
     - name: Build Documentation
