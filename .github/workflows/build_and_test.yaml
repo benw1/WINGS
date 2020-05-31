@@ -30,9 +30,9 @@ jobs:
         ./scripts/run_mysql_container.sh
     - name: Attempt to run wingspipe
       run: |
+        docker ps -a
         sleep 5
-        ls ~/docker/storage
-        ls ~/docker/storage/wings_mysql
+        docker ps -a
         cd temp
         wingspipe
     - name: Build Documentation
