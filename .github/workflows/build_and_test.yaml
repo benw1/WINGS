@@ -35,9 +35,7 @@ jobs:
       run: echo "build that documentation"
     - name: Clean up
       run: |
-#        rm -rf ./temp
         docker container stop wingsmysql
-#        rm -rf ~/docker/storage
         ls ./temp
         ls ~/docker/storage
 
