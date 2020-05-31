@@ -32,6 +32,7 @@ jobs:
       run: |
         sleep 5
         ls ~/docker/storage
+        ls ~/docker/storage/wings_mysql
         wingspipe
       working-directory: ./temp
     - name: Build Documentation
