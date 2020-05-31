@@ -34,7 +34,7 @@ jobs:
         docker ps -a
         sleep 5
         which wingspipe
-        mysql --host 127.0.0.1 -P8000 --protocol=tcp -uroot -ppassword -e "SHOW DATABASES"
+        mysql --host localhost -P8080 --protocol=tcp -uroot -ppassword -e "SHOW DATABASES"
 
 #        ./bin/wingspipe
     - name: Build Documentation
