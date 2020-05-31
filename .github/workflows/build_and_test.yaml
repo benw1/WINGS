@@ -31,10 +31,9 @@ jobs:
     - name: Attempt to run wingspipe
       run: |
         docker ps -a
-        sleep 30
-        docker ps -a
+        sleep 5
         which wingspipe
-        wingspipe
+        /bin/wingspipe
     - name: Build Documentation
       run: echo "build that documentation"
     - name: Clean up
