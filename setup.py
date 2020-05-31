@@ -12,6 +12,7 @@ setup(name='wpipe',
       version=__version__,
       packages=['wpipe', 'wpipe.sqlintf'],
       package_dir={'': 'src'},
-      install_requires=['numpy', 'pandas', 'tables', 'sqlalchemy', 'mysql-connector-python', 'astropy'],
+      install_requires=['numpy', 'pandas', 'tables', 'sqlalchemy',
+                        'mysql-connector-python', 'mysqlclient', 'astropy'],
       scripts=['bin/wingspipe']
       )
