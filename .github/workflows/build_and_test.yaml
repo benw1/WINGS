@@ -30,8 +30,8 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        sudo apt-get install -y mysql-client mysql-server
         python -m pip install --upgrade pip
+        python -m pip install pymysql
         python setup.py install
         mkdir ./temp
     - name: Attempt to run wingspipe
@@ -40,8 +40,5 @@ jobs:
         wingspipe --github-test
     - name: Build Documentation
       run: echo "build that documentation"
-    - name: Clean up
-      run: |
-        ls ./temp
-        ls ~/docker/storage
+
 
