@@ -37,7 +37,7 @@ jobs:
     - name: Attempt to run wingspipe
       run: |
         cd ./temp
-        wingspipe
+        wingspipe --github-test
     - name: Build Documentation
       run: echo "build that documentation"
     - name: Clean up
