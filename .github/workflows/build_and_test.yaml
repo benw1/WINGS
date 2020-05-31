@@ -33,6 +33,7 @@ jobs:
         docker ps -a
         sleep 30
         docker ps -a
+        which wingspipe
         wingspipe
     - name: Build Documentation
       run: echo "build that documentation"
