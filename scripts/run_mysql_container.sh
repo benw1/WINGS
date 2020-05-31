@@ -23,5 +23,5 @@ then
   sleep 2 # let container start
 #  mysql --host localhost -P 8000 --protocol=tcp -u root -p -e "create database server"
 else
-  docker run --rm --detach --name=wingsmysql -v "${WINGS_DB_STORAGE}:/var/lib/mysql" --publish 8000:3306 mysql:5.7.29
+  docker run --rm --detach --name=wingsmysql -v "${WINGS_DB_STORAGE}:/var/lib/mysql" --publish 8080:3306 mysql:5.7.29
 fi
