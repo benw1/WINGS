@@ -31,7 +31,6 @@ jobs:
     - name: Attempt to run wingspipe
       run: |
         sleep 5
-        ls ./temp
         ls ~/docker/storage
         wingspipe
       working-directory: ./temp
