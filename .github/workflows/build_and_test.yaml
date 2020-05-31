@@ -40,11 +40,12 @@ jobs:
         sleep 5
         which wingspipe
         mysql --host localhost -P8000 --protocol=tcp -uroot -ppassword -e "SHOW DATABASES"
+        wingspipe
+      working-directory: ./temp
     - name: Build Documentation
       run: echo "build that documentation"
     - name: Clean up
       run: |
-        docker container stop wingsmysql
         ls ./temp
         ls ~/docker/storage
 
