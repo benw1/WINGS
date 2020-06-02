@@ -257,7 +257,7 @@ class DictLikeChildrenProxy(ChildrenProxy):
         child_attr : string
             Child attribute that distinguishes the children from one another.
         child_value : string
-            Child attribute that returns its value.
+            Child attribute that returns its stored value.
     """
     def __init__(self, parent, children_attr, cls_name, child_attr='name', child_value='value'):
         super(DictLikeChildrenProxy, self).__init__(parent, children_attr, cls_name, child_attr)
