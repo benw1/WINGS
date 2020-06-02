@@ -19,6 +19,8 @@ For usage, call object-method PARSER.print_help in interpreter.
 """
 PARSER.add_argument('--sqlite', '-s', dest='sqlite', action='store_true',
                     help='Use the in-memory sql database for testing purpose')
+PARSER.add_argument('--github-test', dest='test', action='store_true',
+                    help='Used when performing continuous integration on GitHub')
 
 sqlite = PARSER.parse_known_args()[0].sqlite
 """
@@ -35,13 +37,22 @@ if sqlite:
     # import atexit
     #
     # atexit.register(open_interpreter)
+
+elif PARSER.parse_known_args()[0].test:
+    ENGINE_URL = "mysql+pymysql://root:password@localhost:8000/server"
 else:
     ENGINE_URL = 'mysql://wpipe:W£|£3u53r@localhost/server'
 
+# engine = None
+# try:
 engine = sa.create_engine(ENGINE_URL)  # , echo=True)
 """
 sqlalchemy.engine.base.Engine object: handles the connection to the database.
 """
+# except sa.exc.OperationalError: # revert to some default on error
+#     print("We got here")
+#     engine = sa.create_engine("mysql+pymysql://root:password@localhost:8000/server")
+# engine = sa.create_engine("mysql+pymysql://root:password@localhost:8000/server")
 
 if not sqlite:
     engine.execute("CREATE DATABASE IF NOT EXISTS wpipe")
