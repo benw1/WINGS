@@ -36,6 +36,19 @@ pd.set_option('io.hdf.default_format', 'table')
 
 
 def as_int(string):
+    """
+    Return given string parameter as integer, or return as string.
+
+    Parameters
+    ----------
+    string : string
+        Input string parameter.
+
+    Returns
+    -------
+    value : int or string
+        Integer conversion from string or string itself.
+    """
     try:
         return int(string)
     except ValueError:
@@ -43,6 +56,19 @@ def as_int(string):
 
 
 def try_scalar(string):
+    """
+    Return given string parameter as scalar value, or return as string.
+
+    Parameters
+    ----------
+    string : string
+        Input string parameter.
+
+    Returns
+    -------
+    value
+        Scalar conversion from string or string itself.
+    """
     try:
         return ast.literal_eval(string)
     except (ValueError, NameError, SyntaxError):
@@ -50,6 +76,21 @@ def try_scalar(string):
 
 
 def clean_path(path, root=''):
+    """
+    Return given path in absolute format expanding variables and user flags.
+
+    Parameters
+    ----------
+    path : string
+        Path to clean.
+    root : string
+        Alternative root for converting relative path.
+
+    Returns
+    -------
+    out : string
+        Converted path
+    """
     if path is not None:
         path = os.path.expandvars(os.path.expanduser(path))
         root = os.path.expandvars(os.path.expanduser(root))
@@ -57,16 +98,68 @@ def clean_path(path, root=''):
 
 
 def split_path(path):
+    """
+    Return split path between its base, filename and file extension.
+
+    Parameters
+    ----------
+    path : string
+        Path to split.
+
+    Returns
+    -------
+    base : string
+        Base of the path.
+    name : string
+        Filename of the path.
+    ext : string
+        File extension of the path.
+    """
     path, ext = os.path.splitext(path)
     base, name = os.path.split(path)
     return base, name, ext
 
 
 def key_wpipe_separator(obj):
+    """
+    Return true if given object is a Wpipe object.
+
+    Parameters
+    ----------
+    obj
+        Input object.
+
+    Returns
+    -------
+    out : bool
+        True if obj is a Wpipe object, False otherwise.
+    """
     return type(obj).__module__.split('.')[0] != 'wpipe'
 
 
 def initialize_args(args, kwargs, nargs):
+    """
+    Special function for Wpipe object constructor args and kwargs.
+
+    Parameters
+    ----------
+    args : list
+        List of constructor args.
+    kwargs : dict
+        Dictionary of constructor kwargs.
+    nargs : int
+        Maximum total number of (args, kwargs).
+
+    Returns
+    -------
+    wpargs : dict
+        Special kwargs for Wpipe objects.
+    args : list
+        Input args depleted of its Wpipe objects and appended with None
+        entries, up to length nargs.
+    kwargs : dict
+        Input kwargs depleted of its Wpipe objects.
+    """
     wpargs = sorted(args, key=key_wpipe_separator)
     args = list(wpargs.pop() for _i in range(len(wpargs)) if key_wpipe_separator(wpargs[-1]))[::-1]
     wpargs = dict((type(wparg).__name__, wparg) for wparg in wpargs)
@@ -76,6 +169,16 @@ def initialize_args(args, kwargs, nargs):
 
 
 def wpipe_to_sqlintf_connection(cls, cls_name):
+    """
+    Special function for Wpipe object constructor instantiation in __new__.
+
+    Parameters
+    ----------
+    cls
+        Instance in __new__.
+    cls_name : string
+        Name of the class of the Wpipe object to be instantiated.
+    """
     cls_attr = '_' + cls_name.lower()
     if hasattr(getattr(cls, cls_attr), '_wpipe_object'):
         cls._inst = getattr(cls, cls_attr)._wpipe_object
@@ -86,6 +189,20 @@ def wpipe_to_sqlintf_connection(cls, cls_name):
 
 
 class ChildrenProxy:
+    """
+        Proxy to access children of a Wpipe object.
+
+        Parameters
+        ----------
+        parent : sqlintf object
+            Parent sqlintf object of Wpipe object associated to this proxy.
+        children_attr : string
+            Attribute of the sqlintf object returning its children.
+        cls_name : string
+            Name of the class of the children.
+        child_attr : string
+            Child attribute that distinguishes the children from one another.
+    """
     def __init__(self, parent, children_attr, cls_name, child_attr='name'):
         self._parent = parent
         self._children_attr = children_attr
@@ -126,6 +243,22 @@ class ChildrenProxy:
 
 
 class DictLikeChildrenProxy(ChildrenProxy):
+    """
+        Proxy to access children of a Wpipe object in a dictionary format.
+
+        Parameters
+        ----------
+        parent : sqlintf object
+            Parent sqlintf object of Wpipe object associated to this proxy.
+        children_attr : string
+            Attribute of the sqlintf object returning its children.
+        cls_name : string
+            Name of the class of the children.
+        child_attr : string
+            Child attribute that distinguishes the children from one another.
+        child_value : string
+            Child attribute that returns its value.
+    """
     def __init__(self, parent, children_attr, cls_name, child_attr='name', child_value='value'):
         super(DictLikeChildrenProxy, self).__init__(parent, children_attr, cls_name, child_attr)
         self._child_value = child_value

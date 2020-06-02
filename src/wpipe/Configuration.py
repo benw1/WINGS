@@ -58,7 +58,7 @@ class Configuration(DPOwner):
             Target owning this input.
         name : string
             Name of the configuration - defaults to 'default'.
-        description : 'string'
+        description : string
             Description of the configuration - defaults to ''.
         parameters : dict
             Dictionary of parameters to associate to the configuration
