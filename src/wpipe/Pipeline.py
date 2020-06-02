@@ -220,6 +220,19 @@ class Pipeline:
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of Pipeline objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`sqlintf.Pipeline` for parameters.
+
+        Returns
+        -------
+        out : list of Pipeline object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.Pipeline).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 

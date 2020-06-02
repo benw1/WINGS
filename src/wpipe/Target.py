@@ -146,6 +146,19 @@ class Target(OptOwner):
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of Target objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`sqlintf.Target` for parameters.
+
+        Returns
+        -------
+        out : list of Target object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.Target).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 

@@ -154,6 +154,19 @@ class Event(OptOwner):
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of Event objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`sqlintf.Event` for parameters.
+
+        Returns
+        -------
+        out : list of Event object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.Event).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 

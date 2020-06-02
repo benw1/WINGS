@@ -37,7 +37,7 @@ pd.set_option('io.hdf.default_format', 'table')
 
 def as_int(string):
     """
-    Return given string parameter as integer, or return as string.
+    Returns given string parameter as integer, or return as string.
 
     Parameters
     ----------
@@ -57,7 +57,7 @@ def as_int(string):
 
 def try_scalar(string):
     """
-    Return given string parameter as scalar value, or return as string.
+    Returns given string parameter as scalar value, or return as string.
 
     Parameters
     ----------
@@ -77,7 +77,7 @@ def try_scalar(string):
 
 def clean_path(path, root=''):
     """
-    Return given path in absolute format expanding variables and user flags.
+    Returns given path in absolute format expanding variables and user flags.
 
     Parameters
     ----------
@@ -99,7 +99,7 @@ def clean_path(path, root=''):
 
 def split_path(path):
     """
-    Return split path between its base, filename and file extension.
+    Returns split path between its base, filename and file extension.
 
     Parameters
     ----------
@@ -122,7 +122,7 @@ def split_path(path):
 
 def key_wpipe_separator(obj):
     """
-    Return true if given object is a Wpipe object.
+    Returns true if given object is a Wpipe object.
 
     Parameters
     ----------

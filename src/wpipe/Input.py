@@ -161,6 +161,19 @@ class Input(DPOwner):
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of Input objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`sqlintf.Input` for parameters.
+
+        Returns
+        -------
+        out : list of Input object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.Input).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 

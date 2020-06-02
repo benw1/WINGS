@@ -100,6 +100,19 @@ class Mask:
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of Mask objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`sqlintf.Mask` for parameters.
+
+        Returns
+        -------
+        out : list of Mask object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.Mask).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 

@@ -96,6 +96,19 @@ class Option:
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of Option objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`sqlintf.Option` for parameters.
+
+        Returns
+        -------
+        out : list of Option object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.Option).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 

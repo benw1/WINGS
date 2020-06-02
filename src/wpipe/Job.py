@@ -214,6 +214,19 @@ class Job(OptOwner):
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of Job objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`sqlintf.Job` for parameters.
+
+        Returns
+        -------
+        out : list of Job object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.Job).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 

@@ -93,6 +93,19 @@ class Parameter:
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of Parameter objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`sqlintf.Parameter` for parameters.
+
+        Returns
+        -------
+        out : list of Parameter object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.Parameter).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 

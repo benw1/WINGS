@@ -208,6 +208,19 @@ class DataProduct(OptOwner):
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of DataProduct objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`sqlintf.DataProduct` for parameters.
+
+        Returns
+        -------
+        out : list of DataProduct object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.DataProduct).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 

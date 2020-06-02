@@ -109,6 +109,19 @@ class Node:
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of Node objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`sqlintf.Node` for parameters.
+
+        Returns
+        -------
+        out : list of Node object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.Node).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
