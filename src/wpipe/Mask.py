@@ -5,16 +5,13 @@ Contains the Mask class definition
 Please note that this module is private. The Mask class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import *
+from .core import datetime, si
+from .core import initialize_args, wpipe_to_sqlintf_connection
 
 
 class Mask:
     """
-        A Mask object represents a mask associated to a pipeline task, and is
-        accordingly defined by its task and its name.
-
-        Construction
-        ------------
+        Represents a mask associated to a task.
 
         Call signatures::
 

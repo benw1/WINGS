@@ -115,7 +115,7 @@ DefaultNode
 __version__
     Wpipe version string
 """
-from .__version__ import __version__
+from .__metadata__ import *
 from .core import *
 from .User import User
 from .Node import Node
@@ -133,7 +133,14 @@ from .Event import Event
 
 
 DefaultUser = User()
+"""
+User object: User object constructed at wpipe importation (see User doc Notes)
+"""
+
 DefaultNode = Node()
+"""
+Node object: Node object constructed at wpipe importation (see Node doc Notes)
+"""
 
 
 def sql_hyak(task, job_id, event_id):

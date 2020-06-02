@@ -5,17 +5,15 @@ Contains the Target class definition
 Please note that this module is private. The Target class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import *
+from .core import os, datetime, json, si
+from .core import ChildrenProxy
+from .core import initialize_args, wpipe_to_sqlintf_connection
 from .OptOwner import OptOwner
 
 
 class Target(OptOwner):
     """
-        A Target object represents a specific target defined by its input
-        and its name.
-
-        Construction
-        ------------
+        Represents an input's target.
 
         Call signatures::
 
@@ -94,8 +92,8 @@ class Target(OptOwner):
         options : core.DictLikeChildrenProxy object
             Dictionary of Option objects owned by the target.
 
-        How to use
-        ----------
+        Notes
+        -----
         As a Target object requires an Input object to construct, one can
         either use the Input object method target, or use the Target class
         constructor with the Input object as argument. In both cases, the

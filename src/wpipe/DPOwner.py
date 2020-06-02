@@ -5,11 +5,14 @@ Contains the DPOwner class definition
 Please note that this module is private. The DPOwnwer class is not meant to
 be used by itself, but through its inherited classes Input and Configurations.
 """
-from .core import *
+from .core import datetime, si
+from .core import ChildrenProxy
 
 
 class DPOwner:
     """
+        Represents a dataproduct owner.
+
         The DPOwner class is a special base class from which are inherited
         the 2 classes Input and Configuration to give them the capability
         to parent dataproducts. Please refer to their respective documentation

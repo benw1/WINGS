@@ -5,17 +5,13 @@ Contains the Option class definition
 Please note that this module is private. The Option class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import *
+from .core import datetime, si
+from .core import initialize_args, wpipe_to_sqlintf_connection
 
 
 class Option:
     """
-        An Option object represents an option given to an options owner such
-        as a target, a job, an event or a dataproduct, and is defined by its
-        options owner and its name.
-
-        Construction
-        ------------
+        Represents an option given to a target, job, event or dataproduct.
 
         Call signatures::
 

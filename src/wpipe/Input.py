@@ -5,18 +5,15 @@ Contains the Input class definition
 Please note that this module is private. The Input class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import *
+from .core import os, glob, shutil, datetime, si
+from .core import ChildrenProxy
+from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path
 from .DPOwner import DPOwner
 
 
 class Input(DPOwner):
     """
-        An Input object represents a pipeline input of data, binding the
-        gathered raw data and configuration file, defined by its pipeline
-        and its name.
-
-        Construction
-        ------------
+        Represents a pipeline's input.
 
         Call signatures::
 
@@ -100,8 +97,8 @@ class Input(DPOwner):
         dataproducts : core.ChildrenProxy object
             List of DataProduct objects owned by the input.
 
-        How to use
-        ----------
+        Notes
+        -----
         An Input object requires a Pipeline object to construct: it is notably
         recommended to use the method attach_inputs of that Pipeline object
         for constructing a collection of inputs associated to the pipeline.

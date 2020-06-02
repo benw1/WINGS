@@ -5,18 +5,15 @@ Contains the Event class definition
 Please note that this module is private. The Event class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import *
+from .core import datetime, si
+from .core import ChildrenProxy
+from .core import initialize_args, wpipe_to_sqlintf_connection
 from .OptOwner import OptOwner
 
 
 class Event(OptOwner):
     """
-        An Event object represents an event to fire a new job of the task
-        which mask signature corresponds to the given name and value, and is
-        defined by its parent job, the above-named given name and a tag.
-
-        Construction
-        ------------
+        Represents a fired event of a WINGS pipeline.
 
         Call signatures::
 
@@ -95,8 +92,8 @@ class Event(OptOwner):
         options : core.DictLikeChildrenProxy object
             Dictionary of Option objects owned by the target.
 
-        How to use
-        ----------
+        Notes
+        -----
         An Event object requires a Job object to construct: this can be
         achieved either by using the object method Job.child_event, or
         alternatively by using the Event class constructor giving it the Job

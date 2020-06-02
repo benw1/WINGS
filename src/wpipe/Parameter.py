@@ -5,16 +5,13 @@ Contains the Parameter class definition
 Please note that this module is private. The Parameter class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import *
+from .core import datetime, si
+from .core import initialize_args, wpipe_to_sqlintf_connection
 
 
 class Parameter:
     """
-        A Parameter object represents a parameter of a target configuration,
-        and is accordingly defined by its configuration and its name.
-
-        Construction
-        ------------
+        Represents a configuration's parameter.
 
         Call signatures::
 

@@ -5,18 +5,15 @@ Contains the Job class definition
 Please note that this module is private. The Job class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import *
+from .core import subprocess, datetime, si
+from .core import ChildrenProxy
+from .core import initialize_args, wpipe_to_sqlintf_connection
 from .OptOwner import OptOwner
 
 
 class Job(OptOwner):
     """
-        A Job object represents the job running a specific task given a
-        specific target configuration, and is defined by its task, and in most
-        cases, a firing event, a configuration, and/or a node.
-
-        Construction
-        ------------
+        Represents a submitted job of a WINGS pipeline.
 
         Call signatures::
 
@@ -109,8 +106,8 @@ class Job(OptOwner):
         options : core.DictLikeChildrenProxy object
             Dictionary of Option objects owned by the target.
 
-        How to use
-        ----------
+        Notes
+        -----
         Job objects are at the heart of Wpipe functionalities, as they handle
         the pipeline jobbing. A Job is constructed with a combination of
         parent Wpipe objects among 4 of them:

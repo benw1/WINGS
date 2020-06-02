@@ -5,18 +5,14 @@ Contains the DataProduct class definition
 Please note that this module is private. The DataProduct class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import *
+from .core import os, datetime, si
+from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path
 from .OptOwner import OptOwner
 
 
 class DataProduct(OptOwner):
     """
-        A DataProduct object represents a data file in the pipeline, either
-        owned by a pipeline input or a target configuration, defined by its
-        parent input or configuration, its filename and its group.
-
-        Construction
-        ------------
+        Represents a dataproduct owned by a configuration or an input.
 
         Call signatures::
 
@@ -135,8 +131,8 @@ class DataProduct(OptOwner):
         options : core.DictLikeChildrenProxy object
             Dictionary of Option objects owned by the target.
 
-        How to use
-        ----------
+        Notes
+        -----
         A DataProduct object constructs from dataproduct owner, that can be
         either an Input object or a Configuration object: this can be
         achieved either by using the dataproduct generating object method of

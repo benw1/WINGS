@@ -5,17 +5,15 @@ Contains the Node class definition
 Please note that this module is private. The Node class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import *
+from .core import datetime, si
+from .core import ChildrenProxy
+from .core import initialize_args, wpipe_to_sqlintf_connection
 import socket
 
 
 class Node:
     """
-        A Node object represents a node, defined by its name, of the machine
-        where the pipeline is built.
-
-        Construction
-        ------------
+        Represents a node of the local machine.
 
         Call signatures::
 

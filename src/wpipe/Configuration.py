@@ -5,17 +5,15 @@ Contains the Configuration class definition
 Please note that this module is private. The Configuration class
 is available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import *
+from .core import os, datetime, si
+from .core import ChildrenProxy, DictLikeChildrenProxy
+from .core import initialize_args, wpipe_to_sqlintf_connection
 from .DPOwner import DPOwner
 
 
 class Configuration(DPOwner):
     """
-        A Configuration object represents a set of parameters configuring
-        a target, and is defined by its target and its name.
-
-        Construction
-        ------------
+        Represents target's configuration.
 
         Call signatures::
 
@@ -54,13 +52,13 @@ class Configuration(DPOwner):
         parameters was given to the constructor, the __init__ method
         constructs a set of Parameter objects owned by the configuration.
 
-        Parameters
-        ----------
+        Notes
+        -----
         target : Target object
             Target owning this input.
         name : string
             Name of the configuration - defaults to 'default'.
-        description : 'string'
+        description : string
             Description of the configuration - defaults to ''.
         parameters : dict
             Dictionary of parameters to associate to the configuration

@@ -5,16 +5,15 @@ Contains the Pipeline class definition
 Please note that this module is private. The Pipeline class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import *
+from .core import os, glob, datetime, pd, si
+from .core import ChildrenProxy
+from .core import initialize_args, wpipe_to_sqlintf_connection, as_int, clean_path
+from .core import PARSER
 
 
 class Pipeline:
     """
-        A Pipeline object represents a wingspipe pipeline defined by
-        its user and its path.
-
-        Construction
-        ------------
+        Represents a WINGS pipeline.
 
         Call signatures::
 
@@ -128,8 +127,6 @@ class Pipeline:
         -p/--pipeline, but it defaults to the current working directory
         returned by os.cwd().
 
-        How to use
-        ----------
         A Pipeline object can be constructed without giving any parameter:
         in such case, it is automatically associated to the user DefaultUser
         and the pipe_root is given by the PARSER.pipeline entry.

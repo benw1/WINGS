@@ -5,15 +5,15 @@ Contains the User class definition
 Please note that this module is private. The User class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import *
+from .core import datetime, si
+from .core import ChildrenProxy
+from .core import initialize_args, wpipe_to_sqlintf_connection
+from .core import PARSER
 
 
 class User:
     """
-        A User object represents a wingspipe user defined by its name.
-
-        Construction
-        ------------
+        Represents a wingspipe user.
 
         Call signatures::
 
