@@ -14,6 +14,8 @@ from sqlalchemy.ext.declarative import declarative_base
 PARSER = argparse.ArgumentParser()
 PARSER.add_argument('--sqlite', '-s', dest='sqlite', action='store_true',
                     help='Use the in-memory sql database for testing purpose')
+PARSER.add_argument('--github-test', dest='test', action='store_true',
+                    help='Used when performing continuous integration on GitHub')
 sqlite = PARSER.parse_known_args()[0].sqlite
 
 if sqlite:
@@ -26,11 +28,20 @@ if sqlite:
     # import atexit
     #
     # atexit.register(open_interpreter)
-else:
-    #engine_URL = 'mysql://wpipe:W£|£3u53r@localhost/server'
-    engine_URL = 'mysql+mysqlconnector://root:password@localhost:8000/server'
 
+elif PARSER.parse_known_args()[0].test:
+    engine_URL = "mysql+pymysql://root:password@localhost:8000/server"
+else:
+    engine_URL = 'mysql://wpipe:W£|£3u53r@localhost/server'
+
+# engine = None
+# try:
 engine = sa.create_engine(engine_URL)  # , echo=True)
+# except sa.exc.OperationalError: # revert to some default on error
+#     print("We got here")
+#     engine = sa.create_engine("mysql+pymysql://root:password@localhost:8000/server")
+# engine = sa.create_engine("mysql+pymysql://root:password@localhost:8000/server")
+
 
 if not sqlite:
     engine.execute("CREATE DATABASE IF NOT EXISTS wpipe")

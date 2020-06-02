@@ -12,8 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8]
+        python-version: [ 3.7 ]
 
+    services:
+      mysql:
+        image: mysql:5.7.29
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: server
+        ports:
+         - 8000:3306
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python ${{ matrix.python-version }}
@@ -23,11 +31,14 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python setup.py install
-    - name: Launch docker MySql
-      run: echo "launch that MySql docker images"
+        python -m pip install pymysql
+        python -m pip install .
+        mkdir ./temp
     - name: Attempt to run wingspipe
-      run: echo "connect to wingspipe"
+      run: |
+        cd ./temp
+        wingspipe --github-test
     - name: Build Documentation
       run: echo "build that documentation"
+
 
