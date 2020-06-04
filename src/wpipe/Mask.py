@@ -118,10 +118,16 @@ class Mask:
 
     @property
     def parents(self):
+        """
+        :obj:`Task`: Points to attribute self.task.
+        """
         return self.task
 
     @property
     def name(self):
+        """
+        str: Name of the mask.
+        """
         si.session.commit()
         return self._mask.name
 
@@ -133,33 +139,47 @@ class Mask:
 
     @property
     def mask_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._mask.id
 
     @property
     def timestamp(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of last access to table row.
+        """
         si.session.commit()
         return self._mask.timestamp
 
     @property
     def source(self):
-        si.session.commit()
+        """
+        str: Source of the mask.
+        """
         return self._mask.source
 
     @property
     def value(self):
-        si.session.commit()
+        """
+        str: Value of the mask.
+        """
         return self._mask.value
 
     @property
-    def task_id(self):
-        si.session.commit()
-        return self._mask.task_id
-
-    @property
     def task(self):
+        """
+        :obj:`Task`: Task object corresponding to parent task.
+        """
         if hasattr(self._mask.task, '_wpipe_object'):
             return self._mask.task._wpipe_object
         else:
             from .Task import Task
             return Task(self._mask.task)
+
+    @property
+    def task_id(self):
+        """
+        int: Primary key id of the table row of parent task.
+        """
+        return self._mask.task_id

@@ -48,6 +48,8 @@ class Parameter:
 
         Attributes
         ----------
+        parents : Configuration object
+            Points to attribute self.config.
         name : string
             Name of the parameter.
         parameter_id : int
@@ -87,7 +89,7 @@ class Parameter:
         wpipe_to_sqlintf_connection(cls, 'Parameter')
         return cls._inst
 
-    def __init__(self, config, name, value):
+    def __init__(self, *args, **kwargs):
         self._parameter.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
@@ -111,11 +113,16 @@ class Parameter:
 
     @property
     def parents(self):
+        """
+        :obj:`Configuration`: Points to attribute self.config.
+        """
         return self.config
 
     @property
     def name(self):
-        si.session.commit()
+        """
+        str: Name of the parameter.
+        """
         return self._parameter.name
 
     @name.setter
@@ -126,16 +133,24 @@ class Parameter:
 
     @property
     def parameter_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._parameter.id
 
     @property
     def timestamp(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of last access to table row.
+        """
         si.session.commit()
         return self._parameter.timestamp
 
     @property
     def value(self):
+        """
+        str: Value of the parameter.
+        """
         si.session.commit()
         return self._parameter.value
 
@@ -146,14 +161,20 @@ class Parameter:
         si.session.commit()
 
     @property
-    def config_id(self):
-        si.session.commit()
-        return self._parameter.config_id
-
-    @property
     def config(self):
+        """
+        :obj:`Configuration`: Configuration object corresponding to parent
+        configuration.
+        """
         if hasattr(self._parameter.config, '_wpipe_object'):
             return self._parameter.config._wpipe_object
         else:
             from .Configuration import Configuration
             return Configuration(self._parameter.config)
+
+    @property
+    def config_id(self):
+        """
+        int: Primary key id of the table row of parent configuration.
+        """
+        return self._parameter.config_id

@@ -116,10 +116,16 @@ class User:
 
     @property
     def parents(self):
+        """
+        None: Dummy attribute with None value.
+        """
         return
 
     @property
     def name(self):
+        """
+        str: Name of user.
+        """
         si.session.commit()
         return self._user.name
 
@@ -131,16 +137,24 @@ class User:
 
     @property
     def user_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._user.id
 
     @property
     def timestamp(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of last access to table row.
+        """
         si.session.commit()
         return self._user.timestamp
 
     @property
     def pipelines(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Pipeline objects owned by user.
+        """
         return self._pipelines_proxy
 
     def pipeline(self, *args, **kwargs):

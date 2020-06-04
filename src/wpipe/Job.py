@@ -104,7 +104,7 @@ class Job(OptOwner):
         optowner_id : int
             Points to attribute job_id.
         options : core.DictLikeChildrenProxy object
-            Dictionary of Option objects owned by the target.
+            Dictionary of Option objects owned by the job.
 
         Notes
         -----
@@ -142,8 +142,8 @@ class Job(OptOwner):
         or
         >>> new_job = my_config.job(my_task, my_node, my_event)
 
-        Once the Job object is constructed, 3 methods are important for the
-        pipeline run: logprint, child_event and submit,
+        Once the Job object is constructed, 4 methods are important for the
+        pipeline run: logprint, child_event, submit and actualize_endtime
          - Job.logprint allows the logging of a job in logfiles named after
            that job, its task and its firing event,
          - Job.child_event is the Event-generating object method of Job, which
@@ -151,6 +151,8 @@ class Job(OptOwner):
          - Job.submit plainly submits the job to the system job scheduler;
            this method is automatically called when a job is fired by a firing
            event through its method Event.fire.
+         - Job.actualize_endtime shall be used to inform the database this job
+           has terminated.
     """
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
@@ -199,8 +201,6 @@ class Job(OptOwner):
                         event._event.fired_jobs.append(cls._job)
                     if node is not None:
                         node._node.jobs.append(cls._job)
-                    cls._job.starttime = datetime.datetime.utcnow()
-                    cls._job.endtime = datetime.datetime.utcnow()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Job')
         return cls._inst
@@ -232,35 +232,62 @@ class Job(OptOwner):
 
     @property
     def parents(self):
+        """
+        tuple(:obj:`Task`, :obj:`Configuration`, :obj:`Node`, :obj:`Event`):
+        Points to a tuple of attributes self.task, self.config, self.node and
+        self.firing_event.
+        """
         return self.task, self.config, self.node, self.firing_event
 
     @property
     def state(self):
+        """
+        str: State of this job.
+        """
         si.session.commit()
         return self._job.state
 
+    @state.setter
+    def state(self, state):
+        self._job.state = state
+        self._job.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
     @property
     def job_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._job.id
 
     @property
     def starttime(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of job starting time.
+        """
         si.session.commit()
         return self._job.starttime
 
     @property
     def endtime(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of job ending time.
+        """
         si.session.commit()
         return self._job.endtime
 
     @property
     def task_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row of parent task.
+        """
         return self._job.task_id
 
     @property
     def task(self):
+        """
+        :obj:`Task`: Task object corresponding to parent task.
+        """
         if hasattr(self._job.task, '_wpipe_object'):
             return self._job.task._wpipe_object
         else:
@@ -269,11 +296,16 @@ class Job(OptOwner):
 
     @property
     def node_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row of parent node.
+        """
         return self._job.node_id
 
     @property
     def node(self):
+        """
+        :obj:`Node`: Node object corresponding to parent node.
+        """
         if self._job.node is not None:
             if hasattr(self._job.node, '_wpipe_object'):
                 return self._job.node._wpipe_object
@@ -283,11 +315,17 @@ class Job(OptOwner):
 
     @property
     def config_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row of parent configuration.
+        """
         return self._job.config_id
 
     @property
     def config(self):
+        """
+        :obj:`Configuration`: Configuration object corresponding to parent
+        configuration.
+        """
         if self._job.config is not None:
             if hasattr(self._job.config, '_wpipe_object'):
                 return self._job.config._wpipe_object
@@ -297,27 +335,45 @@ class Job(OptOwner):
 
     @property
     def pipeline_id(self):
+        """
+        int: Primary key id of the table row of parent pipeline.
+        """
         return self.task.pipeline_id
 
     @property
     def pipeline(self):
+        """
+        :obj:`Pipeline`: Pipeline object corresponding to parent pipeline.
+        """
         return self.task.pipeline
 
     @property
     def target_id(self):
+        """
+        int: Primary key id of the table row of parent target.
+        """
         return self.config.target_id
 
     @property
     def target(self):
+        """
+        :obj:`Target`: Target object corresponding to parent target.
+        """
         return self.config.target
 
     @property
     def firing_event_id(self):
+        """
+        int: Primary key id of the table row of parent event.
+        """
         si.session.commit()
         return self._job.firing_event_id
 
     @property
     def firing_event(self):
+        """
+        :obj:`Event`: Event object corresponding to parent event.
+        """
         if self._job.firing_event is not None:
             if hasattr(self._job.firing_event, '_wpipe_object'):
                 return self._job.firing_event._wpipe_object
@@ -327,6 +383,9 @@ class Job(OptOwner):
 
     @property
     def child_events(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Event objects owned by the job.
+        """
         return self._child_events_proxy
 
     def child_event(self, *args, **kwargs):
@@ -355,3 +414,9 @@ class Job(OptOwner):
         # sql_hyak(self.task,self.job_id,self.firing_event_id)
         # Let's send stuff to pbs
         # sql_pbs(self.task,self.job_id,self.firing_event_id)
+        self._job.starttime = datetime.datetime.utcnow()
+        self._job.timestamp = datetime.datetime.utcnow()
+
+    def actualize_endtime(self):
+        self._job.endtime = datetime.datetime.utcnow()
+        self._job.timestamp = datetime.datetime.utcnow()

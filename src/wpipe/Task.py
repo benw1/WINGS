@@ -162,10 +162,16 @@ class Task:
 
     @property
     def parents(self):
+        """
+        :obj:`Pipeline`: Points to attribute self.pipeline.
+        """
         return self.pipeline
 
     @property
     def name(self):
+        """
+        str: Name of the task.
+        """
         si.session.commit()
         return self._task.name
 
@@ -177,36 +183,55 @@ class Task:
 
     @property
     def task_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._task.id
 
     @property
     def timestamp(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of last access to table row.
+        """
         si.session.commit()
         return self._task.timestamp
 
     @property
     def nruns(self):
+        """
+        int: ###BEN###
+        """
         si.session.commit()
         return self._task.nruns
 
     @property
     def run_time(self):
+        """
+        int: ###BEN###
+        """
         si.session.commit()
         return self._task.run_time
 
     @property
     def is_exclusive(self):
+        """
+        int: ###BEN###
+        """
         si.session.commit()
         return self._task.is_exclusive
 
     @property
     def pipeline_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row of parent pipeline.
+        """
         return self._task.pipeline_id
 
     @property
     def pipeline(self):
+        """
+        :obj:`Pipeline`: Pipeline object corresponding to parent pipeline.
+        """
         if hasattr(self._task.pipeline, '_wpipe_object'):
             return self._task.pipeline._wpipe_object
         else:
@@ -215,10 +240,16 @@ class Task:
 
     @property
     def masks(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Mask objects owned by the task.
+        """
         return self._masks_proxy
 
     @property
     def jobs(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Job objects owned by the task.
+        """
         return self._jobs_proxy
 
     def mask(self, *args, **kwargs):

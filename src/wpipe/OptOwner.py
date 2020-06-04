@@ -31,22 +31,33 @@ class OptOwner:
 
     @property
     def optowner_id(self):
-        si.session.commit()
+        """
+        int: Points to attribute target_id/dp_id/job_id/event_id depending on
+        type of optowner.
+        """
         return self._optowner.id
 
     @property
     def timestamp(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of last access to table row.
+        """
         si.session.commit()
         return self._optowner.timestamp
 
     @property
     def options(self):
+        """
+        :obj:`core.DictLikeChildrenProxy`: Dictionary of Option objects owned
+        by the optowner.
+        """
         return self._options_proxy
 
     @options.setter
     def options(self, options):
         for key, value in options.items():
             self.option(name=key, value=value)
+        si.session.commit()
 
     def option(self, *args, **kwargs):
         return Option(self, *args, **kwargs)

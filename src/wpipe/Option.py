@@ -48,6 +48,8 @@ class Option:
 
         Attributes
         ----------
+        parents : Target, Job, Event or DataProduct object
+            Points to attribute self.optowner.
         name : string
             Name of the option.
         option_id : int
@@ -90,7 +92,7 @@ class Option:
         wpipe_to_sqlintf_connection(cls, 'Option')
         return cls._inst
 
-    def __init__(self, optowner, name, value):
+    def __init__(self, *args, **kwargs):
         self._option.timestamp = datetime.datetime.utcnow()
         si.session.commit()
 
@@ -113,7 +115,18 @@ class Option:
         return list(map(cls, cls._temp.all()))
 
     @property
+    def parents(self):
+        """
+        :obj:`Target`, :obj:`Job`, :obj:`Event` or :obj:`DataProduct`: Points
+        to attribute self.optowner.
+        """
+        return self.optowner
+
+    @property
     def name(self):
+        """
+        str: Name of the option.
+        """
         si.session.commit()
         return self._option.name
 
@@ -125,16 +138,24 @@ class Option:
 
     @property
     def option_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._option.id
 
     @property
     def timestamp(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of last access to table row.
+        """
         si.session.commit()
         return self._option.timestamp
 
     @property
     def value(self):
+        """
+        str: Value of the option.
+        """
         si.session.commit()
         return self._option.value
 
@@ -146,6 +167,10 @@ class Option:
 
     @property
     def optowner(self):
+        """
+        :obj:`Target`, :obj:`Job`, :obj:`Event` or :obj:`DataProduct`: Target,
+        Job, Event or DataProduct object corresponding to parent optowner.
+        """
         if hasattr(self._option.optowner, '_wpipe_object'):
             return self._option.optowner._wpipe_object
         else:
@@ -164,5 +189,7 @@ class Option:
 
     @property
     def optowner_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row of parent optowner.
+        """
         return self._option.optowner_id

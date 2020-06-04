@@ -143,8 +143,8 @@ def initialize_args(args, kwargs, nargs):
 
     Parameters
     ----------
-    args : list
-        List of constructor args.
+    args : tuple
+        Tuple of constructor args.
     kwargs : dict
         Dictionary of constructor kwargs.
     nargs : int
@@ -154,9 +154,9 @@ def initialize_args(args, kwargs, nargs):
     -------
     wpargs : dict
         Special kwargs for Wpipe objects.
-    args : list
+    args : tuple
         Input args depleted of its Wpipe objects and appended with None
-        entries, up to length nargs.
+        entries, up to length nargs. TODO
     kwargs : dict
         Input kwargs depleted of its Wpipe objects.
     """

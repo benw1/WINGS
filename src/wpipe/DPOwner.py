@@ -29,32 +29,57 @@ class DPOwner:
 
     @property
     def dpowner_id(self):
-        si.session.commit()
+        """
+        int: Points to attribute input_id/config_id depending on type of
+        dpowner.
+        """
         return self._dpowner.id
 
     @property
     def timestamp(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of last access to table row.
+        """
         si.session.commit()
         return self._dpowner.timestamp
 
     @property
     def rawdataproducts(self):
+        """
+        list of :obj:`DataProduct`: List of owned DataProduct objects
+        corresponding to raw data files.
+        """
         return self.dataproducts_of_group('raw')
 
     @property
     def confdataproducts(self):
+        """
+        list of :obj:`DataProduct`: List of owned DataProduct objects
+        corresponding to configuration files.
+        """
         return self.dataproducts_of_group('conf')
 
     @property
     def logdataproducts(self):
+        """
+        list of :obj:`DataProduct`: List of owned DataProduct objects
+        corresponding to logging files.
+        """
         return self.dataproducts_of_group('log')
 
     @property
     def procdataproducts(self):
+        """
+        list of :obj:`DataProduct`: List of owned DataProduct objects
+        corresponding to processed data files.
+        """
         return self.dataproducts_of_group('proc')
 
     @property
     def dataproducts(self):
+        """
+        :obj:`core.ChildrenProxy`: List of owned DataProduct objects.
+        """
         return self._dataproducts_proxy
 
     def dataproducts_of_group(self, group):

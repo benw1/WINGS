@@ -164,10 +164,16 @@ class Target(OptOwner):
 
     @property
     def parents(self):
+        """
+        :obj:`Input`: Points to attribute self.input.
+        """
         return self.input
 
     @property
     def name(self):
+        """
+        str: Name of the target.
+        """
         si.session.commit()
         return self._target.name
 
@@ -179,26 +185,38 @@ class Target(OptOwner):
 
     @property
     def target_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._target.id
 
     @property
     def datapath(self):
-        si.session.commit()
+        """
+        str: Path to the target data sub-directory.
+        """
         return self._target.datapath
 
     @property
     def dataraws(self):
-        si.session.commit()
+        """
+        str: Path to the target parent input directory specific to raw data
+        files.
+        """
         return self._target.dataraws
 
     @property
     def input_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row of parent input.
+        """
         return self._target.input_id
 
     @property
     def input(self):
+        """
+        :obj:`Input`: Input object corresponding to parent input.
+        """
         if hasattr(self._target.input, '_wpipe_object'):
             return self._target.input._wpipe_object
         else:
@@ -207,18 +225,32 @@ class Target(OptOwner):
 
     @property
     def pipeline_id(self):
+        """
+        int: Primary key id of the table row of parent pipeline.
+        """
         return self.input.pipeline_id
 
     @property
     def pipeline(self):
+        """
+        :obj:`Pipeline`: Pipeline object corresponding to parent pipeline.
+        """
         return self.input.pipeline
 
     @property
     def configurations(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Configuration objects owned by the
+        target.
+        """
         return self._configurations_proxy
 
     @property
     def default_conf(self):
+        """
+        :obj:`Configuration`: Configuration object corresponding to a default
+        configuration for the target.
+        """
         return self._default_conf
 
     def configuration(self, *args, **kwargs):

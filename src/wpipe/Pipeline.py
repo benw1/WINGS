@@ -238,10 +238,16 @@ class Pipeline:
 
     @property
     def parents(self):
+        """
+        :obj:`User`: Points to attribute self.user.
+        """
         return self.user
 
     @property
     def name(self):
+        """
+        str: Name of the pipeline.
+        """
         si.session.commit()
         return self._pipeline.name
 
@@ -253,41 +259,63 @@ class Pipeline:
 
     @property
     def pipeline_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._pipeline.id
 
     @property
     def timestamp(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of last access to table row.
+        """
         si.session.commit()
         return self._pipeline.timestamp
 
     @property
     def pipe_root(self):
-        si.session.commit()
+        """
+        str: Path to the pipeline directory.
+        """
         return self._pipeline.pipe_root
 
     @property
     def software_root(self):
-        si.session.commit()
+        """
+        str: Elect name for the sub-directory where the software routines
+        will be stored.
+        """
         return self._pipeline.software_root
 
     @property
     def input_root(self):
-        si.session.commit()
+        """
+        str: Elect name for the sub-directory where the input data will be
+        stored.
+        """
         return self._pipeline.input_root
 
     @property
     def data_root(self):
-        si.session.commit()
+        """
+        str: Elect name for the sub-directory where the other data will be
+        stored.
+        """
         return self._pipeline.data_root
 
     @property
     def config_root(self):
-        si.session.commit()
+        """
+        str: Elect name for the sub-directory where the configurations will
+        be stored.
+        """
         return self._pipeline.config_root
 
     @property
     def description(self):
+        """
+        str: Description of the pipeline.
+        """
         si.session.commit()
         return self._pipeline.description
 
@@ -299,16 +327,23 @@ class Pipeline:
 
     @property
     def user_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row of parent user.
+        """
         return self._pipeline.user_id
 
     @property
     def user_name(self):
-        si.session.commit()
+        """
+        str: Name of parent user.
+        """
         return self._pipeline.user.name
 
     @property
     def user(self):
+        """
+        :obj:`User`: User object corresponding to parent user.
+        """
         if hasattr(self._pipeline.user, '_wpipe_object'):
             return self._pipeline.user._wpipe_object
         else:
@@ -317,18 +352,32 @@ class Pipeline:
 
     @property
     def inputs(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Input objects owned by the
+        pipeline.
+        """
         return self._inputs_proxy
 
     @property
     def tasks(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Task objects owned by the pipeline.
+        """
         return self._tasks_proxy
 
     @property
     def dummy_task(self):
+        """
+        :obj:`Task`: Task object corresponding to the dummy __init__.py
+        routine in software_root.
+        """
         return self._dummy_task
 
     @property
     def dummy_job(self):
+        """
+        :obj:`Job`: Dummy Job object for starting the pipeline.
+        """
         return self._dummy_job
 
     def input(self, *args, **kwargs):

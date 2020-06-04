@@ -226,10 +226,17 @@ class DataProduct(OptOwner):
 
     @property
     def parents(self):
+        """
+        :obj:`Input` or :obj:`Configuration`: Points to attribute
+        self.dpowner.
+        """
         return self.dpowner
 
     @property
     def filename(self):
+        """
+        str: Name of the file the dataproduct points to.
+        """
         si.session.commit()
         return self._dataproduct.filename
 
@@ -242,65 +249,95 @@ class DataProduct(OptOwner):
 
     @property
     def dp_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._dataproduct.id
 
     @property
     def relativepath(self):
-        si.session.commit()
+        """
+        str: Path of the directory in which the file the dataproduct points to
+        is located.
+        """
         return self._dataproduct.relativepath
 
     @property
     def path(self):
+        """
+        str: Path where the file the dataproduct points to is located.
+        """
         return self.relativepath+'/'+self.filename
 
     @property
     def suffix(self):
-        si.session.commit()
+        """
+        str: Extension of the file the dataproduct points to.
+        """
         return self._dataproduct.suffix
 
     @property
     def data_type(self):
-        si.session.commit()
+        """
+        str: Type of the data.
+        """
         return self._dataproduct.data_type
 
     @property
     def subtype(self):
-        si.session.commit()
+        """
+        str: Subtype of the data.
+        """
         return self._dataproduct.subtype
 
     @property
     def group(self):
-        si.session.commit()
+        """
+        str: Group of the dataproduct ('raw', 'conf', 'log' or 'proc').
+        """
         return self._dataproduct.group
 
     @property
     def filtername(self):
-        si.session.commit()
+        """
+        str: Name of the filter of the data.
+        """
         return self._dataproduct.filtername
 
     @property
     def ra(self):
-        si.session.commit()
+        """
+        int: Right ascension coordinate of the data.
+        """
         return self._dataproduct.ra
 
     @property
     def dec(self):
-        si.session.commit()
+        """
+        int: Declination coordinate of the data.
+        """
         return self._dataproduct.dec
 
     @property
     def pointing_angle(self):
-        si.session.commit()
+        """
+        int: Pointing angle coordinate of the data.
+        """
         return self._dataproduct.pointing_angle
 
     @property
     def dpowner_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row of parent input or configuration.
+        """
         return self._dataproduct.dpowner_id
 
     @property
     def config_id(self):
+        """
+        int: Primary key id of the table row of parent configuration - raise
+        an AttributeError if the parent is an Input object.
+        """
         if self._dataproduct.dpowner.type == 'configuration':
             return self.dpowner_id
         else:
@@ -308,6 +345,10 @@ class DataProduct(OptOwner):
 
     @property
     def input_id(self):
+        """
+        int: Primary key id of the table row of parent input - raise an
+        AttributeError if the parent is a Configuration object.
+        """
         if self._dataproduct.dpowner.type == 'input':
             return self.dpowner_id
         else:
@@ -315,6 +356,10 @@ class DataProduct(OptOwner):
 
     @property
     def dpowner(self):
+        """
+        :obj:`Input` or :obj:`Configuration`: Input or Configuration object
+        corresponding to parent input or configuration.
+        """
         if hasattr(self._dataproduct.dpowner, '_wpipe_object'):
             return self._dataproduct.dpowner._wpipe_object
         else:
@@ -327,6 +372,11 @@ class DataProduct(OptOwner):
 
     @property
     def config(self):
+        """
+        :obj:`Configuration`: Configuration object corresponding to parent
+        configuration - raise an AttributeError if the parent is an Input
+        object.
+        """
         if self._dataproduct.dpowner.type == 'configuration':
             return self.dpowner
         else:
@@ -334,6 +384,10 @@ class DataProduct(OptOwner):
 
     @property
     def input(self):
+        """
+        :obj:`Input`: Input object corresponding to parent input - raise an
+        AttributeError if the parent is a Configuration object.
+        """
         if self._dataproduct.dpowner.type == 'input':
             return self.dpowner
         else:
@@ -341,14 +395,25 @@ class DataProduct(OptOwner):
 
     @property
     def target(self):
+        """
+        :obj:`Target`: Target object corresponding to parent target - raise an
+        AttributeError if the owner is an Input object.
+        """
         return self.config.target
 
     @property
     def target_id(self):
+        """
+        int: Primary key id of the table row of parent target - raise an
+        AttributeError if the owner is an Input object.
+        """
         return self.config.target_id
 
     @property
     def pipeline_id(self):
+        """
+        int: Primary key id of the table row of parent pipeline.
+        """
         return self.dpowner.pipeline_id
 
     def symlink(self, path, **kwargs):
