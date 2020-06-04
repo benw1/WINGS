@@ -62,4 +62,17 @@ class OptOwner:
         si.session.commit()
 
     def option(self, *args, **kwargs):
+        """
+        Returns an option owned by the optowner.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`Option` for parameters.
+
+        Returns
+        -------
+        option : :obj:`Option`
+            Option corresponding to given kwargs.
+        """
         return Option(self, *args, **kwargs)

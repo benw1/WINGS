@@ -88,5 +88,18 @@ class DPOwner:
         return self.dataproducts[self.dataproducts.group == group]
 
     def dataproduct(self, *args, **kwargs):
+        """
+        Returns a dataproduct owned by the dpowner.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`DataProduct` for parameters.
+
+        Returns
+        -------
+        dataproduct : :obj:`DataProduct`
+            DataProduct corresponding to given kwargs.
+        """
         from .DataProduct import DataProduct
         return DataProduct(self, *args, **kwargs)

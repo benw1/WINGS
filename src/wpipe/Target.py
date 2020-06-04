@@ -256,6 +256,19 @@ class Target(OptOwner):
         return self._default_conf
 
     def configuration(self, *args, **kwargs):
+        """
+        Returns a configuration owned by the target.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`Configuration` for parameters.
+
+        Returns
+        -------
+        configuration : :obj:`Configuration`
+            Configuration corresponding to given kwargs.
+        """
         from .Configuration import Configuration
         return Configuration(self, *args, **kwargs)
 

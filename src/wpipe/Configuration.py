@@ -377,9 +377,35 @@ class Configuration(DPOwner):
         return self._jobs_proxy
 
     def parameter(self, *args, **kwargs):
+        """
+        Returns a parameter owned by the configuration.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`Parameter` for parameters.
+
+        Returns
+        -------
+        parameter : :obj:`Parameter`
+            Parameter corresponding to given kwargs.
+        """
         from .Parameter import Parameter
         return Parameter(self, *args, **kwargs)
 
     def job(self, *args, **kwargs):
+        """
+        Returns a job owned by the configuration.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`Job` for parameters.
+
+        Returns
+        -------
+        job : :obj:`Job`
+            Job corresponding to given kwargs.
+        """
         from .Job import Job
         return Job(self, *args, **kwargs)

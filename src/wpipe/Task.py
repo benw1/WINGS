@@ -255,10 +255,36 @@ class Task:
         return self._jobs_proxy
 
     def mask(self, *args, **kwargs):
+        """
+        Returns a mask owned by the task.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`Mask` for parameters.
+
+        Returns
+        -------
+        mask : :obj:`Mask`
+            Mask corresponding to given kwargs.
+        """
         from .Mask import Mask
         return Mask(self, *args, **kwargs)
 
     def job(self, *args, **kwargs):
+        """
+        Returns a job owned by the task.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`Job` for parameters.
+
+        Returns
+        -------
+        job : :obj:`Job`
+            Job corresponding to given kwargs.
+        """
         from .Job import Job
         return Job(self, *args, **kwargs)
 

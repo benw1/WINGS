@@ -277,6 +277,19 @@ class Event(OptOwner):
         return self._fired_jobs_proxy
 
     def fired_job(self, *args, **kwargs):
+        """
+        Returns a job owned by the event.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`Job` for parameters.
+
+        Returns
+        -------
+        job : :obj:`Job`
+            Job corresponding to given kwargs.
+        """
         from .Job import Job
         return Job(self, *args, **kwargs)
 

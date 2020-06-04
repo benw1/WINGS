@@ -185,5 +185,18 @@ class Node:
         return self._jobs_proxy
 
     def job(self, *args, **kwargs):
+        """
+        Returns a job owned by the node.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`Job` for parameters.
+
+        Returns
+        -------
+        job : :obj:`Job`
+            Job corresponding to given kwargs.
+        """
         from .Job import Job
         return Job(self, *args, **kwargs)

@@ -262,6 +262,19 @@ class Input(DPOwner):
         return self._targets_proxy
 
     def target(self, *args, **kwargs):
+        """
+        Returns a target owned by the input.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`Target` for parameters.
+
+        Returns
+        -------
+        target : :obj:`Target`
+            Target corresponding to given kwargs.
+        """
         from .Target import Target
         return Target(self, *args, **kwargs)
 

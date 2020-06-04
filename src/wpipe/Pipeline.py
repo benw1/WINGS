@@ -383,10 +383,36 @@ class Pipeline:
         return self._dummy_job
 
     def input(self, *args, **kwargs):
+        """
+        Returns an input owned by the pipeline.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`Input` for parameters.
+
+        Returns
+        -------
+        input : :obj:`Input`
+            Input corresponding to given kwargs.
+        """
         from .Input import Input
         return Input(self, *args, **kwargs)
 
     def task(self, *args, **kwargs):
+        """
+        Returns a task owned by the pipeline.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`Task` for parameters.
+
+        Returns
+        -------
+        task : :obj:`Task`
+            Task corresponding to given kwargs.
+        """
         from .Task import Task
         return Task(self, *args, **kwargs)
 

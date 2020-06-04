@@ -391,6 +391,19 @@ class Job(OptOwner):
         return self._child_events_proxy
 
     def child_event(self, *args, **kwargs):
+        """
+        Returns an event owned by the job.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`Event` for parameters.
+
+        Returns
+        -------
+        event : :obj:`Event`
+            Event corresponding to given kwargs.
+        """
         from .Event import Event
         return Event(self, *args, **kwargs)
 

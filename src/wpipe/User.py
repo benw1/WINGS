@@ -160,5 +160,18 @@ class User:
         return self._pipelines_proxy
 
     def pipeline(self, *args, **kwargs):
+        """
+        Returns a pipeline owned by the user.
+
+        Parameters
+        ----------
+        kwargs : dict
+            Refer to :class:`Pipeline` for parameters.
+
+        Returns
+        -------
+        pipeline : :obj:`Pipeline`
+            Pipeline corresponding to given kwargs.
+        """
         from .Pipeline import Pipeline
         return Pipeline(self, *args, **kwargs)
