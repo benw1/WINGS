@@ -131,6 +131,10 @@ from .Mask import Mask
 from .Job import Job
 from .Event import Event
 
+__all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
+           'Option', 'Target', 'Configuration', 'Parameter', 'DataProduct',
+           'Task', 'Mask', 'Job', 'Event']
+
 
 DefaultUser = User()
 """

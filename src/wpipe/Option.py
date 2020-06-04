@@ -8,6 +8,8 @@ available in the main ``wpipe`` namespace - use that instead.
 from .core import datetime, si
 from .core import initialize_args, wpipe_to_sqlintf_connection
 
+__all__ = ['Option']
+
 
 class Option:
     """

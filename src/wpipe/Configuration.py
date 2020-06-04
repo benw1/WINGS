@@ -10,6 +10,8 @@ from .core import ChildrenProxy, DictLikeChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection
 from .DPOwner import DPOwner
 
+__all__ = ['Configuration']
+
 
 class Configuration(DPOwner):
     """

@@ -7,6 +7,8 @@ available in the ``wpipe.sqlintf`` namespace - use that instead.
 """
 from .core import sa, orm, Base
 
+__all__ = ['Task']
+
 
 class Task(Base):
     """

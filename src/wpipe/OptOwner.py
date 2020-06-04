@@ -10,6 +10,8 @@ from .core import datetime, si
 from .core import DictLikeChildrenProxy
 from .Option import Option
 
+__all__ = ['OptOwner']
+
 
 class OptOwner:
     """

@@ -10,6 +10,8 @@ from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection
 from .OptOwner import OptOwner
 
+__all__ = ['Job']
+
 
 class Job(OptOwner):
     """

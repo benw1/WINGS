@@ -10,6 +10,8 @@ from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, as_int, clean_path
 from .core import PARSER
 
+__all__ = ['Pipeline']
+
 
 class Pipeline:
     """

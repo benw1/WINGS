@@ -8,6 +8,8 @@ be used by itself, but through its inherited classes Input and Configurations.
 from .core import datetime, si
 from .core import ChildrenProxy
 
+__all__ = ['DPOwner']
+
 
 class DPOwner:
     """

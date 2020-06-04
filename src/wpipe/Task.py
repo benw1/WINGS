@@ -9,6 +9,8 @@ from .core import os, shutil, warnings, datetime, si
 from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path
 
+__all__ = ['Task']
+
 
 class Task:
     """

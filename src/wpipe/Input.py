@@ -10,6 +10,8 @@ from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path
 from .DPOwner import DPOwner
 
+__all__ = ['Input']
+
 
 class Input(DPOwner):
     """

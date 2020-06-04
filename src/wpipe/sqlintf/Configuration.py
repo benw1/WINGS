@@ -8,6 +8,8 @@ available in the ``wpipe.sqlintf`` namespace - use that instead.
 from .core import sa, orm
 from .DPOwner import DPOwner
 
+__all__ = ['Configuration']
+
 
 class Configuration(DPOwner):
     """

@@ -23,7 +23,7 @@ PARSER
 session
     session which SQLAlchemy uses to communicate with the database
 """
-from .core import sa, orm, argparse, PARSER, session, Base
+from .core import argparse, sa, orm, PARSER, session, Base
 from .User import User
 from .Node import Node
 from .Pipeline import Pipeline
@@ -39,6 +39,11 @@ from .Task import Task
 from .Mask import Mask
 from .Job import Job
 from .Event import Event
+
+__all__ = ['sa', 'orm', 'argparse', 'PARSER', 'session', 'Base', 'User',
+           'Node', 'Pipeline', 'DPOwner', 'Input', 'Option', 'OptOwner',
+           'Target', 'Configuration', 'Parameter', 'DataProduct', 'Task',
+           'Mask', 'Job', 'Event']
 
 Base.metadata.create_all(session.bind)
 
