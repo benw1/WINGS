@@ -10,6 +10,8 @@ from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection
 from .core import PARSER
 
+__all__ = ['User']
+
 
 class User:
     """
@@ -98,15 +100,34 @@ class User:
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of User objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`sqlintf.User` for parameters.
+
+        Returns
+        -------
+        out : list of User object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.User).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
+        """
+        None: Dummy attribute with None value.
+        """
         return
 
     @property
     def name(self):
+        """
+        str: Name of user.
+        """
         si.session.commit()
         return self._user.name
 
@@ -118,18 +139,39 @@ class User:
 
     @property
     def user_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._user.id
 
     @property
     def timestamp(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of last access to table row.
+        """
         si.session.commit()
         return self._user.timestamp
 
     @property
     def pipelines(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Pipeline objects owned by user.
+        """
         return self._pipelines_proxy
 
     def pipeline(self, *args, **kwargs):
+        """
+        Returns a pipeline owned by the user.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`Pipeline` for parameters.
+
+        Returns
+        -------
+        pipeline : :obj:`Pipeline`
+            Pipeline corresponding to given kwargs.
+        """
         from .Pipeline import Pipeline
         return Pipeline(self, *args, **kwargs)

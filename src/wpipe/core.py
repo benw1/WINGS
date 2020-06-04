@@ -19,6 +19,13 @@ import pandas as pd
 
 from . import sqlintf as si
 
+__all__ = ['os', 'datetime', 'subprocess', 'glob', 'shutil', 'warnings',
+           'json', 'ast', 'np', 'pd',
+           'PARSER', 'as_int', 'try_scalar', 'clean_path', 'split_path',
+           'key_wpipe_separator', 'initialize_args',
+           'wpipe_to_sqlintf_connection',
+           'ChildrenProxy', 'DictLikeChildrenProxy']
+
 PARSER = si.PARSER
 PARSER.add_argument('--user', '-u', dest='user_name', type=str,
                     default=os.environ['WPIPE_USER'] if 'WPIPE_USER' in os.environ.keys()
@@ -37,7 +44,7 @@ pd.set_option('io.hdf.default_format', 'table')
 
 def as_int(string):
     """
-    Return given string parameter as integer, or return as string.
+    Returns given string parameter as integer, or return as string.
 
     Parameters
     ----------
@@ -57,7 +64,7 @@ def as_int(string):
 
 def try_scalar(string):
     """
-    Return given string parameter as scalar value, or return as string.
+    Returns given string parameter as scalar value, or return as string.
 
     Parameters
     ----------
@@ -77,7 +84,7 @@ def try_scalar(string):
 
 def clean_path(path, root=''):
     """
-    Return given path in absolute format expanding variables and user flags.
+    Returns given path in absolute format expanding variables and user flags.
 
     Parameters
     ----------
@@ -99,7 +106,7 @@ def clean_path(path, root=''):
 
 def split_path(path):
     """
-    Return split path between its base, filename and file extension.
+    Returns split path between its base, filename and file extension.
 
     Parameters
     ----------
@@ -122,7 +129,7 @@ def split_path(path):
 
 def key_wpipe_separator(obj):
     """
-    Return true if given object is a Wpipe object.
+    Returns true if given object is a Wpipe object.
 
     Parameters
     ----------
@@ -143,8 +150,8 @@ def initialize_args(args, kwargs, nargs):
 
     Parameters
     ----------
-    args : list
-        List of constructor args.
+    args : tuple
+        Tuple of constructor args.
     kwargs : dict
         Dictionary of constructor kwargs.
     nargs : int
@@ -154,9 +161,9 @@ def initialize_args(args, kwargs, nargs):
     -------
     wpargs : dict
         Special kwargs for Wpipe objects.
-    args : list
+    args : tuple
         Input args depleted of its Wpipe objects and appended with None
-        entries, up to length nargs.
+        entries, up to length nargs. TODO
     kwargs : dict
         Input kwargs depleted of its Wpipe objects.
     """

@@ -8,6 +8,8 @@ be used by itself, but through its inherited classes Input and Configurations.
 from .core import datetime, si
 from .core import ChildrenProxy
 
+__all__ = ['DPOwner']
+
 
 class DPOwner:
     """
@@ -29,37 +31,88 @@ class DPOwner:
 
     @property
     def dpowner_id(self):
-        si.session.commit()
+        """
+        int: Points to attribute input_id/config_id depending on type of
+        dpowner.
+        """
         return self._dpowner.id
 
     @property
     def timestamp(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of last access to table row.
+        """
         si.session.commit()
         return self._dpowner.timestamp
 
     @property
     def rawdataproducts(self):
+        """
+        list of :obj:`DataProduct`: List of owned DataProduct objects
+        corresponding to raw data files.
+        """
         return self.dataproducts_of_group('raw')
 
     @property
     def confdataproducts(self):
+        """
+        list of :obj:`DataProduct`: List of owned DataProduct objects
+        corresponding to configuration files.
+        """
         return self.dataproducts_of_group('conf')
 
     @property
     def logdataproducts(self):
+        """
+        list of :obj:`DataProduct`: List of owned DataProduct objects
+        corresponding to logging files.
+        """
         return self.dataproducts_of_group('log')
 
     @property
     def procdataproducts(self):
+        """
+        list of :obj:`DataProduct`: List of owned DataProduct objects
+        corresponding to processed data files.
+        """
         return self.dataproducts_of_group('proc')
 
     @property
     def dataproducts(self):
+        """
+        :obj:`core.ChildrenProxy`: List of owned DataProduct objects.
+        """
         return self._dataproducts_proxy
 
     def dataproducts_of_group(self, group):
+        """
+        Returns a list of owned DataProduct object with given group.
+
+        Parameters
+        ----------
+        group : str
+            Group to filter owned dataproducts.
+
+        Returns
+        -------
+        dataproducts : list of :obj:`DataProduct`
+            Filtered list of dataproducts.
+        """
         return self.dataproducts[self.dataproducts.group == group]
 
     def dataproduct(self, *args, **kwargs):
+        """
+        Returns a dataproduct owned by the dpowner.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`DataProduct` for parameters.
+
+        Returns
+        -------
+        dataproduct : :obj:`DataProduct`
+            DataProduct corresponding to given kwargs.
+        """
         from .DataProduct import DataProduct
         return DataProduct(self, *args, **kwargs)

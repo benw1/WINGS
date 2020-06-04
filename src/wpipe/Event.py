@@ -10,6 +10,8 @@ from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection
 from .OptOwner import OptOwner
 
+__all__ = ['Event']
+
 
 class Event(OptOwner):
     """
@@ -90,7 +92,7 @@ class Event(OptOwner):
         optowner_id : int
             Points to attribute event_id.
         options : core.DictLikeChildrenProxy object
-            Dictionary of Option objects owned by the target.
+            Dictionary of Option objects owned by the event.
 
         Notes
         -----
@@ -154,15 +156,34 @@ class Event(OptOwner):
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of Event objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`sqlintf.Event` for parameters.
+
+        Returns
+        -------
+        out : list of Event object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.Event).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
+        """
+        :obj:`Job`: Points to attribute self.parent_job.
+        """
         return self.parent_job
 
     @property
     def name(self):
+        """
+        str: Name of the mask which task is meant to be the fired job task.
+        """
         si.session.commit()
         return self._event.name
 
@@ -174,8 +195,12 @@ class Event(OptOwner):
 
     @property
     def tag(self):
+        """
+        str: Unique tag to identify the event if multiple event instance fire
+        the same task.
+        """
         si.session.commit()
-        return self._event.name
+        return self._event.tag
 
     @tag.setter
     def tag(self, tag):
@@ -185,26 +210,44 @@ class Event(OptOwner):
 
     @property
     def event_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._event.id
 
     @property
     def jargs(self):
-        si.session.commit()
+        """
+        str: ###BEN###
+        """
         return self._event.jargs
 
     @property
     def value(self):
+        """
+        str: Value of the mask which task is meant to be the fired job task.
+        """
         si.session.commit()
         return self._event.value
 
+    @value.setter
+    def value(self, value):
+        self._event.value = value
+        self._event.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
+
     @property
     def parent_job_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row of parent job.
+        """
         return self._event.parent_job_id
 
     @property
     def parent_job(self):
+        """
+        :obj:`Job`: Job object corresponding to parent job.
+        """
         if hasattr(self._event.parent_job, '_wpipe_object'):
             return self._event.parent_job._wpipe_object
         else:
@@ -213,21 +256,47 @@ class Event(OptOwner):
 
     @property
     def config(self):
+        """
+        :obj:`Configuration`: Configuration object corresponding to parent
+        configuration.
+        """
         return self.parent_job.config
 
     @property
     def pipeline(self):
+        """
+        :obj:`Pipeline`: Pipeline object corresponding to parent pipeline.
+        """
         return self.parent_job.pipeline
 
     @property
     def fired_jobs(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Job objects owned by the event.
+        """
         return self._fired_jobs_proxy
 
     def fired_job(self, *args, **kwargs):
+        """
+        Returns a job owned by the event.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`Job` for parameters.
+
+        Returns
+        -------
+        job : :obj:`Job`
+            Job corresponding to given kwargs.
+        """
         from .Job import Job
         return Job(self, *args, **kwargs)
 
     def fire(self):
+        """
+        Fire the task associated to this event.
+        """
         # print("HERE ",self.name," DONE")
         try:
             from .Configuration import Configuration

@@ -10,6 +10,8 @@ from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path
 from .DPOwner import DPOwner
 
+__all__ = ['Input']
+
 
 class Input(DPOwner):
     """
@@ -161,6 +163,19 @@ class Input(DPOwner):
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of Input objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`sqlintf.Input` for parameters.
+
+        Returns
+        -------
+        out : list of Input object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.Input).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
@@ -181,10 +196,16 @@ class Input(DPOwner):
 
     @property
     def parents(self):
+        """
+        :obj:`Pipeline`: Points to attribute self.pipeline.
+        """
         return self.pipeline
 
     @property
     def name(self):
+        """
+        str: Name of the input.
+        """
         si.session.commit()
         return self._input.name
 
@@ -196,26 +217,37 @@ class Input(DPOwner):
 
     @property
     def input_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._input.id
 
     @property
     def rawspath(self):
-        si.session.commit()
+        """
+        str: Path to the input directory specific to raw data files.
+        """
         return self._input.rawspath
 
     @property
     def confpath(self):
-        si.session.commit()
+        """
+        str: Path to the input directory specific to configuration files.
+        """
         return self._input.confpath
 
     @property
     def pipeline_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row of parent pipeline.
+        """
         return self._input.pipeline_id
 
     @property
     def pipeline(self):
+        """
+        :obj:`Pipeline`: Pipeline object corresponding to parent pipeline.
+        """
         if hasattr(self._input.pipeline, '_wpipe_object'):
             return self._input.pipeline._wpipe_object
         else:
@@ -224,13 +256,37 @@ class Input(DPOwner):
 
     @property
     def targets(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Target objects owned by the input.
+        """
         return self._targets_proxy
 
     def target(self, *args, **kwargs):
+        """
+        Returns a target owned by the input.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`Target` for parameters.
+
+        Returns
+        -------
+        target : :obj:`Target`
+            Target corresponding to given kwargs.
+        """
         from .Target import Target
         return Target(self, *args, **kwargs)
 
     def make_config(self, config_file):
+        """
+        Associate given file to the input as a conf dataproduct.
+
+        Parameters
+        ----------
+        config_file : str
+            Path to configuration file.
+        """
         config_file = clean_path(config_file)
         if config_file is not None:
             shutil.copy2(config_file, self.confpath)

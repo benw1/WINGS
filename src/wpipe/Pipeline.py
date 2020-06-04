@@ -10,6 +10,8 @@ from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, as_int, clean_path
 from .core import PARSER
 
+__all__ = ['Pipeline']
+
 
 class Pipeline:
     """
@@ -220,15 +222,34 @@ class Pipeline:
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of Pipeline objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`sqlintf.Pipeline` for parameters.
+
+        Returns
+        -------
+        out : list of Pipeline object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.Pipeline).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
+        """
+        :obj:`User`: Points to attribute self.user.
+        """
         return self.user
 
     @property
     def name(self):
+        """
+        str: Name of the pipeline.
+        """
         si.session.commit()
         return self._pipeline.name
 
@@ -240,41 +261,63 @@ class Pipeline:
 
     @property
     def pipeline_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._pipeline.id
 
     @property
     def timestamp(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of last access to table row.
+        """
         si.session.commit()
         return self._pipeline.timestamp
 
     @property
     def pipe_root(self):
-        si.session.commit()
+        """
+        str: Path to the pipeline directory.
+        """
         return self._pipeline.pipe_root
 
     @property
     def software_root(self):
-        si.session.commit()
+        """
+        str: Elect name for the sub-directory where the software routines
+        will be stored.
+        """
         return self._pipeline.software_root
 
     @property
     def input_root(self):
-        si.session.commit()
+        """
+        str: Elect name for the sub-directory where the input data will be
+        stored.
+        """
         return self._pipeline.input_root
 
     @property
     def data_root(self):
-        si.session.commit()
+        """
+        str: Elect name for the sub-directory where the other data will be
+        stored.
+        """
         return self._pipeline.data_root
 
     @property
     def config_root(self):
-        si.session.commit()
+        """
+        str: Elect name for the sub-directory where the configurations will
+        be stored.
+        """
         return self._pipeline.config_root
 
     @property
     def description(self):
+        """
+        str: Description of the pipeline.
+        """
         si.session.commit()
         return self._pipeline.description
 
@@ -286,16 +329,23 @@ class Pipeline:
 
     @property
     def user_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row of parent user.
+        """
         return self._pipeline.user_id
 
     @property
     def user_name(self):
-        si.session.commit()
+        """
+        str: Name of parent user.
+        """
         return self._pipeline.user.name
 
     @property
     def user(self):
+        """
+        :obj:`User`: User object corresponding to parent user.
+        """
         if hasattr(self._pipeline.user, '_wpipe_object'):
             return self._pipeline.user._wpipe_object
         else:
@@ -304,29 +354,74 @@ class Pipeline:
 
     @property
     def inputs(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Input objects owned by the
+        pipeline.
+        """
         return self._inputs_proxy
 
     @property
     def tasks(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Task objects owned by the pipeline.
+        """
         return self._tasks_proxy
 
     @property
     def dummy_task(self):
+        """
+        :obj:`Task`: Task object corresponding to the dummy __init__.py
+        routine in software_root.
+        """
         return self._dummy_task
 
     @property
     def dummy_job(self):
+        """
+        :obj:`Job`: Dummy Job object for starting the pipeline.
+        """
         return self._dummy_job
 
     def input(self, *args, **kwargs):
+        """
+        Returns an input owned by the pipeline.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`Input` for parameters.
+
+        Returns
+        -------
+        input : :obj:`Input`
+            Input corresponding to given kwargs.
+        """
         from .Input import Input
         return Input(self, *args, **kwargs)
 
     def task(self, *args, **kwargs):
+        """
+        Returns a task owned by the pipeline.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`Task` for parameters.
+
+        Returns
+        -------
+        task : :obj:`Task`
+            Task corresponding to given kwargs.
+        """
         from .Task import Task
         return Task(self, *args, **kwargs)
 
     def to_json(self, *args, **kwargs):
+        """
+        Convert the pipeline to a JSON string.
+
+        Refer to :meth:`pandas.DataFrame.to_json` for parameters
+        """
         si.session.commit()
         return pd.DataFrame(dict((('' if attr != 'id' else 'pipeline_') + attr, getattr(self._pipeline, attr))
                                  for attr in dir(self._pipeline) if attr[0] != '_'
@@ -335,6 +430,14 @@ class Pipeline:
                             index=[0]).to_json(*args, **kwargs)
 
     def attach_tasks(self, tasks_path):
+        """
+        Explore the given path and register task for each script found.
+
+        Parameters
+        ----------
+        tasks_path : str
+            Path to root where task scripts are located.
+        """
         tasks_path = clean_path(tasks_path)
         if tasks_path is not None:
             for task_path in glob.glob(tasks_path+'/*'):
@@ -342,6 +445,16 @@ class Pipeline:
                     self.task(task_path).register()
 
     def attach_inputs(self, inputs_path, config_file=None):
+        """
+        List content in the given path and prepare inputs for each entry.
+
+        Parameters
+        ----------
+        inputs_path : str
+            Path to root where input data are located.
+        config_file : str
+            Optional path to configuration file to associate to inputs.
+        """
         inputs_path = clean_path(inputs_path)
         if inputs_path is not None:
             for input_path in glob.glob(inputs_path+'/*'):
@@ -349,4 +462,7 @@ class Pipeline:
                     self.input(input_path).make_config(config_file)
 
     def run_pipeline(self):
+        """
+        Start the pipeline run.
+        """
         self.dummy_job.child_event('__init__').fire()

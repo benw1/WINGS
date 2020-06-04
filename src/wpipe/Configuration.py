@@ -10,6 +10,8 @@ from .core import ChildrenProxy, DictLikeChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection
 from .DPOwner import DPOwner
 
+__all__ = ['Configuration']
+
 
 class Configuration(DPOwner):
     """
@@ -204,15 +206,34 @@ class Configuration(DPOwner):
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of Configuration objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`sqlintf.Configuration` for parameters.
+
+        Returns
+        -------
+        out : list of Configuration object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.Configuration).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
+        """
+        :obj:`Target`: Points to attribute self.target.
+        """
         return self.target
 
     @property
     def name(self):
+        """
+        str: Name of the configuration.
+        """
         si.session.commit()
         return self._configuration.name
 
@@ -224,36 +245,53 @@ class Configuration(DPOwner):
 
     @property
     def config_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._configuration.id
 
     @property
     def datapath(self):
-        si.session.commit()
+        """
+        str: Path to the parent target data sub-directory.
+        """
         return self._configuration.datapath
 
     @property
     def confpath(self):
-        si.session.commit()
+        """
+        str: Path to the configuration directory specific to configuration
+        files.
+        """
         return self._configuration.confpath
 
     @property
     def rawpath(self):
-        si.session.commit()
+        """
+        str: Path to the configuration directory specific to raw data files.
+        """
         return self._configuration.rawpath
 
     @property
     def logpath(self):
-        si.session.commit()
+        """
+        str: Path to the configuration directory specific to logging files.
+        """
         return self._configuration.logpath
 
     @property
     def procpath(self):
-        si.session.commit()
+        """
+        str: Path to the configuration directory specific to processed data
+        files.
+        """
         return self._configuration.procpath
 
     @property
     def description(self):
+        """
+        str: Description of the configuration
+        """
         si.session.commit()
         return self._configuration.description
 
@@ -265,11 +303,16 @@ class Configuration(DPOwner):
 
     @property
     def target_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row of parent target.
+        """
         return self._configuration.target_id
 
     @property
     def target(self):
+        """
+        :obj:`Target`: Target object corresponding to parent target.
+        """
         if hasattr(self._configuration.target, '_wpipe_object'):
             return self._configuration.target._wpipe_object
         else:
@@ -278,26 +321,46 @@ class Configuration(DPOwner):
 
     @property
     def input_id(self):
+        """
+        int: Primary key id of the table row of parent input.
+        """
         return self.target.input_id
 
     @property
     def input(self):
+        """
+        :obj:`Input`: Input object corresponding to parent input.
+        """
         return self.target.input
 
     @property
     def pipeline_id(self):
+        """
+        int: Primary key id of the table row of parent pipeline.
+        """
         return self.target.pipeline_id
 
     @property
     def pipeline(self):
+        """
+        :obj:`Pipeline`: Pipeline object corresponding to parent pipeline.
+        """
         return self.target.pipeline
 
     @property
     def dummy_task(self):
+        """
+        :obj:`Task`: Task object corresponding to the dummy task of the parent
+        pipeline.
+        """
         return self.pipeline.dummy_task
 
     @property
     def parameters(self):
+        """
+        :obj:`core.DictLikeChildrenProxy`: Dictionary of Parameter objects
+        owned by the configuration.
+        """
         return self._parameters_proxy
 
     @parameters.setter
@@ -307,12 +370,42 @@ class Configuration(DPOwner):
 
     @property
     def jobs(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Job objects owned by the
+        configuration.
+        """
         return self._jobs_proxy
 
     def parameter(self, *args, **kwargs):
+        """
+        Returns a parameter owned by the configuration.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`Parameter` for parameters.
+
+        Returns
+        -------
+        parameter : :obj:`Parameter`
+            Parameter corresponding to given kwargs.
+        """
         from .Parameter import Parameter
         return Parameter(self, *args, **kwargs)
 
     def job(self, *args, **kwargs):
+        """
+        Returns a job owned by the configuration.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`Job` for parameters.
+
+        Returns
+        -------
+        job : :obj:`Job`
+            Job corresponding to given kwargs.
+        """
         from .Job import Job
         return Job(self, *args, **kwargs)

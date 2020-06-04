@@ -10,6 +10,8 @@ from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection
 import socket
 
+__all__ = ['Node']
+
 
 class Node:
     """
@@ -53,14 +55,14 @@ class Node:
             Dummy attribute with None value.
         name : string
             Name of node.
-        int_ip : string
-            Internal IP address of node.
-        ext_ip : string
-            External IP address of node.
         node_id : int
             Primary key id of the table row.
         timestamp : datetime.datetime object
             Timestamp of last access to table row.
+        int_ip : string
+            Internal IP address of node.
+        ext_ip : string
+            External IP address of node.
         jobs : core.ChildrenProxy object
             List of Job objects owned by node.
 
@@ -109,15 +111,34 @@ class Node:
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of Node objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`sqlintf.Node` for parameters.
+
+        Returns
+        -------
+        out : list of Node object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.Node).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
+        """
+        None: Dummy attribute with None value.
+        """
         return
 
     @property
     def name(self):
+        """
+        str: Name of node.
+        """
         si.session.commit()
         return self._node.name
 
@@ -129,28 +150,53 @@ class Node:
 
     @property
     def node_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._node.id
 
     @property
     def timestamp(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of last access to table row.
+        """
         si.session.commit()
         return self._node.timestamp
 
     @property
     def int_ip(self):
-        si.session.commit()
+        """
+        str: Internal IP address of node.
+        """
         return self._node.int_ip
 
     @property
     def ext_ip(self):
-        si.session.commit()
+        """
+        str: External IP address of node.
+        """
         return self._node.ext_ip
 
     @property
     def jobs(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Job objects owned by node.
+        """
         return self._jobs_proxy
 
     def job(self, *args, **kwargs):
+        """
+        Returns a job owned by the node.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`Job` for parameters.
+
+        Returns
+        -------
+        job : :obj:`Job`
+            Job corresponding to given kwargs.
+        """
         from .Job import Job
         return Job(self, *args, **kwargs)

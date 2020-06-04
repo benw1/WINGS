@@ -8,6 +8,8 @@ available in the ``wpipe.sqlintf`` namespace - use that instead.
 from .core import sa, orm
 from .OptOwner import OptOwner
 
+__all__ = ['Job']
+
 
 class Job(OptOwner):
     """

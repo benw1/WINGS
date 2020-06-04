@@ -9,6 +9,8 @@ from .core import os, shutil, warnings, datetime, si
 from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path
 
+__all__ = ['Task']
+
 
 class Task:
     """
@@ -144,15 +146,34 @@ class Task:
 
     @classmethod
     def select(cls, **kwargs):
+        """
+        Returns a list of Task objects fulfilling the kwargs filter.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`sqlintf.Task` for parameters.
+
+        Returns
+        -------
+        out : list of Task object
+            list of objects fulfilling the kwargs filter.
+        """
         cls._temp = si.session.query(si.Task).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
+        """
+        :obj:`Pipeline`: Points to attribute self.pipeline.
+        """
         return self.pipeline
 
     @property
     def name(self):
+        """
+        str: Name of the task.
+        """
         si.session.commit()
         return self._task.name
 
@@ -164,36 +185,55 @@ class Task:
 
     @property
     def task_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row.
+        """
         return self._task.id
 
     @property
     def timestamp(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of last access to table row.
+        """
         si.session.commit()
         return self._task.timestamp
 
     @property
     def nruns(self):
+        """
+        int: ###BEN###
+        """
         si.session.commit()
         return self._task.nruns
 
     @property
     def run_time(self):
+        """
+        int: ###BEN###
+        """
         si.session.commit()
         return self._task.run_time
 
     @property
     def is_exclusive(self):
+        """
+        int: ###BEN###
+        """
         si.session.commit()
         return self._task.is_exclusive
 
     @property
     def pipeline_id(self):
-        si.session.commit()
+        """
+        int: Primary key id of the table row of parent pipeline.
+        """
         return self._task.pipeline_id
 
     @property
     def pipeline(self):
+        """
+        :obj:`Pipeline`: Pipeline object corresponding to parent pipeline.
+        """
         if hasattr(self._task.pipeline, '_wpipe_object'):
             return self._task.pipeline._wpipe_object
         else:
@@ -202,21 +242,56 @@ class Task:
 
     @property
     def masks(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Mask objects owned by the task.
+        """
         return self._masks_proxy
 
     @property
     def jobs(self):
+        """
+        :obj:`core.ChildrenProxy`: List of Job objects owned by the task.
+        """
         return self._jobs_proxy
 
     def mask(self, *args, **kwargs):
+        """
+        Returns a mask owned by the task.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`Mask` for parameters.
+
+        Returns
+        -------
+        mask : :obj:`Mask`
+            Mask corresponding to given kwargs.
+        """
         from .Mask import Mask
         return Mask(self, *args, **kwargs)
 
     def job(self, *args, **kwargs):
+        """
+        Returns a job owned by the task.
+
+        Parameters
+        ----------
+        kwargs
+            Refer to :class:`Job` for parameters.
+
+        Returns
+        -------
+        job : :obj:`Job`
+            Job corresponding to given kwargs.
+        """
         from .Job import Job
         return Job(self, *args, **kwargs)
 
     def register(self):
+        """
+        Import and call the function register implemented in task script.
+        """
         _temp = __import__(os.path.basename(self.pipeline.software_root) + '.' + self.name.replace('.py', ''),
                            fromlist=[''])
         if hasattr(_temp, 'register'):
