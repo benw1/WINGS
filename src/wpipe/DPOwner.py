@@ -106,7 +106,7 @@ class DPOwner:
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`DataProduct` for parameters.
 
         Returns

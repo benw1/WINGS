@@ -153,7 +153,7 @@ class Target(OptOwner):
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`sqlintf.Target` for parameters.
 
         Returns
@@ -261,7 +261,7 @@ class Target(OptOwner):
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`Configuration` for parameters.
 
         Returns

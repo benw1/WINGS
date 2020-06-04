@@ -227,7 +227,7 @@ class Pipeline:
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`sqlintf.Pipeline` for parameters.
 
         Returns
@@ -388,7 +388,7 @@ class Pipeline:
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`Input` for parameters.
 
         Returns
@@ -405,7 +405,7 @@ class Pipeline:
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`Task` for parameters.
 
         Returns

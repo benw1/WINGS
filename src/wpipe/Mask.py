@@ -107,7 +107,7 @@ class Mask:
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`sqlintf.Mask` for parameters.
 
         Returns

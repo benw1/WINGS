@@ -67,7 +67,7 @@ class OptOwner:
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`Option` for parameters.
 
         Returns

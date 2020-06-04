@@ -151,7 +151,7 @@ class Task:
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`sqlintf.Task` for parameters.
 
         Returns
@@ -260,7 +260,7 @@ class Task:
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`Mask` for parameters.
 
         Returns
@@ -277,7 +277,7 @@ class Task:
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`Job` for parameters.
 
         Returns

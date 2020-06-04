@@ -215,7 +215,7 @@ class DataProduct(OptOwner):
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`sqlintf.DataProduct` for parameters.
 
         Returns

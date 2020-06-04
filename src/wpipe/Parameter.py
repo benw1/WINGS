@@ -102,7 +102,7 @@ class Parameter:
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`sqlintf.Parameter` for parameters.
 
         Returns

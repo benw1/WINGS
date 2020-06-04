@@ -105,7 +105,7 @@ class User:
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`sqlintf.User` for parameters.
 
         Returns
@@ -165,7 +165,7 @@ class User:
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`Pipeline` for parameters.
 
         Returns

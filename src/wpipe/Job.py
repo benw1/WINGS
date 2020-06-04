@@ -221,7 +221,7 @@ class Job(OptOwner):
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`sqlintf.Job` for parameters.
 
         Returns
@@ -396,7 +396,7 @@ class Job(OptOwner):
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`Event` for parameters.
 
         Returns

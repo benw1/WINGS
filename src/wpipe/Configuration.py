@@ -211,7 +211,7 @@ class Configuration(DPOwner):
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`sqlintf.Configuration` for parameters.
 
         Returns
@@ -382,7 +382,7 @@ class Configuration(DPOwner):
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`Parameter` for parameters.
 
         Returns
@@ -399,7 +399,7 @@ class Configuration(DPOwner):
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`Job` for parameters.
 
         Returns

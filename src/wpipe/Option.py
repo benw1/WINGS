@@ -105,7 +105,7 @@ class Option:
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`sqlintf.Option` for parameters.
 
         Returns

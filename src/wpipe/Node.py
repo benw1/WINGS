@@ -116,7 +116,7 @@ class Node:
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`sqlintf.Node` for parameters.
 
         Returns
@@ -190,7 +190,7 @@ class Node:
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`Job` for parameters.
 
         Returns

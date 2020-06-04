@@ -168,7 +168,7 @@ class Input(DPOwner):
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`sqlintf.Input` for parameters.
 
         Returns
@@ -267,7 +267,7 @@ class Input(DPOwner):
 
         Parameters
         ----------
-        kwargs : dict
+        kwargs
             Refer to :class:`Target` for parameters.
 
         Returns
