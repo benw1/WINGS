@@ -273,6 +273,10 @@ class Target(OptOwner):
         return Configuration(self, *args, **kwargs)
 
     def configure_target(self):
+        """
+        Generate configurations for each conf dataproduct owned by parent
+        input.
+        """
         for confdp in self.input.confdataproducts:
             self.configuration(os.path.splitext(confdp.filename)[0],
                                parameters=json.load(open(confdp.relativepath+'/'+confdp.filename))[0])

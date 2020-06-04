@@ -417,6 +417,11 @@ class Pipeline:
         return Task(self, *args, **kwargs)
 
     def to_json(self, *args, **kwargs):
+        """
+        Convert the pipeline to a JSON string.
+
+        Refer to :meth:`pandas.DataFrame.to_json` for parameters
+        """
         si.session.commit()
         return pd.DataFrame(dict((('' if attr != 'id' else 'pipeline_') + attr, getattr(self._pipeline, attr))
                                  for attr in dir(self._pipeline) if attr[0] != '_'
@@ -425,6 +430,14 @@ class Pipeline:
                             index=[0]).to_json(*args, **kwargs)
 
     def attach_tasks(self, tasks_path):
+        """
+        Explore the given path and register task for each script found.
+
+        Parameters
+        ----------
+        tasks_path : str
+            Path to root where task scripts are located.
+        """
         tasks_path = clean_path(tasks_path)
         if tasks_path is not None:
             for task_path in glob.glob(tasks_path+'/*'):
@@ -432,6 +445,16 @@ class Pipeline:
                     self.task(task_path).register()
 
     def attach_inputs(self, inputs_path, config_file=None):
+        """
+        List content in the given path and prepare inputs for each entry.
+
+        Parameters
+        ----------
+        inputs_path : str
+            Path to root where input data are located.
+        config_file : str
+            Optional path to configuration file to associate to inputs.
+        """
         inputs_path = clean_path(inputs_path)
         if inputs_path is not None:
             for input_path in glob.glob(inputs_path+'/*'):
@@ -439,4 +462,7 @@ class Pipeline:
                     self.input(input_path).make_config(config_file)
 
     def run_pipeline(self):
+        """
+        Start the pipeline run.
+        """
         self.dummy_job.child_event('__init__').fire()

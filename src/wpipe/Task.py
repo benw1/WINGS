@@ -289,6 +289,9 @@ class Task:
         return Job(self, *args, **kwargs)
 
     def register(self):
+        """
+        Import and call the function register implemented in task script.
+        """
         _temp = __import__(os.path.basename(self.pipeline.software_root) + '.' + self.name.replace('.py', ''),
                            fromlist=[''])
         if hasattr(_temp, 'register'):

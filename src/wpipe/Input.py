@@ -279,6 +279,14 @@ class Input(DPOwner):
         return Target(self, *args, **kwargs)
 
     def make_config(self, config_file):
+        """
+        Associate given file to the input as a conf dataproduct.
+
+        Parameters
+        ----------
+        config_file : str
+            Path to configuration file.
+        """
         config_file = clean_path(config_file)
         if config_file is not None:
             shutil.copy2(config_file, self.confpath)

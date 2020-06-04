@@ -294,6 +294,9 @@ class Event(OptOwner):
         return Job(self, *args, **kwargs)
 
     def fire(self):
+        """
+        Fire the task associated to this event.
+        """
         # print("HERE ",self.name," DONE")
         try:
             from .Configuration import Configuration

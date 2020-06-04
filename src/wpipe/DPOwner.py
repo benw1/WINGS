@@ -85,6 +85,19 @@ class DPOwner:
         return self._dataproducts_proxy
 
     def dataproducts_of_group(self, group):
+        """
+        Returns a list of owned DataProduct object with given group.
+
+        Parameters
+        ----------
+        group : str
+            Group to filter owned dataproducts.
+
+        Returns
+        -------
+        dataproducts : list of :obj:`DataProduct`
+            Filtered list of dataproducts.
+        """
         return self.dataproducts[self.dataproducts.group == group]
 
     def dataproduct(self, *args, **kwargs):

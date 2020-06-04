@@ -408,6 +408,14 @@ class Job(OptOwner):
         return Event(self, *args, **kwargs)
 
     def logprint(self, log_text):
+        """
+        Log given text in a log dataproduct.
+
+        Parameters
+        ----------
+        log_text : str
+            Text to write.
+        """
         logpath = self.config.target.datapath + '/log_' + self.config.name + '/'
         logfile = self.task.name + '_j' + str(self.job_id) + '_e' + str(self.firing_event_id) + '.log'
         log = open(logpath + logfile, "a")
@@ -415,6 +423,9 @@ class Job(OptOwner):
         log.close()
 
     def submit(self):
+        """
+        Submit the job to the scheduler.
+        """
         my_pipe = self.task.pipeline
         executable = my_pipe.software_root + '/' + self.task.name
         # subprocess.Popen(
@@ -433,5 +444,8 @@ class Job(OptOwner):
         self._job.timestamp = datetime.datetime.utcnow()
 
     def actualize_endtime(self):
+        """
+        Actualize the endtime attribute to now.
+        """
         self._job.endtime = datetime.datetime.utcnow()
         self._job.timestamp = datetime.datetime.utcnow()

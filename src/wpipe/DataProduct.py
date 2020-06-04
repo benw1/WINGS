@@ -419,6 +419,20 @@ class DataProduct(OptOwner):
         return self.dpowner.pipeline_id
 
     def symlink(self, path, **kwargs):
+        """
+        Create a symbolic link at the given path to this dataproduct file.
+
+        Parameters
+        ----------
+        path : str
+            Path where to create the symbolic link.
+        kwargs
+            Refer to :class:`DataProduct` for other parameters.
+
+        Notes
+        -----
+        A dpowner argument must be given to the kwargs to avoid a TypeError.
+        """
         dpowner = kwargs.pop('dpowner', self.dpowner)
         path = clean_path(path)
         if os.path.exists(path):
