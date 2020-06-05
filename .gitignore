@@ -14,3 +14,10 @@ dist/
 
 # Python bytecode
 *.pyc
+
+# Document files
+docs/_static/
+docs/_templates/
+docs/build/
+docs/source/_static
+docs/source/_templates
