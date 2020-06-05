@@ -6,6 +6,7 @@ Please note that this module is private. All functions and objects
 are available in the main ``wpipe`` namespace - use that instead.
 """
 import os
+import sys
 import datetime
 import subprocess
 import glob
@@ -19,8 +20,8 @@ import pandas as pd
 
 from . import sqlintf as si
 
-__all__ = ['os', 'datetime', 'subprocess', 'glob', 'shutil', 'warnings',
-           'json', 'ast', 'np', 'pd',
+__all__ = ['os', 'sys', 'datetime', 'subprocess', 'glob', 'shutil',
+           'warnings', 'json', 'ast', 'np', 'pd', 'si',
            'PARSER', 'as_int', 'try_scalar', 'clean_path', 'split_path',
            'key_wpipe_separator', 'initialize_args',
            'wpipe_to_sqlintf_connection',
@@ -36,8 +37,8 @@ PARSER.add_argument('--pipeline', '-p', dest='pipeline', type=str, default=os.ge
                     help='Path or ID of pipeline - default to current working directory')
 PARSER.add_argument('--job', '-j', dest='job_id', type=int, help='ID of this job')
 
-# if os.getcwd() not in map(os.path.abspath, os.sys.path):
-#     os.sys.path.insert(0, os.getcwd())
+# if os.getcwd() not in map(os.path.abspath, sys.path):
+#     sys.path.insert(0, os.getcwd())
 
 pd.set_option('io.hdf.default_format', 'table')
 
@@ -190,7 +191,7 @@ def wpipe_to_sqlintf_connection(cls, cls_name):
     if hasattr(getattr(cls, cls_attr), '_wpipe_object'):
         cls._inst = getattr(cls, cls_attr)._wpipe_object
     else:
-        cls._inst = super(getattr(os.sys.modules['wpipe'], cls_name), cls).__new__(cls)
+        cls._inst = super(getattr(sys.modules['wpipe'], cls_name), cls).__new__(cls)
         getattr(cls, cls_attr)._wpipe_object = cls._inst
         setattr(cls._inst, cls_attr, getattr(cls, cls_attr))
 
@@ -236,12 +237,12 @@ class ChildrenProxy:
             if hasattr(self.children[item], '_wpipe_object'):
                 return self.children[item]._wpipe_object
             else:
-                return getattr(os.sys.modules['wpipe'], self._cls_name)(self.children[item])
+                return getattr(sys.modules['wpipe'], self._cls_name)(self.children[item])
         else:
             return np.array([self[i] for i in range(len(self))])[item].tolist()
 
     def __getattr__(self, item):
-        if hasattr(getattr(os.sys.modules['wpipe'], self._cls_name), item):
+        if hasattr(getattr(sys.modules['wpipe'], self._cls_name), item):
             return np.array([getattr(self[i], item) for i in range(len(self))])
 
     @property

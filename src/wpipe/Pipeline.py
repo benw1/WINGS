@@ -5,7 +5,7 @@ Contains the Pipeline class definition
 Please note that this module is private. The Pipeline class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import os, glob, datetime, pd, si
+from .core import os, sys, glob, datetime, pd, si
 from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, as_int, clean_path
 from .core import PARSER
@@ -207,8 +207,8 @@ class Pipeline:
         return cls._inst
 
     def __init__(self, *args, **kwargs):
-        if self.pipe_root not in map(os.path.abspath, os.sys.path):
-            os.sys.path.insert(0, self.pipe_root)
+        if self.pipe_root not in map(os.path.abspath, sys.path):
+            sys.path.insert(0, self.pipe_root)
         if not hasattr(self, '_inputs_proxy'):
             self._inputs_proxy = ChildrenProxy(self._pipeline, 'inputs', 'Input')
         if not hasattr(self, '_tasks_proxy'):
