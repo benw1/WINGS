@@ -1,218 +1,213 @@
+#!/usr/bin/env python
+"""
+Wpipe
+=====
+Provides a suite of classes to deploy the WINGS pipeline functionalities.
+
+How to use
+----------
+
+Wpipe handles the building and running of a WINGS pipeline and track its
+jobbing through a shared SQL database. It does so via a suite of classes that
+represent each of the SQL database tables and the necessary entities of a
+WINGS pipeline. These classes represent namely:
+- the user that owns the pipeline (User),
+- the pipeline itself (Pipeline),
+- the tasks that compose the pipeline software (Task),
+- the masks that are associated to a task (Mask)
+- the input set of data given to the pipeline (Input),
+- the targets that an input contains (Target),
+- the configuration for such targets (Configuration),
+- the parameters that constitute a configuration (Parameter),
+- the dataproducts that constitute an input or a configuration (DataProduct),
+- the jobs that are submitted by the pipeline from specific events (Job),
+- the events that are fired by the pipeline jobbing (Event),
+- the options that may be given to any target, job, event or dataproduct
+(Option).
+
+The core running of the pipeline is handled by its jobbing. This goes through
+the firing of events that search for tasks with matching masks. These events
+subsequently submit those tasks as new jobs that themselves fire new events to
+submit other jobs. This chaining between events submitting jobs and jobs
+firing events constitutes the pipeline running. When a job is submitted, the
+script of the corresponding task is executed through the system or submitted
+to the scheduler with command-line arguments recognized by Wpipe PARSER. For
+this reason, the script must be beforehand coded so that it imports the Wpipe
+module and use that PARSER.
+
+Among these command-line arguments, the key id in the SQL database of the
+corresponding submitted job is passed through and shall be used to construct
+the corresponding Job object in that new python instance to fire new events.
+The shared SQL database also help to further communicate between python
+instances notably via the options that can be assigned to the jobs and events.
+Each of the Wpipe classes have written-in documentations for further
+instructions for how to use them.
+
++ wingspipe
+
+To exploit Wpipe functionalities, it is recommended to use the command-line
+executable wingspipe, installed with Wpipe. 2 things need to be prepared
+before calling the command: the set of tasks that will build the pipeline
+software and the set of data input that the software will run with.
+
+For the former set of tasks, these shall be python scripts with read and
+execution permissions, and with the only requirement in the format that it
+must implement a single-argument function register. This function gives the
+possibility to set Mask objects to the corresponding Task, treating the latter
+as the argument of the function. All these tasks must be placed in a same
+directory, which path must be given to the wingspipe command-line argument
+--tasks_path or -w.
+
+In the case of the data input, if a single data file is needed, then the path
+to this file must be given to the wingspipe command-line argument --inputs or
+-i. If more files are needed, it is also possible to put all of them with
+characterizing names in a directory and enter its path in the command-line
+argument of wingspipe. This directory can also contain any configuration file
+with extension '.conf', otherwise configuration files can also be added to the
+--config or -c command-line argument.
+
+The wingspipe command may be used as many times as necessary to add more tasks
+or inputs to the pipeline. Once the pipeline is completely built, it can be
+started by adding the wingspipe command-line flag --run or -r. This will call
+the Pipeline object method run_pipeline which submits the pipeline dummy_job,
+firing an event with name '__init__'. Accordingly with the Wpipe jobbing, when
+fired, this event searches for the task with mask of name '__init__', meaning
+that the script corresponding to the first task to be submitted in the
+pipeline shall be written to register this mask.
+
++ sqlintf
+
+Of the Wpipe classes, each constructed object ultimately represents a row of
+the corresponding SQL table after construction. The constructor notably
+queries the database for rows with key column entries that correspond to those
+given in its call signature, or create a new row if that query doesn't return.
+In this way, each object made out of that suite of classes uniquely represents
+a row of the shared SQL database in a single python instance, and conversely.
+
+The entire connection with the SQL database is powered by the third-party
+module SQLAlchemy and is implemented via the subpackage sqlintf. In practice,
+no one should ever need to use this subpackage, it contains the tools to
+initialize the database connection and query it, as well as duplicates of each
+of the Wpipe classes. These duplicates form the SQL interface for the Wpipe
+classes, as in constructing an object of these duplicates is equivalent to
+adding a new row to the database table. These duplicates also are the classes
+of the returned object when querying the database for existing rows:
+accordingly, the Wpipe classes have been coded to query for existing rows, or
+to create new rows otherwise.
+
+Available subpackages
+---------------------
+sqlintf
+    Suite of classes connected to the database tables
+    - powered by the module `SQLAlchemy`
+
+Utilities
+---------
+PARSER
+    pre-instantiated parser powered by the module `argparse`
+
+DefaultUser
+    User object constructed at wpipe importation (see User doc Notes)
+
+DefaultNode
+    Node object constructed at wpipe importation (see Node doc Notes)
+
+__version__
+    Wpipe version string
+"""
+from .__metadata__ import *
 from .core import *
-from .Store import Store
-from .User import User, SQLUser
-from .Node import Node, SQLNode
-from .Pipeline import Pipeline, SQLPipeline
-from .Options import Options, SQLOption  # What is this for?
-from .Target import Target, SQLTarget
-from .Configuration import Configuration, SQLConfiguration
-from .Parameters import Parameters, SQLParameter  # What is this for?
-from .DataProduct import DataProduct, SQLDataProduct
-from .Task import Task, SQLTask
-from .Mask import Mask, SQLMask
-from .Job import Job, SQLJob
-from .Event import Event, SQLEvent
+from .User import User
+from .Node import Node
+from .Pipeline import Pipeline
+from .Input import Input
+from .Option import Option
+from .Target import Target
+from .Configuration import Configuration
+from .Parameter import Parameter
+from .DataProduct import DataProduct
+from .Task import Task
+from .Mask import Mask
+from .Job import Job
+from .Event import Event
+
+__all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
+           'Option', 'Target', 'Configuration', 'Parameter', 'DataProduct',
+           'Task', 'Mask', 'Job', 'Event']
 
 
-DefaultUser = SQLUser()
-DefaultNode = SQLNode()
+DefaultUser = User()
+"""
+User object: User object constructed at wpipe importation (see User doc Notes)
+"""
+
+DefaultNode = Node()
+"""
+Node object: Node object constructed at wpipe importation (see Node doc Notes)
+"""
 
 
-def Submit(task, job_id, event_id):
-    pid = task.pipeline_id
-    myPipe = Pipeline.get(pid)
-    swroot = myPipe.software_root
-    executable = swroot + '/' + task['name']
-    dataroot = myPipe.data_root
-    job = Job.get(int(job_id))
-    # subprocess.Popen([executable,'-e',str(event_id),'-j',str(job_id)],cwd=dataroot) # This line will work with an SQL backbone, but NOT hdf5, as 2 tasks running on the same hdf5 file will collide!
-    subprocess.run([executable, '-e', str(event_id), '-j', str(job_id)], cwd=dataroot)
-    # Let's send stuff to slurm
-    # hyak(task,job_id,event_id)
-    # Let's send stuff to pbs
-    # pbs(task,job_id,event_id)
-    return
-
-
-def sql_submit(task, job_id, event_id):
-    my_pipe = task.pipeline
-    executable = my_pipe.software_root + '/' + task.name
-    # subprocess.Popen([executable,'-e',str(event_id),'-j',str(job_id)],cwd=my_pipe.data_root) # This line will work with an SQL backbone, but NOT hdf5, as 2 tasks running on the same hdf5 file will collide!
-    subprocess.run([executable, '-e', str(event_id), '-j', str(job_id)], cwd=my_pipe.data_root)
-    # Let's send stuff to slurm
-    # sql_hyak(task,job_id,event_id)
-    # Let's send stuff to pbs
-    # sql_pbs(task,job_id,event_id)
-    return
-
-
-def hyak(task, job_id, event_id):
-    myJob = Job.get(job_id)
-    myPipe = Pipeline.get(int(myJob.pipeline_id))
-    swroot = myPipe.software_root
-    executable = swroot + '/' + task['name']
-    dataroot = myPipe.data_root
-
-    catalogID = Options.get('event', event_id)['dp_id']
-    catalogDP = DataProduct.get(int(catalogID))
-    myTarget = Target.get(int(catalogDP.target_id))
-    myConfig = Configuration.get(int(catalogDP.config_id))
-    myParams = Parameters.getParam(int(myConfig.config_id))
-
-    slurmfile = myConfig.confpath + '/' + task['name'] + '_' + str(job_id) + '.slurm'
-    # print(event_id,job_id,executable,type(executable))
-    eidstr = str(event_id)
-    jidstr = str(job_id)
-    print("Submitting ", slurmfile)
-    with open(slurmfile, 'w') as f:
-        f.write('#!/bin/bash' + '\n' +
-                '## Job Name' + '\n' +
-                '#SBATCH --job-name=' + jidstr + '\n' +
-                '## Allocation Definition ' + '\n' +
-                '#SBATCH --account=astro' + '\n' +
-                '#SBATCH --partition=astro' + '\n' +
-                '## Resources' + '\n' +
-                '## Nodes' + '\n' +
-                '#SBATCH --ntasks=1' + '\n' +
-                '## Walltime (10 hours)' + '\n' +
-                '#SBATCH --time=10:00:00' + '\n' +
-                '## Memory per node' + '\n' +
-                '#SBATCH --mem=10G' + '\n' +
-                '## Specify the working directory for this job' + '\n' +
-                '#SBATCH --workdir=' + myConfig.procpath + '\n' +
-                'source activate forSTIPS3' + '\n' +
-                executable + ' -e ' + eidstr + ' -j ' + jidstr)
-    subprocess.run(['sbatch', slurmfile], cwd=myConfig.confpath)
-
-
-def pbs(task, job_id, event_id):
-    myJob = Job.get(job_id)
-    myPipe = Pipeline.get(int(myJob.pipeline_id))
-    swroot = myPipe.software_root
-    executable = swroot + '/' + task['name']
-    dataroot = myPipe.data_root
-
-    catalogID = Options.get('event', event_id)['dp_id']
-    catalogDP = DataProduct.get(int(catalogID))
-    myTarget = Target.get(int(catalogDP.target_id))
-    myConfig = Configuration.get(int(catalogDP.config_id))
-    myParams = Parameters.getParam(int(myConfig.config_id))
-
-    # pbsfile = myConfig.confpath+'/'+task['name']+'_'+str(job_id)+'.pbs'
-    pbsfile = '/home1/bwilli24/Wpipelines/' + task['name'] + '_jobs'
-
-    # print(event_id,job_id,executable,type(executable))
-    eidstr = str(event_id)
-    jidstr = str(job_id)
-    print("Submitting ", pbs)
-    # with open(pbsfile, 'w') as f:
-    with open(pbsfile, 'a') as f:
-        f.write(  # '#PBS -S /bin/csh' + '\n'+
-            # '#PBS -j oe' + '\n'+
-            # '#PBS -l select=1:ncpus=4:model=san' + '\n'+
-            # '#PBS -W group_list=s1692' + '\n'+
-            # '#PBS -l walltime=10:00:00' + '\n'+
-
-            # 'cd ' + myConfig.procpath  + '\n'+
-
-            # 'source activate STIPS'+'\n'+
-
-            # executable+' -e '+eidstr+' -j '+jidstr)
-            'source /nobackupp11/bwilli24/miniconda3/bin/activate STIPS && ' + executable + ' -e ' + eidstr + ' -j ' + jidstr + '\n')
-
-    subprocess.run(['qsub', pbsfile], cwd=myConfig.confpath)
-
-
-def fire(event):
-    event_name = event['name'].values[0]
-    event_value = event['value'].values[0]
-    event_id = event['event_id'].values[0]
-    # print("HERE ",event['name'].values[0]," DONE")
-    parent_job = Job.get(int(event.job_id))
-    try:
-        conf_id = int(Options.get('event', event_id)['config_id'])
-    except:
-        conf_id = int(parent_job.config_id)
-    configuration = Configuration.get(conf_id)
-    pipeline_id = parent_job.pipeline_id
-    # print(pipeline_id)
-    alltasks = Store().select('tasks', where="pipeline_id==" + str(pipeline_id))
-    for i in range(alltasks.shape[0]):
-        task = alltasks.iloc[i]
-        task_id = task['task_id']
-        # print(task_id)
-        m = Store().select('masks', where="task_id==" + str(task_id))
-        for j in range(m.shape[0]):
-            mask = m.iloc[j]
-            mask_name = mask['name']
-            mask_value = mask['value']
-
-            # print("HERE",event_name,mask_name,event_value,mask_value,"DONE3")
-            if (event_name == mask_name) & ((event_value == mask_value) | (mask_value == '*')):
-                taskname = task['name']
-                newjob = Job(task=task, config=configuration,
-                             event_id=event_id).create()  # need to give this a configuration
-                job_id = int(newjob['job_id'].values[0])
-                event_id = int(event['event_id'].values[0])
-                print(taskname, "-e", event_id, "-j", job_id)
-                Submit(task, job_id, event_id)  # pipeline should be able to run stuff and keep track if it completes
-                return
-
-
-def sql_fire(event):
-    event_name = event.name
-    event_value = event.value
-    event_id = event.event_id
-    # print("HERE ",event.name," DONE")
-    parent_job = event.parent_job
-    try:
-        configuration = SQLConfiguration(event.options['config_id'])
-    except:
-        configuration = parent_job.config
-    # print(parent_job.pipeline_id)
-    for task in parent_job.pipeline.tasks:
-        # print(task.task_id)
-        for mask in task.masks:
-            mask_name = mask.name
-            mask_value = mask.value
-            # print("HERE",event_name,mask_name,event_value,mask_value,"DONE3")
-            if (event_name == mask_name) & ((event_value == mask_value) | (mask_value == '*')):
-                taskname = task.name
-                newjob = event.fired_job(task, configuration)
-                job_id = newjob.job_id
-                print(taskname, "-e", event_id, "-j", job_id)
-                sql_submit(task, job_id, event_id)  # pipeline should be able to run stuff and keep track if it completes
-                return
-
-
-def logprint(configuration, job, log_text):
-    target_id = configuration['target_id']  # .values[0]
-    pipeline_id = configuration['pipeline_id']  # .values[0]
-    myPipe = Pipeline.get(pipeline_id)
-    myTarg = Target.get(target_id)
-    conf_name = configuration['name']  # .values[0]
-    targ_name = myTarg['name']
-    logpath = myPipe.data_root + '/' + targ_name + '/log_' + conf_name + '/'
-    job_id = job['job_id']
-    event_id = job['event_id']
-    task_id = job['task_id']
-    task = Task.get(task_id)
-    task_name = task['name']
-    logfile = task_name + '_j' + str(job_id) + '_e' + str(event_id) + '.log'
-    try:
-        log = open(logpath + logfile, "a")
-    except:
-        log = open(logpath + logfile, "w")
-    log.write(log_text)
-    log.close()
-
-
-def sql_logprint(configuration, job, log_text):
-    logpath = configuration.target.relativepath + '/log_' + configuration.name + '/'
-    logfile = job.task.name + '_j' + str(job.job_id) + '_e' + str(job.firing_event_id) + '.log'
-    try:
-        log = open(logpath + logfile, "a")
-    except:
-        log = open(logpath + logfile, "w")
-    log.write(log_text)
-    log.close()
+# def sql_hyak(task, job_id, event_id):
+#     my_job = Job(job_id)
+#     my_pipe = my_job.pipeline
+#     swroot = my_pipe.software_root
+#     executable = swroot + '/' + task.name
+#     catalog_id = Event(event_id).options['dp_id']
+#     catalog_dp = DataProduct(catalog_id)
+#     my_config = catalog_dp.config
+#     slurmfile = my_config.confpath + '/' + task.name + '_' + str(job_id) + '.slurm'
+#     # print(event_id,job_id,executable,type(executable))
+#     eidstr = str(event_id)
+#     jidstr = str(job_id)
+#     print("Submitting ", slurmfile)
+#     with open(slurmfile, 'w') as f:
+#         f.write('#!/bin/bash' + '\n' +
+#                 '## Job Name' + '\n' +
+#                 '#SBATCH --job-name=' + jidstr + '\n' +
+#                 '## Allocation Definition ' + '\n' +
+#                 '#SBATCH --account=astro' + '\n' +
+#                 '#SBATCH --partition=astro' + '\n' +
+#                 '## Resources' + '\n' +
+#                 '## Nodes' + '\n' +
+#                 '#SBATCH --ntasks=1' + '\n' +
+#                 '## Walltime (10 hours)' + '\n' +
+#                 '#SBATCH --time=10:00:00' + '\n' +
+#                 '## Memory per node' + '\n' +
+#                 '#SBATCH --mem=10G' + '\n' +
+#                 '## Specify the working directory for this job' + '\n' +
+#                 '#SBATCH --workdir=' + my_config.procpath + '\n' +
+#                 'source activate forSTIPS3' + '\n' +
+#                 executable + ' -e ' + eidstr + ' -j ' + jidstr)
+#     subprocess.run(['sbatch', slurmfile], cwd=my_config.confpath)
+#
+#
+# def sql_pbs(task, job_id, event_id):
+#     my_job = Job(job_id)
+#     my_pipe = my_job.pipeline
+#     swroot = my_pipe.software_root
+#     executable = swroot + '/' + task.name
+#     catalog_id = Event(event_id).options['dp_id']
+#     catalog_dp = DataProduct(catalog_id)
+#     my_config = catalog_dp.config
+#     # pbsfile = my_config.confpath + '/' + task.name + '_' + str(job_id) + '.pbs'
+#     pbsfile = '/home1/bwilli24/Wpipelines/' + task.name + '_jobs'
+#     # print(event_id,job_id,executable,type(executable))
+#     eidstr = str(event_id)
+#     jidstr = str(job_id)
+#     print("Submitting ", pbsfile)
+#     # with open(pbsfile, 'w') as f:
+#     with open(pbsfile, 'a') as f:
+#         f.write(  # '#PBS -S /bin/csh' + '\n'+
+#             # '#PBS -j oe' + '\n'+
+#             # '#PBS -l select=1:ncpus=4:model=san' + '\n'+
+#             # '#PBS -W group_list=s1692' + '\n'+
+#             # '#PBS -l walltime=10:00:00' + '\n'+
+#
+#             # 'cd ' + myConfig.procpath  + '\n'+
+#
+#             # 'source activate STIPS'+'\n'+
+#
+#             # executable+' -e '+eidstr+' -j '+jidstr)
+#             'source /nobackupp11/bwilli24/miniconda3/bin/activate STIPS && ' +
+#             executable + ' -e ' + eidstr + ' -j ' + jidstr + '\n')
+#     subprocess.run(['qsub', pbsfile], cwd=my_config.confpath)

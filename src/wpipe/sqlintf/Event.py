@@ -1,11 +1,27 @@
-from .core import *
-from .Owner import Owner
+#!/usr/bin/env python
+"""
+Contains the sqlintf.Event class definition
+
+Please note that this module is private. The sqlintf.Event class is
+available in the ``wpipe.sqlintf`` namespace - use that instead.
+"""
+from .core import sa, orm
+from .OptOwner import OptOwner
+
+__all__ = ['Event']
 
 
-class Event(Owner):
+class Event(OptOwner):
+    """
+        A Event object represents a row of the `events` table.
+
+        DO NOT USE CONSTRUCTOR: constructing a Event object adds a new row
+        to the database: USE INSTEAD ITS WPIPE COUNTERPART.
+    """
     __tablename__ = 'events'
-    id = sa.Column(sa.Integer, sa.ForeignKey('owners.id'), primary_key=True)
+    id = sa.Column(sa.Integer, sa.ForeignKey('optowners.id'), primary_key=True)
     name = sa.Column(sa.String(256))
+    tag = sa.Column(sa.String(256))
     jargs = sa.Column(sa.String(256))
     value = sa.Column(sa.String(256))
     parent_job_id = sa.Column(sa.Integer, sa.ForeignKey('jobs.id'))

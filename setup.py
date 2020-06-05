@@ -1,14 +1,41 @@
+#!/usr/bin/env python
 try:
-    from setuptools import setup, find_packages
+    from setuptools import setup
 except ImportError:
-    from distutils.core import setup, find_packages
+    from distutils.core import setup
 
+# metadata are set in the below file, but use this here to avoid warnings.
+__author__ = __copyright__ = __credits__ = __license__ = __version__ = __maintainer__ = __email__ = __status__ = None
+exec(open("src/wpipe/__metadata__.py").read())
+
+long_description = ""
 
 setup(name='wpipe',
-      version='1.0',
+      version=__version__,
+      author=__author__,
+      author_email=__email__,
+      maintainer=__maintainer__,
+      maintainer_email=__email__,
+      url="https://github.com/benw1/WINGS",
+      description="Provides a suite of classes to deploy the WINGS pipeline functionalities.",
+      long_description=long_description,
+      long_description_content_type="text/markdown",
+      classifiers=[
+          __status__,
+          "Environment :: Console",
+          "Intended Audience :: Science/Research",
+          __license__,
+          "Natural Language :: English",
+          "Operating System :: Unix",
+          "Programming Language :: Python :: 3",
+          "Topic :: Database",
+          "Topic :: Scientific/Engineering :: Astronomy",
+          "Topic :: Software Development :: Version Control :: Git"
+      ],
+      python_requires='>=3',
       packages=['wpipe', 'wpipe.sqlintf'],
       package_dir={'': 'src'},
-      package_data={'wpipe': ['h5data/wpipe_store.h5']},
-      install_requires=['numpy', 'pandas', 'tables', 'sqlalchemy', 'astropy'],
+      install_requires=['numpy', 'pandas', 'tables', 'sqlalchemy',
+                        'mysql-connector-python', 'mysqlclient', 'astropy'],
       scripts=['bin/wingspipe']
       )

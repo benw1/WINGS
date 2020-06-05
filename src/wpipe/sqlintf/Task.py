@@ -1,7 +1,22 @@
-from .core import *
+#!/usr/bin/env python
+"""
+Contains the sqlintf.Task class definition
+
+Please note that this module is private. The sqlintf.Task class is
+available in the ``wpipe.sqlintf`` namespace - use that instead.
+"""
+from .core import sa, orm, Base
+
+__all__ = ['Task']
 
 
 class Task(Base):
+    """
+        A Task object represents a row of the `tasks` table.
+
+        DO NOT USE CONSTRUCTOR: constructing a Task object adds a new row
+        to the database: USE INSTEAD ITS WPIPE COUNTERPART.
+    """
     __tablename__ = 'tasks'
     id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.String(256))

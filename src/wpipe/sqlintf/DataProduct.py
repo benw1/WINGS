@@ -1,10 +1,25 @@
-from .core import *
-from .Owner import Owner
+#!/usr/bin/env python
+"""
+Contains the sqlintf.DataProduct class definition
+
+Please note that this module is private. The sqlintf.DataProduct class is
+available in the ``wpipe.sqlintf`` namespace - use that instead.
+"""
+from .core import sa, orm
+from .OptOwner import OptOwner
+
+__all__ = ['DataProduct']
 
 
-class DataProduct(Owner):
+class DataProduct(OptOwner):
+    """
+        A DataProduct object represents a row of the `dataproducts` table.
+
+        DO NOT USE CONSTRUCTOR: constructing a DataProduct object adds a new
+        row to the database: USE INSTEAD ITS WPIPE COUNTERPART.
+    """
     __tablename__ = 'dataproducts'
-    id = sa.Column(sa.Integer, sa.ForeignKey('owners.id'), primary_key=True)
+    id = sa.Column(sa.Integer, sa.ForeignKey('optowners.id'), primary_key=True)
     filename = sa.Column(sa.String(256))
     relativepath = sa.Column(sa.String(256))
     suffix = sa.Column(sa.String(256))
@@ -15,8 +30,10 @@ class DataProduct(Owner):
     ra = sa.Column(sa.Float)
     dec = sa.Column(sa.Float)
     pointing_angle = sa.Column(sa.Float)
-    config_id = sa.Column(sa.Integer, sa.ForeignKey('configurations.id'))
-    config = orm.relationship("Configuration", back_populates="dataproducts")
+    dpowner_id = sa.Column(sa.Integer, sa.ForeignKey('dpowners.id'))
+    dpowner = orm.relationship("DPOwner", back_populates="dataproducts")
+    config_id = input_id = orm.synonym("dpowner_id")
+    config = input = orm.synonym("dpowner")
     __mapper_args__ = {
         'polymorphic_identity': 'dataproduct',
     }
