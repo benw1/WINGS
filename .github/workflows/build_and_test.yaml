@@ -7,7 +7,7 @@ on: [ push ]
 
 
 jobs:
-  build:
+  test-and-docs:
 
     runs-on: ubuntu-latest
     strategy:
@@ -41,5 +41,13 @@ jobs:
     - name: Build Documentation
       run: make html
       working-directory: docs
+    - persist_to_worksapce:
+        root: docs/build
+        paths: html
 
+workflows:
+  version: 2
+  build:
+    jobs:
+      - test-and-docs
 
