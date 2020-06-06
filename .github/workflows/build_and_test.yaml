@@ -39,7 +39,7 @@ jobs:
         cd ./temp
         wingspipe --github-test
     - name: Build Documentation
-      run: echo "build that documentation"
+      run: make html
       working-directory: docs
 
 
