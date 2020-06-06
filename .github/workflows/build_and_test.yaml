@@ -31,7 +31,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install pymysql sphinx sphinxcontrib-napoleon
+        python -m pip install pymysql sphinx sphinxcontrib-napoleon sphinx_rtd_theme
         python -m pip install .
         mkdir ./temp
     - name: Attempt to run wingspipe
