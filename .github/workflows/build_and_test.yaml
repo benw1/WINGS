@@ -41,7 +41,7 @@ jobs:
     - name: Build Documentation
       run: make html
       working-directory: docs
-    - persist_to_worksapce:
+      persist_to_worksapce:
         root: docs/build
         paths: html
 
