@@ -40,10 +40,10 @@ if sqlite:
     #
     # atexit.register(open_interpreter)
 
-elif PARSER.parse_known_args()[0].test:
-    ENGINE_URL = "mysql+pymysql://root:password@localhost:8000/server"
-else:
-    ENGINE_URL = 'mysql://wpipe:W£|£3u53r@localhost/server'
+# elif PARSER.parse_known_args()[0].test:
+ENGINE_URL = "mysql+pymysql://root:password@localhost:8000/server"
+# else:
+#     ENGINE_URL = 'mysql://wpipe:W£|£3u53r@localhost/server'
 
 # engine = None
 # try:

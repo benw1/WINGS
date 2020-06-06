@@ -6,7 +6,7 @@ Guide
 .. toctree::
    :maxdepth: 1
 
-   classes
+   modules
    cookbook
 
 
