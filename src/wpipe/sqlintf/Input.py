@@ -24,9 +24,8 @@ class Input(DPOwner):
     rawspath = sa.Column(sa.String(256))
     confpath = sa.Column(sa.String(256))
     pipeline_id = sa.Column(sa.Integer, sa.ForeignKey('pipelines.id'))
-    pipeline = orm.relationship("Pipeline", back_populates="inputs")
+    pipeline = orm.relationship("Pipeline", back_populates="inputs", foreign_keys=[pipeline_id])
     targets = orm.relationship("Target", back_populates="input")
     __mapper_args__ = {
         'polymorphic_identity': 'input',
     }
-

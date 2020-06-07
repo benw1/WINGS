@@ -9,11 +9,12 @@ from .core import os, sys, glob, datetime, pd, si
 from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, as_int, clean_path
 from .core import PARSER
+from .DPOwner import DPOwner
 
 __all__ = ['Pipeline']
 
 
-class Pipeline:
+class Pipeline(DPOwner):
     """
         Represents a WINGS pipeline.
 
@@ -122,6 +123,22 @@ class Pipeline:
             in software_root.
         dummy_job : Job object
             Dummy Job object for starting the pipeline.
+        dpowner_id : int
+            Points to attribute pipeline_id.
+        rawdataproducts : list of DataProduct objects
+            List of DataProduct objects owned by the pipeline corresponding
+            to raw data files.
+        confdataproducts : list of DataProduct objects
+            List of DataProduct objects owned by the pipeline corresponding
+            to configuration files.
+        logdataproducts : list of DataProduct objects
+            List of DataProduct objects owned by the pipeline corresponding
+            to logging files.
+        procdataproducts : list of DataProduct objects
+            List of DataProduct objects owned by the pipeline corresponding
+            to processed data files.
+        dataproducts : core.ChildrenProxy object
+            List of DataProduct objects owned by the pipeline.
 
         Notes
         -----
@@ -217,8 +234,9 @@ class Pipeline:
             self._dummy_task = self.task(self.software_root+'/__init__.py')
         if not hasattr(self, '_dummy_job'):
             self._dummy_job = self.dummy_task.job()
-        self._pipeline.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        if not hasattr(self, '_dpowner'):
+            self._dpowner = self._pipeline
+        super(Pipeline, self).__init__()
 
     @classmethod
     def select(cls, **kwargs):
