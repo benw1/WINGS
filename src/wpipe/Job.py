@@ -416,11 +416,17 @@ class Job(OptOwner):
         log_text : str
             Text to write.
         """
-        logpath = self.config.target.datapath + '/log_' + self.config.name + '/'
+        if self._job.config is not None:
+            logpath = self.target.datapath + '/log_' + self.config.name
+            logowner = self.config
+        else:
+            logpath = self.pipeline.pipe_root
+            logowner = self.pipeline
         logfile = self.task.name + '_j' + str(self.job_id) + '_e' + str(self.firing_event_id) + '.log'
-        log = open(logpath + logfile, "a")
+        log = open(logpath + '/' + logfile, "a")
         log.write(log_text)
         log.close()
+        logowner.dataproduct(filename=logfile, relativepath=logpath, group='raw')
 
     def submit(self):
         """
