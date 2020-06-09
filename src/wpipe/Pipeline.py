@@ -7,7 +7,7 @@ available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, sys, glob, datetime, pd, si
 from .core import ChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection, as_int, clean_path
+from .core import return_dict_of_attrs, initialize_args, wpipe_to_sqlintf_connection, as_int, clean_path
 from .core import PARSER
 from .DPOwner import DPOwner
 
@@ -441,10 +441,8 @@ class Pipeline(DPOwner):
         Refer to :meth:`pandas.DataFrame.to_json` for parameters
         """
         si.session.commit()
-        return pd.DataFrame(dict((('' if attr != 'id' else 'pipeline_') + attr, getattr(self._pipeline, attr))
-                                 for attr in dir(self._pipeline) if attr[0] != '_'
-                                 and type(getattr(self._pipeline, attr)).__module__.split('.')[0]
-                                 not in ['sqlalchemy', 'wpipe']),
+        return pd.DataFrame(dict((('' if key != 'id' else 'pipeline_') + key, val)
+                                 for key, val in return_dict_of_attrs(self._pipeline).items()),
                             index=[0]).to_json(*args, **kwargs)
 
     def attach_tasks(self, tasks_path):

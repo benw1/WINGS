@@ -24,7 +24,7 @@ __all__ = ['os', 'sys', 'datetime', 'subprocess', 'glob', 'shutil',
            'warnings', 'json', 'ast', 'np', 'pd', 'si',
            'PARSER', 'as_int', 'try_scalar', 'clean_path', 'split_path',
            'key_wpipe_separator', 'initialize_args',
-           'wpipe_to_sqlintf_connection',
+           'wpipe_to_sqlintf_connection', 'return_dict_of_attrs',
            'ChildrenProxy', 'DictLikeChildrenProxy']
 
 PARSER = si.PARSER
@@ -194,6 +194,29 @@ def wpipe_to_sqlintf_connection(cls, cls_name):
         cls._inst = super(getattr(sys.modules['wpipe'], cls_name), cls).__new__(cls)
         getattr(cls, cls_attr)._wpipe_object = cls._inst
         setattr(cls._inst, cls_attr, getattr(cls, cls_attr))
+
+
+def return_dict_of_attrs(obj):
+    """
+    Returns dictionary of attributes of object that are not private or None,
+    and which top namespace is not sqlalchemy or wpipe.
+
+    Parameters
+    ----------
+    obj
+        Input object.
+
+    Returns
+    -------
+    attrs : dict
+        Dictionary of attributes of obj.
+    """
+    si.session.commit()
+    return dict((attr, getattr(obj, attr))
+                for attr in dir(obj) if attr[0] != '_'
+                and getattr(obj, attr) is not None
+                and type(getattr(obj, attr)).__module__.split('.')[0]
+                not in ['sqlalchemy', 'wpipe'])
 
 
 class ChildrenProxy:

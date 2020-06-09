@@ -5,8 +5,8 @@ Contains the DataProduct class definition
 Please note that this module is private. The DataProduct class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import os, datetime, si
-from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path
+from .core import os, shutil, datetime, si
+from .core import return_dict_of_attrs, initialize_args, wpipe_to_sqlintf_connection, clean_path
 from .OptOwner import OptOwner
 
 __all__ = ['DataProduct']
@@ -443,6 +443,62 @@ class DataProduct(OptOwner):
         """
         return self.config.target_id
 
+    def _prep_copy_symlink(self, path, kwargs):
+        path = clean_path(path)
+        if os.path.exists(path):
+            filename = self.filename
+        else:
+            path, filename = os.path.split(path)
+        newkwargs = return_dict_of_attrs(self._dataproduct)
+        for key in list(newkwargs.keys()):
+            if key[-2:] == 'id' or key in ['type', 'timestamp']:
+                del newkwargs[key]
+        for key in kwargs.keys():
+            newkwargs[key] = kwargs[key]
+        newkwargs['filename'] = filename
+        newkwargs['relativepath'] = path
+        return newkwargs
+
+    def _copy_symlink(self, path, kwargs, func):
+        dpowner = kwargs.pop('dpowner', self.dpowner)
+        kwargs = self._prep_copy_symlink(path, kwargs)
+        filename = kwargs['filename']
+        path = kwargs['relativepath']
+        if not os.path.exists(path+'/'+filename):
+            if '.'.join(type(dpowner).__module__.split('.')[:-1]) == 'wpipe.sqlintf':
+                dpowner.dataproducts.append(si.DataProduct(**kwargs))
+                new_dp = DataProduct(dpowner.dataproducts[-1])
+            elif '.'.join(type(dpowner).__module__.split('.')[:-1]) == 'wpipe':
+                new_dp = dpowner.dataproduct(**kwargs)
+            else:
+                raise TypeError
+            func(self.path, path+'/'+filename)
+            return new_dp
+
+    def make_copy(self, path, **kwargs):
+        """
+        Create a copy at the given path of this dataproduct file.
+
+        Parameters
+        ----------
+        path : str
+            Path where to create the copy.
+        kwargs
+            Refer to :class:`DataProduct` for other parameters.
+
+        Returns
+        -------
+        new_dp : :obj:`DataProduct`
+            New associated dataproduct.
+
+        Notes
+        -----
+        A dpowner argument must be given to the kwargs to associate the new
+        dataproduct to a different dpowner. Otherwise, it will be associated
+        to this dataproduct owner.
+        """
+        return self._copy_symlink(path, kwargs, func=shutil.copy2)
+
     def symlink(self, path, **kwargs):
         """
         Create a symbolic link at the given path to this dataproduct file.
@@ -454,23 +510,15 @@ class DataProduct(OptOwner):
         kwargs
             Refer to :class:`DataProduct` for other parameters.
 
+        Returns
+        -------
+        new_dp : :obj:`DataProduct`
+            New associated dataproduct.
+
         Notes
         -----
-        A dpowner argument must be given to the kwargs to avoid a TypeError.
+        A dpowner argument must be given to the kwargs to associate the new
+        dataproduct to a different dpowner. Otherwise, it will be associated
+        to this dataproduct owner.
         """
-        dpowner = kwargs.pop('dpowner', self.dpowner)
-        path = clean_path(path)
-        if os.path.exists(path):
-            filename = self.filename
-        else:
-            path, filename = os.path.split(path)
-        if not os.path.exists(path+'/'+filename):
-            kwargs['filename'] = filename
-            kwargs['relativepath'] = path
-            if '.'.join(type(dpowner).__module__.split('.')[:-1]) == 'wpipe.sqlintf':
-                dpowner.dataproducts.append(si.DataProduct(**kwargs))
-            elif '.'.join(type(dpowner).__module__.split('.')[:-1]) == 'wpipe':
-                dpowner.dataproduct(**kwargs)
-            else:
-                raise TypeError
-            os.symlink(self.path, path+'/'+filename)
+        return self._copy_symlink(path, kwargs, func=os.symlink)

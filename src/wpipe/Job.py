@@ -7,7 +7,8 @@ available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import subprocess, datetime, si
 from .core import ChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection
+from .core import initialize_args, wpipe_to_sqlintf_connection, as_int
+from .core import PARSER
 from .OptOwner import OptOwner
 
 __all__ = ['Job']
@@ -22,7 +23,7 @@ class Job(OptOwner):
             Job(event, configuration=event.config,
                 task=configuration.dummy_task, node=event.parent_job.node,
                 state='any', options={})
-            Job(keyid)
+            Job(keyid=PARSER.job_id)
             Job(_job)
 
         When __new__ is called, it queries the database for an existing
@@ -38,6 +39,10 @@ class Job(OptOwner):
         can take as sole argument either:
          - the primary key id of the corresponding `jobs` table row
          - the `sqlintf.Job` object interfacing that table row
+        It can also be called without argument if the python script importing
+        wpipe was ran with the command-line argument --job/-j referring to a
+        valid job primary key id, in which case the consequently constructed
+        job will correspond to that job.
 
         After the instantiation of __new__ is completed, if a dictionary of
         options was given to the constructor, the __init__ method constructs
@@ -120,6 +125,9 @@ class Job(OptOwner):
            the job run,
          - and lastly, a Configuration object representing a target and its
            configuration which the job runs with.
+        Alternatively, especially when writing tasks for the pipeline, the Job
+        object running that task can be accessed from within by simply using
+        the Job constructor without arguments.
 
         Every Pipeline objects are constructed with a default dummy job meant
         to start the pipeline. This particular job constitutes the only case
@@ -158,7 +166,7 @@ class Job(OptOwner):
     """
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
-        cls._job = args[0] if len(args) == 1 else None
+        cls._job = args[0] if len(args) else as_int(PARSER.parse_known_args()[0].job_id)
         if not isinstance(cls._job, si.Job):
             keyid = kwargs.get('id', cls._job)
             if isinstance(keyid, int):
@@ -426,7 +434,7 @@ class Job(OptOwner):
         log = open(logpath + '/' + logfile, "a")
         log.write(log_text)
         log.close()
-        logowner.dataproduct(filename=logfile, relativepath=logpath, group='raw')
+        logowner.dataproduct(filename=logfile, relativepath=logpath, group='log')
 
     def submit(self):
         """
@@ -434,12 +442,7 @@ class Job(OptOwner):
         """
         my_pipe = self.task.pipeline
         executable = my_pipe.software_root + '/' + self.task.name
-        # subprocess.Popen(
-        #     [executable, '-p', str(self.pipeline_id), '-u', str(self.user_name), '-j', str(self.job_id)],
-        #     cwd=my_pipe.pipe_root)
-        # # This line will work with an SQL backbone, but NOT hdf5,
-        # # as 2 tasks running on the same hdf5 file will collide!
-        subprocess.run(
+        subprocess.Popen(
             [executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name), '-j', str(self.job_id)],
             cwd=my_pipe.pipe_root)
         # Let's send stuff to slurm
@@ -448,6 +451,7 @@ class Job(OptOwner):
         # sql_pbs(self.task,self.job_id,self.firing_event_id)
         self._job.starttime = datetime.datetime.utcnow()
         self._job.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
 
     def actualize_endtime(self):
         """
@@ -455,3 +459,4 @@ class Job(OptOwner):
         """
         self._job.endtime = datetime.datetime.utcnow()
         self._job.timestamp = datetime.datetime.utcnow()
+        si.session.commit()
