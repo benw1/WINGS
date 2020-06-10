@@ -20,4 +20,3 @@ if __name__ == '__main__':
     my_job.logprint("Edited file to make it proc")
     opt_complete = my_conf.target.option("Configuration '"+my_conf.name+"' completed")
     opt_complete.value = True
-    my_job.actualize_endtime()

@@ -140,6 +140,12 @@ __all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
            'wingspipe']
 
 
+@atexit.register
+def actualize_job_endtime():
+    if PARSER.parse_known_args()[0].job_id is not None:
+        Job().actualize_endtime()
+
+
 DefaultUser = User()
 """
 User object: User object constructed at wpipe importation (see User doc Notes)
@@ -215,7 +221,6 @@ Node object: Node object constructed at wpipe importation (see Node doc Notes)
 #             'source /nobackupp11/bwilli24/miniconda3/bin/activate STIPS && ' +
 #             executable + ' -e ' + eidstr + ' -j ' + jidstr + '\n')
 #     subprocess.run(['qsub', pbsfile], cwd=my_config.confpath)
-
 
 def wingspipe(args=None):
     """

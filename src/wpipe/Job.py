@@ -415,7 +415,7 @@ class Job(OptOwner):
         from .Event import Event
         return Event(self, *args, **kwargs)
 
-    def logprint(self, log_text):
+    def logprint(self, log_text=None):
         """
         Log given text in a log dataproduct.
 
@@ -430,11 +430,13 @@ class Job(OptOwner):
         else:
             logpath = self.pipeline.pipe_root
             logowner = self.pipeline
-        logfile = self.task.name + '_j' + str(self.job_id) + '_e' + str(self.firing_event_id) + '.log'
-        log = open(logpath + '/' + logfile, "a")
-        log.write(log_text)
-        log.close()
-        logowner.dataproduct(filename=logfile, relativepath=logpath, group='log')
+        logfile = self.task.name + '_j' + str(self.job_id) + '.log'
+        log_dp = logowner.dataproduct(filename=logfile, relativepath=logpath, group='log')
+        if log_text is not None:
+            with log_dp.open("a") as log:
+                log.write(log_text)
+                log.write('\n')
+        return log_dp
 
     def submit(self):
         """
@@ -442,13 +444,19 @@ class Job(OptOwner):
         """
         my_pipe = self.task.pipeline
         executable = my_pipe.software_root + '/' + self.task.name
-        subprocess.Popen(
-            [executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name), '-j', str(self.job_id)],
-            cwd=my_pipe.pipe_root)
+        with self.logprint().open("a") as stdouterr:
+            subprocess.Popen([executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name),
+                              '-j', str(self.job_id)], cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
         # Let's send stuff to slurm
         # sql_hyak(self.task,self.job_id,self.firing_event_id)
         # Let's send stuff to pbs
         # sql_pbs(self.task,self.job_id,self.firing_event_id)
+        self.actualize_starttime()
+
+    def actualize_starttime(self):
+        """
+        Actualize the starttime attribute to now.
+        """
         self._job.starttime = datetime.datetime.utcnow()
         self._job.timestamp = datetime.datetime.utcnow()
         si.session.commit()

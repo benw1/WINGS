@@ -522,3 +522,19 @@ class DataProduct(OptOwner):
         to this dataproduct owner.
         """
         return self._copy_symlink(path, kwargs, func=os.symlink)
+
+    def open(self, *args, **kwargs):
+        """
+        Open dataproduct file and returns a stream.
+
+        Parameters
+        ----------
+        args, kwargs
+            Refer to built-in function :func:`open`
+
+        Returns
+        -------
+        file
+            File object
+        """
+        return open(self.path, *args, **kwargs)

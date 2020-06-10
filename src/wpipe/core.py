@@ -14,6 +14,7 @@ import shutil
 import warnings
 import json
 import ast
+import atexit
 
 import numpy as np
 import pandas as pd
@@ -21,7 +22,7 @@ import pandas as pd
 from . import sqlintf as si
 
 __all__ = ['os', 'sys', 'datetime', 'subprocess', 'glob', 'shutil',
-           'warnings', 'json', 'ast', 'np', 'pd', 'si',
+           'warnings', 'json', 'ast', 'atexit', 'np', 'pd', 'si',
            'PARSER', 'as_int', 'try_scalar', 'clean_path', 'split_path',
            'key_wpipe_separator', 'initialize_args',
            'wpipe_to_sqlintf_connection', 'return_dict_of_attrs',
@@ -59,8 +60,8 @@ def as_int(string):
     """
     try:
         return int(string)
-    except ValueError:
-        return
+    except (ValueError, TypeError):
+        return string
 
 
 def try_scalar(string):
