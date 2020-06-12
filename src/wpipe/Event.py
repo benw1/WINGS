@@ -310,6 +310,5 @@ class Event(OptOwner):
                 # print("HERE",self.name,mask.name,self.value,mask.value,"DONE3")
                 if (self.name == mask.name) & ((self.value == mask.value) | (mask.value == '*')):
                     new_job = self.fired_job(task, configuration)
-                    print(task.name, "-j", new_job.job_id)
                     new_job.submit()  # pipeline should be able to run stuff and keep track if it completes
                     return

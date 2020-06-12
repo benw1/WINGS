@@ -5,6 +5,7 @@ Contains the core import statements and developing tools of Wpipe
 Please note that this module is private. All functions and objects
 are available in the main ``wpipe`` namespace - use that instead.
 """
+import importlib
 import os
 import sys
 import datetime
@@ -21,11 +22,11 @@ import pandas as pd
 
 from . import sqlintf as si
 
-__all__ = ['os', 'sys', 'datetime', 'subprocess', 'glob', 'shutil',
-           'warnings', 'json', 'ast', 'atexit', 'np', 'pd', 'si',
+__all__ = ['importlib', 'os', 'sys', 'datetime', 'subprocess', 'glob',
+           'shutil', 'warnings', 'json', 'ast', 'atexit', 'np', 'pd', 'si',
            'PARSER', 'as_int', 'try_scalar', 'clean_path', 'split_path',
            'key_wpipe_separator', 'initialize_args',
-           'wpipe_to_sqlintf_connection', 'return_dict_of_attrs',
+           'wpipe_to_sqlintf_connection', 'return_dict_of_attrs', 'to_json',
            'ChildrenProxy', 'DictLikeChildrenProxy']
 
 PARSER = si.PARSER
@@ -218,6 +219,22 @@ def return_dict_of_attrs(obj):
                 and getattr(obj, attr) is not None
                 and type(getattr(obj, attr)).__module__.split('.')[0]
                 not in ['sqlalchemy', 'wpipe'])
+
+
+def to_json(obj, *args, **kwargs):
+    """
+    Convert the object dictionary of attributes to a JSON string.
+
+    Parameters
+    ----------
+    obj
+        Input object.
+    args, kwargs
+        Refer to :meth:`pandas.DataFrame.to_json` for parameters
+    """
+    si.session.commit()
+    pd.DataFrame(return_dict_of_attrs(obj),
+                 index=[0]).to_json(*args, **kwargs)
 
 
 class ChildrenProxy:

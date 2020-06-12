@@ -5,9 +5,9 @@ Contains the Pipeline class definition
 Please note that this module is private. The Pipeline class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import os, sys, glob, datetime, pd, si
+from .core import os, sys, glob, datetime, json, si
 from .core import ChildrenProxy
-from .core import return_dict_of_attrs, initialize_args, wpipe_to_sqlintf_connection, as_int, clean_path
+from .core import to_json, initialize_args, wpipe_to_sqlintf_connection, as_int, clean_path
 from .core import PARSER
 from .DPOwner import DPOwner
 
@@ -168,6 +168,10 @@ class Pipeline(DPOwner):
         # checking if given argument is sqlintf object or existing id
         cls._pipeline = args[0] if len(args) else as_int(PARSER.parse_known_args()[0].pipeline)
         if not isinstance(cls._pipeline, si.Pipeline):
+            if isinstance(cls._pipeline, str):
+                if os.path.isfile(cls._pipeline+'/.wpipe/pipe.conf'):
+                    with open(cls._pipeline+'/.wpipe/pipe.conf', 'r') as jsonfile:
+                        cls._pipeline = int(json.load(jsonfile)[0]['id'])
             keyid = kwargs.get('id', cls._pipeline)
             if isinstance(keyid, int):
                 cls._pipeline = si.session.query(si.Pipeline).filter_by(id=keyid).one()
@@ -208,6 +212,13 @@ class Pipeline(DPOwner):
                                                 config_root=config_root,
                                                 description=description)
                     user._user.pipelines.append(cls._pipeline)
+                    if not os.path.isdir(cls._pipeline.pipe_root+'/.wpipe'):
+                        os.mkdir(cls._pipeline.pipe_root+'/.wpipe')
+                    if not os.path.isfile(cls._pipeline.pipe_root+'/.wpipe/pipe.conf'):
+                        to_json(cls._pipeline, cls._pipeline.pipe_root+'/.wpipe/pipe.conf', orient='records')
+                    cls._pipeline.dataproducts.append(si.DataProduct(filename='pip.conf',
+                                                                     group='conf',
+                                                                     relativepath=cls._pipeline.pipe_root+'/.wpipe'))
                     if not os.path.isdir(cls._pipeline.software_root):
                         os.mkdir(cls._pipeline.software_root)
                     if not os.path.isfile(cls._pipeline.software_root+'/__init__.py'):
@@ -433,17 +444,6 @@ class Pipeline(DPOwner):
         """
         from .Task import Task
         return Task(self, *args, **kwargs)
-
-    def to_json(self, *args, **kwargs):
-        """
-        Convert the pipeline to a JSON string.
-
-        Refer to :meth:`pandas.DataFrame.to_json` for parameters
-        """
-        si.session.commit()
-        return pd.DataFrame(dict((('' if key != 'id' else 'pipeline_') + key, val)
-                                 for key, val in return_dict_of_attrs(self._pipeline).items()),
-                            index=[0]).to_json(*args, **kwargs)
 
     def attach_tasks(self, tasks_path):
         """
