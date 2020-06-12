@@ -3,7 +3,8 @@
 Contains the DPOwner class definition
 
 Please note that this module is private. The DPOwnwer class is not meant to
-be used by itself, but through its inherited classes Input and Configurations.
+be used by itself, but through its inherited classes Pipeline, Input and
+Configuration.
 """
 from .core import datetime, si
 from .core import ChildrenProxy
@@ -16,9 +17,9 @@ class DPOwner:
         Represents a dataproduct owner.
 
         The DPOwner class is a special base class from which are inherited
-        the 2 classes Input and Configuration to give them the capability
-        to parent dataproducts. Please refer to their respective documentation
-        for specific instructions.
+        the 3 classes Pipeline, Input and Configuration to give them the
+        capability to parent dataproducts. Please refer to their respective
+        documentation for specific instructions.
     """
     def __init__(self):
         if not hasattr(self, '_dpowner'):
@@ -32,8 +33,8 @@ class DPOwner:
     @property
     def dpowner_id(self):
         """
-        int: Points to attribute input_id/config_id depending on type of
-        dpowner.
+        int: Points to attribute pipeline_id/input_id/config_id depending on
+        type of dpowner.
         """
         return self._dpowner.id
 

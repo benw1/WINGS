@@ -25,8 +25,8 @@ class Event(OptOwner):
     jargs = sa.Column(sa.String(256))
     value = sa.Column(sa.String(256))
     parent_job_id = sa.Column(sa.Integer, sa.ForeignKey('jobs.id'))
-    parent_job = orm.relationship("Job", primaryjoin="Event.parent_job_id==Job.id", back_populates="child_events")
-    fired_jobs = orm.relationship("Job", primaryjoin="Event.id==Job.firing_event_id", back_populates="firing_event")
+    parent_job = orm.relationship("Job", back_populates="child_events", foreign_keys=[parent_job_id])
+    fired_jobs = orm.relationship("Job", back_populates="firing_event", primaryjoin="Event.id==Job.firing_event_id")
     __mapper_args__ = {
         'polymorphic_identity': 'event',
     }

@@ -114,6 +114,9 @@ DefaultUser
 DefaultNode
     Node object constructed at wpipe importation (see Node doc Notes)
 
+wingspipe
+    Function that runs the wingspipe executable functionalities
+
 __version__
     Wpipe version string
 """
@@ -135,7 +138,8 @@ from .Event import Event
 
 __all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
            'Option', 'Target', 'Configuration', 'Parameter', 'DataProduct',
-           'Task', 'Mask', 'Job', 'Event']
+           'Task', 'Mask', 'Job', 'Event', 'DefaultUser', 'DefaultNode',
+           'wingspipe']
 
 
 DefaultUser = User()
@@ -213,3 +217,53 @@ Node object: Node object constructed at wpipe importation (see Node doc Notes)
 #             'source /nobackupp11/bwilli24/miniconda3/bin/activate STIPS && ' +
 #             executable + ' -e ' + eidstr + ' -j ' + jidstr + '\n')
 #     subprocess.run(['qsub', pbsfile], cwd=my_config.confpath)
+
+
+def wingspipe(args=None):
+    """
+    Function that runs the wingspipe executable functionalities.
+
+    Parameters
+    ----------
+    args : list
+        List of command-line arguments the executable would use - defaults
+        to sys.argv[1:].
+
+    Notes
+    -----
+    This function is called in the executable wingspipe installed with Wpipe.
+    By default, using it in a python environment reads in the command-line
+    arguments given to the script that calls it. This can be changed by giving
+    the function parameter args the list of arguments the executable would use
+    as a list pre-split string as in this example:
+
+    >>> wingspipe(['-w', './tasks',
+    >>>            '-d', 'A new pipeline',
+    >>>            '-i', './inputs',
+    >>>            '-c', './default.conf',
+    >>>            '-r'])
+    """
+    if args is None:
+        args = sys.argv[1:]
+    parser = si.argparse.ArgumentParser(parents=[PARSER], add_help=False)
+    parser.add_argument('--tasks_path', '-w', dest='tasks_path', default=None,
+                        help='Path to pipeline tasks to be registered')
+    parser.add_argument('--description', '-d', dest='description', default='',
+                        help='Optional description of this pipeline')
+    parser.add_argument('--inputs', '-i', type=str, dest='inputs_path',
+                        help='Path to directory with input lists')
+    parser.add_argument('--config', '-c', type=str, dest='config_file',
+                        help='Configuration File Path')
+    parser.add_argument('--run', '-r', dest='run', action='store_true',
+                        help='Run the pipeline')
+    args = parser.parse_args(args)
+    if os.path.isfile('pipe.conf'):
+        with open('pipe.conf', 'r') as jsonfile:
+            my_pipe = Pipeline(json.load(jsonfile)[0]['pipeline_id'])
+    else:
+        my_pipe = Pipeline(description=args.description)
+    my_pipe.attach_tasks(args.tasks_path)
+    my_pipe.attach_inputs(args.inputs_path, args.config_file)
+    my_pipe.to_json('pipe.conf', orient='records')
+    if args.run:
+        my_pipe.run_pipeline()

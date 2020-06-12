@@ -1,31 +1,6 @@
 #! /usr/bin/env python
-import wpipe as wp
-
-
-def parse_all():
-    parser = wp.PARSER
-    parser.add_argument('--tasks_path', '-w', dest='tasks_path', default=None,
-                        help='Path to pipeline tasks to be registered')
-    parser.add_argument('--description', '-d', dest='description', default='',
-                        help='Optional description of this pipeline')
-    parser.add_argument('--inputs', '-i', type=str, dest='inputs_path',
-                        help='Path to directory with input lists')
-    parser.add_argument('--config', '-c', type=str, dest='config_file',
-                        help='Configuration File Path')
-    parser.add_argument('--run', '-r', dest='run', action='store_true',
-                        help='Run the pipeline')
-    return parser.parse_args()
+from wpipe import wingspipe
 
 
 if __name__ == '__main__':
-    args = parse_all()
-    if wp.os.path.isfile('pipe.conf'):
-        with open('pipe.conf', 'r') as jsonfile:
-            my_pipe = wp.Pipeline(wp.json.load(jsonfile)[0]['pipeline_id'])
-    else:
-        my_pipe = wp.Pipeline(description=args.description)
-    my_pipe.attach_tasks(args.tasks_path)
-    my_pipe.attach_inputs(args.inputs_path, args.config_file)
-    my_pipe.to_json('pipe.conf', orient='records')
-    if args.run:
-        my_pipe.run_pipeline()
+    wingspipe()
