@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 """
-sqlintf
-=====
+Description
+-----------
+
 Provides the tools to handle the SQL interface with the database.
 
 How to use

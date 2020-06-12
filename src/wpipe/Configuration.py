@@ -130,7 +130,7 @@ class Configuration(DPOwner):
         dataproducts : core.ChildrenProxy object
             List of DataProduct objects owned by the configuration.
 
-        How to use
+        Notes
         ----------
         Configuration objects are primarily associated to a single target from
         the pool of targets that the pipeline considers. Their construction is

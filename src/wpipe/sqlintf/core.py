@@ -45,8 +45,6 @@ elif PARSER.parse_known_args()[0].test:
 else:
     ENGINE_URL = 'mysql://wpipe:W£|£3u53r@localhost/server'
 
-# engine = None
-# try:
 engine = sa.create_engine(ENGINE_URL)  # , echo=True)
 """
 sqlalchemy.engine.base.Engine object: handles the connection to the database.

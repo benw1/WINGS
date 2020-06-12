@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 """
-Wpipe
-=====
+
+Description
+-----------
+
 Provides a suite of classes to deploy the WINGS pipeline functionalities.
 
 How to use
