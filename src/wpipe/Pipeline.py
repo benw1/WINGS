@@ -481,6 +481,6 @@ class Pipeline(DPOwner):
         """
         Start the pipeline run.
         """
-        self.dummy_job.actualize_starttime()
+        self.dummy_job._starting_todo(logprint=False)
         self.dummy_job.child_event('__init__').fire()
-        self.dummy_job.actualize_endtime()
+        self.dummy_job._ending_todo()

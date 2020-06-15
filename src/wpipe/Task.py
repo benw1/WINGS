@@ -74,6 +74,10 @@ class Task:
             ###BEN###
         is_exclusive : int
             ###BEN###
+        executable : str
+            Path where the script the task points to is located.
+        last_modification_timestamp : datetime.datetime object
+            Timestamp of last modification time of the task script.
         pipeline_id : int
             Primary key id of the table row of parent pipeline.
         pipeline : Pipeline object
@@ -221,6 +225,21 @@ class Task:
         """
         si.session.commit()
         return self._task.is_exclusive
+
+    @property
+    def executable(self):
+        """
+        str: Path where the script the task points to is located.
+        """
+        return self.pipeline.software_root + '/' + self.name
+
+    @property
+    def last_modification_timestamp(self):
+        """
+        :obj:`datetime.datetime`: Timestamp of last modification time of the
+        task script.
+        """
+        return datetime.datetime.fromtimestamp(os.path.getmtime(self.executable))
 
     @property
     def pipeline_id(self):

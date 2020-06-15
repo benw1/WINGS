@@ -20,6 +20,7 @@ class Job(OptOwner):
     """
     __tablename__ = 'jobs'
     id = sa.Column(sa.Integer, sa.ForeignKey('optowners.id'), primary_key=True)
+    attempt = sa.Column(sa.Integer)
     state = sa.Column(sa.String(256))
     starttime = sa.Column(sa.TIMESTAMP)
     endtime = sa.Column(sa.TIMESTAMP)

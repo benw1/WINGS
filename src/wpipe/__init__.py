@@ -151,14 +151,8 @@ Node object: Node object constructed at wpipe importation (see Node doc Notes)
 
 if PARSER.parse_known_args()[0].job_id is not None:
     ThisJob = Job()
-    sys.stdout = sys.stderr = ThisJob.logprint().open("a")
-    ThisJob.actualize_starttime()
-
-
-@atexit.register
-def actualize_job_endtime():
-    if PARSER.parse_known_args()[0].job_id is not None:
-        Job().actualize_endtime()
+    ThisJob._starting_todo()
+    atexit.register(ThisJob._ending_todo)
 
 
 # def sql_hyak(task, job_id, event_id):
