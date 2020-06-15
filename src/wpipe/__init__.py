@@ -141,7 +141,6 @@ __all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
            'Task', 'Mask', 'Job', 'Event', 'DefaultUser', 'DefaultNode',
            'wingspipe']
 
-
 DefaultUser = User()
 """
 User object: User object constructed at wpipe importation (see User doc Notes)
@@ -151,6 +150,11 @@ DefaultNode = Node()
 """
 Node object: Node object constructed at wpipe importation (see Node doc Notes)
 """
+
+if PARSER.parse_known_args()[0].job_id is not None:
+    ThisJob = Job()
+    ThisJob._starting_todo()
+    atexit.register(ThisJob._ending_todo)
 
 
 # def sql_hyak(task, job_id, event_id):
@@ -218,7 +222,6 @@ Node object: Node object constructed at wpipe importation (see Node doc Notes)
 #             executable + ' -e ' + eidstr + ' -j ' + jidstr + '\n')
 #     subprocess.run(['qsub', pbsfile], cwd=my_config.confpath)
 
-
 def wingspipe(args=None):
     """
     Function that runs the wingspipe executable functionalities.
@@ -243,8 +246,9 @@ def wingspipe(args=None):
     >>>            '-c', './default.conf',
     >>>            '-r'])
     """
-    if args is None:
-        args = sys.argv[1:]
+    if args is not None:
+        sys.argv += args
+    importlib.reload(sys.modules[__name__])
     parser = si.argparse.ArgumentParser(parents=[PARSER], add_help=False)
     parser.add_argument('--tasks_path', '-w', dest='tasks_path', default=None,
                         help='Path to pipeline tasks to be registered')
@@ -256,14 +260,9 @@ def wingspipe(args=None):
                         help='Configuration File Path')
     parser.add_argument('--run', '-r', dest='run', action='store_true',
                         help='Run the pipeline')
-    args = parser.parse_args(args)
-    if os.path.isfile('pipe.conf'):
-        with open('pipe.conf', 'r') as jsonfile:
-            my_pipe = Pipeline(json.load(jsonfile)[0]['pipeline_id'])
-    else:
-        my_pipe = Pipeline(description=args.description)
+    args = parser.parse_args()
+    my_pipe = Pipeline(description=args.description)
     my_pipe.attach_tasks(args.tasks_path)
     my_pipe.attach_inputs(args.inputs_path, args.config_file)
-    my_pipe.to_json('pipe.conf', orient='records')
     if args.run:
         my_pipe.run_pipeline()

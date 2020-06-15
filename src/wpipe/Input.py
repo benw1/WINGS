@@ -183,7 +183,11 @@ class Input(DPOwner):
     def _copy_data(cls, path):
         if hasattr(cls, '_input'):
             if hasattr(cls._input, 'rawspath'):
-                shutil.copy2(path, cls._input.rawspath + '/')
+                if os.path.isfile(path):
+                    shutil.copy2(path, cls._input.rawspath + '/')
+                elif os.path.isdir(path):
+                    for filepath in glob.glob(path+'/*'):
+                        shutil.copy2(filepath, cls._input.rawspath + '/')
 
     def _verify_raws(self):
         for filename in glob.glob(self.rawspath+'/*'):

@@ -115,6 +115,7 @@ class Event(OptOwner):
         owns an option named 'config_id' in which case the job is owned by the
         corresponding configuration.
     """
+
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._event = args[0] if len(args) else None
@@ -296,20 +297,44 @@ class Event(OptOwner):
     def fire(self):
         """
         Fire the task associated to this event.
+
+        Notes
+        -----
+        If this task was already previously fired, the method check if its
+        job has completed. In the case it did, it calls the fire method of
+        each child event of that jobs. In the case, it did not complete, it
+        either fires the task again if the job did not complete due to an
+        error, or it does nothing if the job is just still running.
         """
-        # print("HERE ",self.name," DONE")
-        try:
-            from .Configuration import Configuration
-            configuration = Configuration(self.options['config_id'])
-        except KeyError:
-            configuration = self.config
-        # print(self.parent_job.pipeline_id)
-        for task in self.pipeline.tasks:
-            # print(task.task_id)
-            for mask in task.masks:
-                # print("HERE",self.name,mask.name,self.value,mask.value,"DONE3")
-                if (self.name == mask.name) & ((self.value == mask.value) | (mask.value == '*')):
-                    new_job = self.fired_job(task, configuration)
-                    print(task.name, "-j", new_job.job_id)
-                    new_job.submit()  # pipeline should be able to run stuff and keep track if it completes
-                    return
+        if len(self.fired_jobs):
+            fired_job = self.fired_jobs[-1]
+            if fired_job.has_completed:
+                if len(fired_job.child_events):
+                    for child_event in fired_job.child_events:
+                        child_event.fire()
+                else:
+                    print()  # that branch has completed
+            else:
+                if fired_job.is_active:
+                    print()  # fired_job keep going
+                else:
+                    if fired_job.task_changed:
+                        new_job = self.fired_job(fired_job.task, fired_job.config, fired_job.attempt + 1)
+                        new_job.submit()
+                    else:
+                        print()  # task will produce same error
+        else:
+            try:
+                from .Configuration import Configuration
+                configuration = Configuration(self.options['config_id'])
+            except KeyError:
+                configuration = self.config
+            for task in self.pipeline.tasks:
+                for mask in task.masks:
+                    if (self.name == mask.name) & ((self.value == mask.value) | (mask.value == '*')):
+                        new_job = self.fired_job(task, configuration)
+                        new_job.submit()  # pipeline should be able to run stuff and keep track if it completes
+                        return
+            if 'new_job' not in locals():
+                raise ValueError(
+                    "No mask corresponding to event signature {name='%s',value='%s'}" % (self.name, self.value))

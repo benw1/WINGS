@@ -32,8 +32,8 @@ class DataProduct(OptOwner):
     pointing_angle = sa.Column(sa.Float)
     dpowner_id = sa.Column(sa.Integer, sa.ForeignKey('dpowners.id'))
     dpowner = orm.relationship("DPOwner", back_populates="dataproducts")
-    config_id = input_id = orm.synonym("dpowner_id")
-    config = input = orm.synonym("dpowner")
+    config_id = input_id = pipeline_id = orm.synonym("dpowner_id")
+    config = input = pipeline = orm.synonym("dpowner")
     __mapper_args__ = {
         'polymorphic_identity': 'dataproduct',
     }

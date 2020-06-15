@@ -5,6 +5,7 @@ Contains the core import statements and developing tools of Wpipe
 Please note that this module is private. All functions and objects
 are available in the main ``wpipe`` namespace - use that instead.
 """
+import importlib
 import os
 import sys
 import datetime
@@ -14,17 +15,18 @@ import shutil
 import warnings
 import json
 import ast
+import atexit
 
 import numpy as np
 import pandas as pd
 
 from . import sqlintf as si
 
-__all__ = ['os', 'sys', 'datetime', 'subprocess', 'glob', 'shutil',
-           'warnings', 'json', 'ast', 'np', 'pd', 'si',
+__all__ = ['importlib', 'os', 'sys', 'datetime', 'subprocess', 'glob',
+           'shutil', 'warnings', 'json', 'ast', 'atexit', 'np', 'pd', 'si',
            'PARSER', 'as_int', 'try_scalar', 'clean_path', 'split_path',
            'key_wpipe_separator', 'initialize_args',
-           'wpipe_to_sqlintf_connection',
+           'wpipe_to_sqlintf_connection', 'return_dict_of_attrs', 'to_json',
            'ChildrenProxy', 'DictLikeChildrenProxy']
 
 PARSER = si.PARSER
@@ -59,8 +61,8 @@ def as_int(string):
     """
     try:
         return int(string)
-    except ValueError:
-        return
+    except (ValueError, TypeError):
+        return string
 
 
 def try_scalar(string):
@@ -194,6 +196,45 @@ def wpipe_to_sqlintf_connection(cls, cls_name):
         cls._inst = super(getattr(sys.modules['wpipe'], cls_name), cls).__new__(cls)
         getattr(cls, cls_attr)._wpipe_object = cls._inst
         setattr(cls._inst, cls_attr, getattr(cls, cls_attr))
+
+
+def return_dict_of_attrs(obj):
+    """
+    Returns dictionary of attributes of object that are not private or None,
+    and which top namespace is not sqlalchemy or wpipe.
+
+    Parameters
+    ----------
+    obj
+        Input object.
+
+    Returns
+    -------
+    attrs : dict
+        Dictionary of attributes of obj.
+    """
+    si.session.commit()
+    return dict((attr, getattr(obj, attr))
+                for attr in dir(obj) if attr[0] != '_'
+                and getattr(obj, attr) is not None
+                and type(getattr(obj, attr)).__module__.split('.')[0]
+                not in ['sqlalchemy', 'wpipe'])
+
+
+def to_json(obj, *args, **kwargs):
+    """
+    Convert the object dictionary of attributes to a JSON string.
+
+    Parameters
+    ----------
+    obj
+        Input object.
+    args, kwargs
+        Refer to :meth:`pandas.DataFrame.to_json` for parameters
+    """
+    si.session.commit()
+    pd.DataFrame(return_dict_of_attrs(obj),
+                 index=[0]).to_json(*args, **kwargs)
 
 
 class ChildrenProxy:
