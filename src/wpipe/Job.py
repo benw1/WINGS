@@ -491,14 +491,6 @@ class Job(OptOwner):
         # Let's send stuff to pbs
         # sql_pbs(self.task,self.job_id,self.firing_event_id)
 
-    def actualize_starttime(self):
-        """
-        Actualize the starttime attribute to now.
-        """
-        if self._job.starttime is None:
-            self._job.starttime = datetime.datetime.utcnow()
-            self._job.timestamp = datetime.datetime.utcnow()
-
     def _starting_todo(self, logprint=True):
         if logprint:
             sys.stdout = sys.stderr = self.logprint().open("a")
