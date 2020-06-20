@@ -174,7 +174,10 @@ class Pipeline(DPOwner):
                         cls._pipeline = int(json.load(jsonfile)[0]['id'])
             keyid = kwargs.get('id', cls._pipeline)
             if isinstance(keyid, int):
-                cls._pipeline = si.session.query(si.Pipeline).filter_by(id=keyid).one()
+                try:
+                    cls._pipeline = si.session.query(si.Pipeline).filter_by(id=keyid).one()
+                except si.orm.exc.NoResultFound:
+                    raise(si.orm.exc.NoResultFound("No row was found for one(): make sure the .wpipe/ directory was removed"))
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=8)
