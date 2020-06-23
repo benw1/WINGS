@@ -5,9 +5,9 @@ Contains the Pipeline class definition
 Please note that this module is private. The Pipeline class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import os, sys, glob, datetime, json, si
+from .core import os, sys, glob, shutil, datetime, json, si
 from .core import ChildrenProxy
-from .core import to_json, initialize_args, wpipe_to_sqlintf_connection, as_int, clean_path
+from .core import to_json, initialize_args, wpipe_to_sqlintf_connection, as_int, clean_path, remove_path
 from .core import PARSER
 from .DPOwner import DPOwner
 
@@ -279,14 +279,14 @@ class Pipeline(DPOwner):
         """
         str: Name of the pipeline.
         """
-        si.session.commit()
+        si.commit()
         return self._pipeline.name
 
     @name.setter
     def name(self, name):
         self._pipeline.name = name
         self._pipeline.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def pipeline_id(self):
@@ -300,7 +300,7 @@ class Pipeline(DPOwner):
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.session.commit()
+        si.commit()
         return self._pipeline.timestamp
 
     @property
@@ -347,14 +347,14 @@ class Pipeline(DPOwner):
         """
         str: Description of the pipeline.
         """
-        si.session.commit()
+        si.commit()
         return self._pipeline.description
 
     @description.setter
     def description(self, description):
         self._pipeline.description = description
         self._pipeline.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def user_id(self):
@@ -484,3 +484,19 @@ class Pipeline(DPOwner):
         self.dummy_job._starting_todo(logprint=False)
         self.dummy_job.child_event('__init__').fire()
         self.dummy_job._ending_todo()
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        for item in self.tasks:
+            item.delete()
+        for item in self.inputs:
+            item.delete()
+        super(Pipeline, self).delete()
+        remove_path(self.software_root+'/__pycache__', hard=True)
+        remove_path(self.software_root)
+        remove_path(self.input_root)
+        remove_path(self.data_root)
+        remove_path(self.config_root)
+        remove_path(self.pipe_root+'/.wpipe', hard=True)

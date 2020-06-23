@@ -7,7 +7,7 @@ available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, glob, shutil, datetime, si
 from .core import ChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path
+from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path, remove_path
 from .DPOwner import DPOwner
 
 __all__ = ['Input']
@@ -210,14 +210,14 @@ class Input(DPOwner):
         """
         str: Name of the input.
         """
-        si.session.commit()
+        si.commit()
         return self._input.name
 
     @name.setter
     def name(self, name):
         self._input.name = name
         self._input.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def input_id(self):
@@ -295,3 +295,13 @@ class Input(DPOwner):
         if config_file is not None:
             shutil.copy2(config_file, self.confpath)
             self.dataproduct(filename=os.path.split(config_file)[-1], relativepath=self.confpath, group='conf')
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        for item in self.targets:
+            item.delete()
+        super(Input, self).delete()
+        remove_path(self.confpath)
+        remove_path(self.rawspath)

@@ -8,6 +8,7 @@ are available in the main ``wpipe`` namespace - use that instead.
 import importlib
 import os
 import sys
+import types
 import datetime
 import subprocess
 import glob
@@ -22,10 +23,10 @@ import pandas as pd
 
 from . import sqlintf as si
 
-__all__ = ['importlib', 'os', 'sys', 'datetime', 'subprocess', 'glob',
+__all__ = ['importlib', 'os', 'sys', 'types', 'datetime', 'subprocess', 'glob',
            'shutil', 'warnings', 'json', 'ast', 'atexit', 'np', 'pd', 'si',
            'PARSER', 'as_int', 'try_scalar', 'clean_path', 'split_path',
-           'key_wpipe_separator', 'initialize_args',
+           'remove_path', 'key_wpipe_separator', 'initialize_args',
            'wpipe_to_sqlintf_connection', 'return_dict_of_attrs', 'to_json',
            'ChildrenProxy', 'DictLikeChildrenProxy']
 
@@ -130,6 +131,30 @@ def split_path(path):
     return base, name, ext
 
 
+def remove_path(path, hard=False):
+    """
+    Remove file or directory located at path.
+
+    Parameters
+    ----------
+    path : string
+        Path where file or directory is located
+    hard : boolean
+        Flag to proceed to a hard tree removal of a directory - defaults to
+        False.
+    """
+    if os.path.isfile(path):
+        os.remove(path)
+    elif os.path.isdir(path):
+        if hard:
+            shutil.rmtree(path)
+        else:
+            try:
+                os.rmdir(path)
+            except OSError:
+                warnings.warn("Cannot remove directory %s : directory is not empty." % path)
+
+
 def key_wpipe_separator(obj):
     """
     Returns true if given object is a Wpipe object.
@@ -213,7 +238,7 @@ def return_dict_of_attrs(obj):
     attrs : dict
         Dictionary of attributes of obj.
     """
-    si.session.commit()
+    si.commit()
     return dict((attr, getattr(obj, attr))
                 for attr in dir(obj) if attr[0] != '_'
                 and getattr(obj, attr) is not None
@@ -232,7 +257,7 @@ def to_json(obj, *args, **kwargs):
     args, kwargs
         Refer to :meth:`pandas.DataFrame.to_json` for parameters
     """
-    si.session.commit()
+    si.commit()
     pd.DataFrame(return_dict_of_attrs(obj),
                  index=[0]).to_json(*args, **kwargs)
 
@@ -259,22 +284,34 @@ class ChildrenProxy:
         self._child_attr = child_attr
 
     def __repr__(self):
-        si.session.commit()
+        si.commit()
         return 'Children(' + ', '.join(
             map(lambda child: self._cls_name + '(' + repr(getattr(child, self._child_attr)) + ')',
                 self.children)) + ')'
 
     def __len__(self):
-        si.session.commit()
+        si.commit()
         return len(self.children)
 
     def __iter__(self):
-        for i in range(len(self)):
-            yield self[i]
+        self.n = 0
+        self.len = len(self)  # CURRENTLY NEEDED FOR DELETION ISSUES
+        return self
+
+    def __next__(self):
+        self.n -= self.len - len(self)  # CURRENTLY NEEDED FOR DELETION ISSUES
+        self.len = len(self)  # CURRENTLY NEEDED FOR DELETION ISSUES
+        if 0 <= self.n < self.len:
+            result = self[self.n]
+            self.n += 1
+            return result
+        else:
+            del self.n, self.len
+            raise StopIteration
 
     def __getitem__(self, item):
         if np.ndim(item) == 0:
-            si.session.commit()
+            si.commit()
             if hasattr(self.children[item], '_wpipe_object'):
                 return self.children[item]._wpipe_object
             else:
@@ -313,11 +350,13 @@ class DictLikeChildrenProxy(ChildrenProxy):
         self._child_value = child_value
 
     def __repr__(self):
-        si.session.commit()
-        return dict(self._items)
+        si.commit()
+        return repr(dict(self._items))
 
     def __getitem__(self, item):
-        si.session.commit()
+        si.commit()
+        if isinstance(item, int):
+            return super(DictLikeChildrenProxy, self).__getitem__(item)
         _temp = self._items
         try:
             key = val = None
@@ -328,7 +367,7 @@ class DictLikeChildrenProxy(ChildrenProxy):
             raise KeyError(item)
 
     def __setitem__(self, item, value):
-        si.session.commit()
+        si.commit()
         _temp = self._items
         try:
             key = None

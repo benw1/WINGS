@@ -98,7 +98,7 @@ class Mask:
 
     def __init__(self, *args, **kwargs):
         self._mask.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -130,14 +130,14 @@ class Mask:
         """
         str: Name of the mask.
         """
-        si.session.commit()
+        si.commit()
         return self._mask.name
 
     @name.setter
     def name(self, name):
         self._mask.name = name
         self._mask.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def mask_id(self):
@@ -151,7 +151,7 @@ class Mask:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.session.commit()
+        si.commit()
         return self._mask.timestamp
 
     @property
@@ -185,3 +185,10 @@ class Mask:
         int: Primary key id of the table row of parent task.
         """
         return self._mask.task_id
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        si.session.delete(self._mask)
+        si.commit()

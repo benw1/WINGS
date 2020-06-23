@@ -22,6 +22,12 @@ PARSER
 
 session
     session which SQLAlchemy uses to communicate with the database
+
+COMMIT_FLAG
+    boolean flag to control the automatic committing
+
+commit
+    Flush and commit pending changes if COMMIT_FLAG is True
 """
 from .core import argparse, sa, orm, PARSER, session, Base
 from .User import User
@@ -43,9 +49,22 @@ from .Event import Event
 __all__ = ['sa', 'orm', 'argparse', 'PARSER', 'session', 'Base', 'User',
            'Node', 'Pipeline', 'DPOwner', 'Input', 'Option', 'OptOwner',
            'Target', 'Configuration', 'Parameter', 'DataProduct', 'Task',
-           'Mask', 'Job', 'Event']
+           'Mask', 'Job', 'Event', 'COMMIT_FLAG', 'commit']
 
 Base.metadata.create_all(session.bind)
+
+COMMIT_FLAG = True
+"""
+boolean: flag to control the automatic committing.
+"""
+
+
+def commit():
+    """
+    Flush and commit pending changes if COMMIT_FLAG is True.
+    """
+    if COMMIT_FLAG:
+        session.commit()
 
 # import eralchemy as ERA
 # ERA.render_er(wp.si.Base,"UML.pdf")

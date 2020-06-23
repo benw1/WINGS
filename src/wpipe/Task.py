@@ -7,7 +7,7 @@ available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, shutil, warnings, datetime, si
 from .core import ChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path
+from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path, remove_path
 
 __all__ = ['Task']
 
@@ -146,7 +146,7 @@ class Task:
             self._jobs_proxy = ChildrenProxy(self._task, 'jobs', 'Job',
                                              child_attr='id')
         self._task.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -178,14 +178,14 @@ class Task:
         """
         str: Name of the task.
         """
-        si.session.commit()
+        si.commit()
         return self._task.name
 
     @name.setter
     def name(self, name):
         self._task.name = name
         self._task.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def task_id(self):
@@ -199,7 +199,7 @@ class Task:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.session.commit()
+        si.commit()
         return self._task.timestamp
 
     @property
@@ -207,7 +207,7 @@ class Task:
         """
         int: ###BEN###
         """
-        si.session.commit()
+        si.commit()
         return self._task.nruns
 
     @property
@@ -215,7 +215,7 @@ class Task:
         """
         int: ###BEN###
         """
-        si.session.commit()
+        si.commit()
         return self._task.run_time
 
     @property
@@ -223,7 +223,7 @@ class Task:
         """
         int: ###BEN###
         """
-        si.session.commit()
+        si.commit()
         return self._task.is_exclusive
 
     @property
@@ -318,3 +318,15 @@ class Task:
         else:
             warnings.warn("Task " + self.pipeline.software_root + '/' + self.name +
                           " cannot be registered: no 'register' function")
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        for item in self.masks:
+            item.delete()
+        for item in self.jobs:
+            item.delete()
+        remove_path(self.executable)
+        si.session.delete(self._task)
+        si.commit()

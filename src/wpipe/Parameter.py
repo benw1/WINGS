@@ -93,7 +93,7 @@ class Parameter:
 
     def __init__(self, *args, **kwargs):
         self._parameter.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -131,7 +131,7 @@ class Parameter:
     def name(self, name):
         self._parameter.name = name
         self._parameter.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def parameter_id(self):
@@ -145,7 +145,7 @@ class Parameter:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.session.commit()
+        si.commit()
         return self._parameter.timestamp
 
     @property
@@ -153,14 +153,14 @@ class Parameter:
         """
         str: Value of the parameter.
         """
-        si.session.commit()
+        si.commit()
         return self._parameter.value
 
     @value.setter
     def value(self, value):
         self._parameter.value = value
         self._parameter.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def config(self):
@@ -180,3 +180,10 @@ class Parameter:
         int: Primary key id of the table row of parent configuration.
         """
         return self._parameter.config_id
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        si.session.delete(self._parameter)
+        si.commit()
