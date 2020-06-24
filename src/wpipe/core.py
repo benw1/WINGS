@@ -30,7 +30,7 @@ __all__ = ['importlib', 'os', 'sys', 'types', 'datetime', 'subprocess', 'glob',
            'wpipe_to_sqlintf_connection', 'return_dict_of_attrs', 'to_json',
            'ChildrenProxy', 'DictLikeChildrenProxy']
 
-PARSER = si.PARSER
+PARSER = si.argparse.ArgumentParser()
 PARSER.add_argument('--user', '-u', dest='user_name', type=str,
                     default=os.environ['WPIPE_USER'] if 'WPIPE_USER' in os.environ.keys()
                     else [warnings.warn("Set environment variable $WPIPE_USER to associate a default username"),

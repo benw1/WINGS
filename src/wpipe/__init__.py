@@ -248,7 +248,7 @@ def wingspipe(args=None):
         sys.argv += args  # MEH
     importlib.reload(sys.modules[__name__])
     parent_parser = si.argparse.ArgumentParser(parents=[PARSER], add_help=False)
-    parser = si.argparse.ArgumentParser(prog='wingspipe')
+    parser = si.argparse.ArgumentParser(prog='wingspipe', parents=[si.PARSER], add_help=False)
     subparsers = parser.add_subparsers()
     parser_init = subparsers.add_parser('init', parents=[parent_parser], add_help=False)
     parser_init.set_defaults(which='init')
