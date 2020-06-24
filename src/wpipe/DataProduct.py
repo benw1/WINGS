@@ -539,9 +539,15 @@ class DataProduct(OptOwner):
         """
         return open(self.path, *args, **kwargs)
 
+    def remove(self):
+        """
+        Remove dataproduct's file.
+        """
+        remove_path(self.path)
+
     def delete(self):
         """
         Delete corresponding row from the database.
         """
-        remove_path(self.path)
+        self.remove()
         super(DataProduct, self).delete()

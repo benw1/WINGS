@@ -296,12 +296,18 @@ class Input(DPOwner):
             shutil.copy2(config_file, self.confpath)
             self.dataproduct(filename=os.path.split(config_file)[-1], relativepath=self.confpath, group='conf')
 
+    def reset(self):
+        """
+        Reset the input.
+        """
+        for item in self.targets:
+            item.delete()
+
     def delete(self):
         """
         Delete corresponding row from the database.
         """
-        for item in self.targets:
-            item.delete()
+        self.reset()
         super(Input, self).delete()
         remove_path(self.confpath)
         remove_path(self.rawspath)

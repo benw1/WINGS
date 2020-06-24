@@ -231,7 +231,14 @@ class Job(OptOwner):
         if not hasattr(self, '_child_events_proxy'):
             self._child_events_proxy = ChildrenProxy(self._job, 'child_events', 'Event')
         if not hasattr(self, '_log_dp'):
-            self._log_dp = None
+            if self._job.config is not None:
+                logpath = self.target.datapath + '/log_' + self.config.name
+                logowner = self.config
+            else:
+                logpath = self.pipeline.pipe_root
+                logowner = self.pipeline
+            logfile = self.task.name + '_j' + str(self.job_id) + '.log'
+            self._log_dp = logowner.dataproduct(filename=logfile, relativepath=logpath, group='log')
         if not hasattr(self, '_optowner'):
             self._optowner = self._job
         super(Job, self).__init__(kwargs.get('options', {}))
@@ -466,15 +473,6 @@ class Job(OptOwner):
         log_text : str
             Text to write.
         """
-        if self._job.config is not None:
-            logpath = self.target.datapath + '/log_' + self.config.name
-            logowner = self.config
-        else:
-            logpath = self.pipeline.pipe_root
-            logowner = self.pipeline
-        logfile = self.task.name + '_j' + str(self.job_id) + '.log'
-        if self._log_dp is None:
-            self._log_dp = logowner.dataproduct(filename=logfile, relativepath=logpath, group='log')
         if log_text is not None:
             with self._log_dp.open("a") as log:
                 log.write(log_text)
@@ -511,12 +509,22 @@ class Job(OptOwner):
         self._job.timestamp = datetime.datetime.utcnow()
         si.commit()
 
+    def reset(self):
+        """
+        Reset job.
+        """
+        self._job.starttime = None
+        self._job.endtime = None
+        self._log_dp.remove()
+        for item in self.child_events:
+            item.delete()
+        self.state = JOBINITSTATE
+
     def delete(self):
         """
         Delete corresponding row from the database.
         """
-        if self._log_dp is not None:
-            self._log_dp.delete()
+        self._log_dp.delete()
         for item in self.child_events:
             item.delete()
         super(Job, self).delete()
