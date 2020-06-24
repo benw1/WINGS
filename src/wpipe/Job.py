@@ -230,6 +230,15 @@ class Job(OptOwner):
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_child_events_proxy'):
             self._child_events_proxy = ChildrenProxy(self._job, 'child_events', 'Event')
+        if not hasattr(self, '_log_dp'):
+            if self._job.config is not None:
+                logpath = self.target.datapath + '/log_' + self.config.name
+                logowner = self.config
+            else:
+                logpath = self.pipeline.pipe_root
+                logowner = self.pipeline
+            logfile = self.task.name + '_j' + str(self.job_id) + '.log'
+            self._log_dp = logowner.dataproduct(filename=logfile, relativepath=logpath, group='log')
         if not hasattr(self, '_optowner'):
             self._optowner = self._job
         super(Job, self).__init__(kwargs.get('options', {}))
@@ -273,14 +282,14 @@ class Job(OptOwner):
         """
         str: State of this job.
         """
-        si.session.commit()
+        si.commit()
         return self._job.state
 
     @state.setter
     def state(self, state):
         self._job.state = state
         self._job.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def job_id(self):
@@ -294,7 +303,7 @@ class Job(OptOwner):
         """
         :obj:`datetime.datetime`: Timestamp of job starting time.
         """
-        si.session.commit()
+        si.commit()
         return self._job.starttime
 
     @property
@@ -302,7 +311,7 @@ class Job(OptOwner):
         """
         :obj:`datetime.datetime`: Timestamp of job ending time.
         """
-        si.session.commit()
+        si.commit()
         return self._job.endtime
 
     @property
@@ -416,7 +425,7 @@ class Job(OptOwner):
         """
         int: Primary key id of the table row of parent event.
         """
-        si.session.commit()
+        si.commit()
         return self._job.firing_event_id
 
     @property
@@ -464,19 +473,11 @@ class Job(OptOwner):
         log_text : str
             Text to write.
         """
-        if self._job.config is not None:
-            logpath = self.target.datapath + '/log_' + self.config.name
-            logowner = self.config
-        else:
-            logpath = self.pipeline.pipe_root
-            logowner = self.pipeline
-        logfile = self.task.name + '_j' + str(self.job_id) + '.log'
-        log_dp = logowner.dataproduct(filename=logfile, relativepath=logpath, group='log')
         if log_text is not None:
-            with log_dp.open("a") as log:
+            with self._log_dp.open("a") as log:
                 log.write(log_text)
                 log.write('\n')
-        return log_dp
+        return self._log_dp
 
     def submit(self):
         """
@@ -497,7 +498,7 @@ class Job(OptOwner):
         self.state = JOBSUBMSTATE
         self._job.starttime = datetime.datetime.utcnow()
         self._job.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     def _ending_todo(self):
         if hasattr(sys, "last_value"):
@@ -506,4 +507,24 @@ class Job(OptOwner):
             self.state = JOBCOMPSTATE
             self._job.endtime = datetime.datetime.utcnow()
         self._job.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
+
+    def reset(self):
+        """
+        Reset job.
+        """
+        self._job.starttime = None
+        self._job.endtime = None
+        self._log_dp.remove()
+        for item in self.child_events:
+            item.delete()
+        self.state = JOBINITSTATE
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        self._log_dp.delete()
+        for item in self.child_events:
+            item.delete()
+        super(Job, self).delete()

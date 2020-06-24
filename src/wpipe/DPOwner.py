@@ -28,7 +28,7 @@ class DPOwner:
             self._dataproducts_proxy = ChildrenProxy(self._dpowner, 'dataproducts', 'DataProduct',
                                                      child_attr='filename')
         self._dpowner.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def dpowner_id(self):
@@ -43,7 +43,7 @@ class DPOwner:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.session.commit()
+        si.commit()
         return self._dpowner.timestamp
 
     @property
@@ -117,3 +117,12 @@ class DPOwner:
         """
         from .DataProduct import DataProduct
         return DataProduct(self, *args, **kwargs)
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        for item in self.dataproducts:
+            item.delete()
+        si.session.delete(self._dpowner)
+        si.commit()

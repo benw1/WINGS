@@ -7,7 +7,7 @@ available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, datetime, json, si
 from .core import ChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection
+from .core import initialize_args, wpipe_to_sqlintf_connection, remove_path
 from .OptOwner import OptOwner
 
 __all__ = ['Target']
@@ -176,14 +176,14 @@ class Target(OptOwner):
         """
         str: Name of the target.
         """
-        si.session.commit()
+        si.commit()
         return self._target.name
 
     @name.setter
     def name(self, name):
         self._target.name = name
         self._target.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def target_id(self):
@@ -280,3 +280,12 @@ class Target(OptOwner):
         for confdp in self.input.confdataproducts:
             self.configuration(os.path.splitext(confdp.filename)[0],
                                parameters=json.load(open(confdp.relativepath+'/'+confdp.filename))[0])
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        for item in self.configurations:
+            item.delete()
+        super(Target, self).delete()
+        remove_path(self.datapath)

@@ -29,7 +29,7 @@ class OptOwner:
             self._options_proxy = DictLikeChildrenProxy(self._optowner, 'options', 'Option')
         self.options = options
         self._optowner.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def optowner_id(self):
@@ -44,7 +44,7 @@ class OptOwner:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.session.commit()
+        si.commit()
         return self._optowner.timestamp
 
     @property
@@ -59,7 +59,7 @@ class OptOwner:
     def options(self, options):
         for key, value in options.items():
             self.option(name=key, value=value)
-        si.session.commit()
+        si.commit()
 
     def option(self, *args, **kwargs):
         """
@@ -76,3 +76,12 @@ class OptOwner:
             Option corresponding to given kwargs.
         """
         return Option(self, *args, **kwargs)
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        for item in self.options:
+            item.delete()
+        si.session.delete(self._optowner)
+        si.commit()

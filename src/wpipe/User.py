@@ -96,7 +96,7 @@ class User:
         if not hasattr(self, '_pipelines_proxy'):
             self._pipelines_proxy = ChildrenProxy(self._user, 'pipelines', 'Pipeline', child_attr='pipe_root')
         self._user.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -128,14 +128,14 @@ class User:
         """
         str: Name of user.
         """
-        si.session.commit()
+        si.commit()
         return self._user.name
 
     @name.setter
     def name(self, name):
         self._user.name = name
         self._user.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def user_id(self):
@@ -149,7 +149,7 @@ class User:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.session.commit()
+        si.commit()
         return self._user.timestamp
 
     @property
@@ -175,3 +175,12 @@ class User:
         """
         from .Pipeline import Pipeline
         return Pipeline(self, *args, **kwargs)
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        for item in self.pipelines:
+            item.delete()
+        si.session.delete(self._user)
+        si.commit()

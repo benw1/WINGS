@@ -96,7 +96,7 @@ class Option:
 
     def __init__(self, *args, **kwargs):
         self._option.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -129,14 +129,14 @@ class Option:
         """
         str: Name of the option.
         """
-        si.session.commit()
+        si.commit()
         return self._option.name
 
     @name.setter
     def name(self, name):
         self._option.name = name
         self._option.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def option_id(self):
@@ -150,7 +150,7 @@ class Option:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.session.commit()
+        si.commit()
         return self._option.timestamp
 
     @property
@@ -158,14 +158,14 @@ class Option:
         """
         str: Value of the option.
         """
-        si.session.commit()
+        si.commit()
         return self._option.value
 
     @value.setter
     def value(self, value):
         self._option.value = value
         self._option.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def optowner(self):
@@ -195,3 +195,10 @@ class Option:
         int: Primary key id of the table row of parent optowner.
         """
         return self._option.optowner_id
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        si.session.delete(self._option)
+        si.commit()

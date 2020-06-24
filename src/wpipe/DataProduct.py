@@ -6,7 +6,7 @@ Please note that this module is private. The DataProduct class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, shutil, datetime, si
-from .core import return_dict_of_attrs, initialize_args, wpipe_to_sqlintf_connection, clean_path
+from .core import return_dict_of_attrs, initialize_args, wpipe_to_sqlintf_connection, clean_path, remove_path
 from .OptOwner import OptOwner
 
 __all__ = ['DataProduct']
@@ -247,7 +247,7 @@ class DataProduct(OptOwner):
         """
         str: Name of the file the dataproduct points to.
         """
-        si.session.commit()
+        si.commit()
         return self._dataproduct.filename
 
     @filename.setter
@@ -255,7 +255,7 @@ class DataProduct(OptOwner):
         os.rename(self.relativepath+'/'+self._dataproduct.filename, self.relativepath+'/'+filename)
         self._dataproduct.name = filename
         self._dataproduct.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def dp_id(self):
@@ -538,3 +538,16 @@ class DataProduct(OptOwner):
             File object
         """
         return open(self.path, *args, **kwargs)
+
+    def remove(self):
+        """
+        Remove dataproduct's file.
+        """
+        remove_path(self.path)
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        self.remove()
+        super(DataProduct, self).delete()

@@ -107,7 +107,7 @@ class Node:
             self._jobs_proxy = ChildrenProxy(self._node, 'jobs', 'Job',
                                              child_attr='id')
         self._node.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -139,14 +139,14 @@ class Node:
         """
         str: Name of node.
         """
-        si.session.commit()
+        si.commit()
         return self._node.name
 
     @name.setter
     def name(self, name):
         self._node.name = name
         self._node.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def node_id(self):
@@ -160,7 +160,7 @@ class Node:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.session.commit()
+        si.commit()
         return self._node.timestamp
 
     @property
@@ -200,3 +200,10 @@ class Node:
         """
         from .Job import Job
         return Job(self, *args, **kwargs)
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        si.session.delete(self._node)
+        si.commit()

@@ -247,22 +247,49 @@ def wingspipe(args=None):
     >>>            '-r'])
     """
     if args is not None:
-        sys.argv += args
+        sys.argv += args  # MEH
     importlib.reload(sys.modules[__name__])
-    parser = si.argparse.ArgumentParser(parents=[PARSER], add_help=False)
-    parser.add_argument('--tasks_path', '-w', dest='tasks_path', default=None,
-                        help='Path to pipeline tasks to be registered')
-    parser.add_argument('--description', '-d', dest='description', default='',
-                        help='Optional description of this pipeline')
-    parser.add_argument('--inputs', '-i', type=str, dest='inputs_path',
-                        help='Path to directory with input lists')
-    parser.add_argument('--config', '-c', type=str, dest='config_file',
-                        help='Configuration File Path')
-    parser.add_argument('--run', '-r', dest='run', action='store_true',
-                        help='Run the pipeline')
+    parent_parser = si.argparse.ArgumentParser(parents=[PARSER], add_help=False)
+    parser = si.argparse.ArgumentParser(prog='wingspipe', parents=[si.PARSER], add_help=False)
+    subparsers = parser.add_subparsers()
+    parser_init = subparsers.add_parser('init', parents=[parent_parser], add_help=False)
+    parser_init.set_defaults(which='init')
+    parser_init.add_argument('--tasks_path', '-w', dest='tasks_path', default=None,
+                             help='Path to pipeline tasks to be registered')
+    parser_init.add_argument('--description', '-d', dest='description', default='',
+                             help='Optional description of this pipeline')
+    parser_init.add_argument('--inputs', '-i', type=str, dest='inputs_path',
+                             help='Path to directory with input lists')
+    parser_init.add_argument('--config', '-c', type=str, dest='config_file',
+                             help='Configuration File Path')
+    parser_init.add_argument('--run', '-r', dest='run', action='store_true',
+                             help='Run the pipeline')
+    parser_run = subparsers.add_parser('run', parents=[parent_parser], add_help=False)
+    parser_run.set_defaults(which='run')
+    parser_diagnose = subparsers.add_parser('diagnose', parents=[parent_parser], add_help=False)
+    parser_diagnose.set_defaults(which='diagnose')
+    parser_reset = subparsers.add_parser('reset', parents=[parent_parser], add_help=False)
+    parser_reset.set_defaults(which='reset')
+    parser_clean = subparsers.add_parser('clean', parents=[parent_parser], add_help=False)
+    parser_clean.set_defaults(which='clean')
+    parser_delete = subparsers.add_parser('delete', parents=[parent_parser], add_help=False)
+    parser_delete.set_defaults(which='delete')
     args = parser.parse_args()
-    my_pipe = Pipeline(description=args.description)
-    my_pipe.attach_tasks(args.tasks_path)
-    my_pipe.attach_inputs(args.inputs_path, args.config_file)
-    if args.run:
-        my_pipe.run_pipeline()
+    if hasattr(args, 'which'):
+        my_pipe = Pipeline()
+        if args.which == 'init':
+            my_pipe.description = args.description
+            my_pipe.attach_tasks(args.tasks_path)
+            my_pipe.attach_inputs(args.inputs_path, args.config_file)
+        elif args.which == 'run':
+            my_pipe.run()
+        elif args.which == 'diagnose':
+            my_pipe.diagnose()
+        elif args.which == 'reset':
+            my_pipe.reset()
+        elif args.which == 'clean':
+            my_pipe.clean()
+        elif args.which == 'delete':
+            my_pipe.delete()
+    else:
+        parser.print_help()

@@ -5,9 +5,9 @@ Contains the Pipeline class definition
 Please note that this module is private. The Pipeline class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import os, sys, glob, datetime, json, si
+from .core import os, sys, glob, shutil, datetime, json, si
 from .core import ChildrenProxy
-from .core import to_json, initialize_args, wpipe_to_sqlintf_connection, as_int, clean_path
+from .core import to_json, initialize_args, wpipe_to_sqlintf_connection, as_int, clean_path, remove_path
 from .core import PARSER
 from .DPOwner import DPOwner
 
@@ -219,7 +219,7 @@ class Pipeline(DPOwner):
                         os.mkdir(cls._pipeline.pipe_root+'/.wpipe')
                     if not os.path.isfile(cls._pipeline.pipe_root+'/.wpipe/pipe.conf'):
                         to_json(cls._pipeline, cls._pipeline.pipe_root+'/.wpipe/pipe.conf', orient='records')
-                    cls._pipeline.dataproducts.append(si.DataProduct(filename='pip.conf',
+                    cls._pipeline.dataproducts.append(si.DataProduct(filename='pipe.conf',
                                                                      group='conf',
                                                                      relativepath=cls._pipeline.pipe_root+'/.wpipe'))
                     if not os.path.isdir(cls._pipeline.software_root):
@@ -244,12 +244,12 @@ class Pipeline(DPOwner):
             self._inputs_proxy = ChildrenProxy(self._pipeline, 'inputs', 'Input')
         if not hasattr(self, '_tasks_proxy'):
             self._tasks_proxy = ChildrenProxy(self._pipeline, 'tasks', 'Task')
+        if not hasattr(self, '_dpowner'):
+            self._dpowner = self._pipeline
         if not hasattr(self, '_dummy_task'):
             self._dummy_task = self.task(self.software_root+'/__init__.py')
         if not hasattr(self, '_dummy_job'):
             self._dummy_job = self.dummy_task.job()
-        if not hasattr(self, '_dpowner'):
-            self._dpowner = self._pipeline
         super(Pipeline, self).__init__()
 
     @classmethod
@@ -282,14 +282,14 @@ class Pipeline(DPOwner):
         """
         str: Name of the pipeline.
         """
-        si.session.commit()
+        si.commit()
         return self._pipeline.name
 
     @name.setter
     def name(self, name):
         self._pipeline.name = name
         self._pipeline.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def pipeline_id(self):
@@ -303,7 +303,7 @@ class Pipeline(DPOwner):
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.session.commit()
+        si.commit()
         return self._pipeline.timestamp
 
     @property
@@ -350,14 +350,14 @@ class Pipeline(DPOwner):
         """
         str: Description of the pipeline.
         """
-        si.session.commit()
+        si.commit()
         return self._pipeline.description
 
     @description.setter
     def description(self, description):
         self._pipeline.description = description
         self._pipeline.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def user_id(self):
@@ -398,6 +398,14 @@ class Pipeline(DPOwner):
         :obj:`core.ChildrenProxy`: List of Task objects owned by the pipeline.
         """
         return self._tasks_proxy
+
+    @property
+    def nondummy_tasks(self):
+        """
+        list of :obj:`DataProduct`: List of other Task objects owned by the
+        pipeline that are not dummy.
+        """
+        return self.tasks[self.tasks.name != '__init__.py']
 
     @property
     def dummy_task(self):
@@ -480,10 +488,47 @@ class Pipeline(DPOwner):
                 if os.access(inputs_path, os.R_OK):
                     self.input(input_path).make_config(config_file)
 
-    def run_pipeline(self):
+    def run(self):
         """
         Start the pipeline run.
         """
         self.dummy_job._starting_todo(logprint=False)
         self.dummy_job.child_event('__init__').fire()
         self.dummy_job._ending_todo()
+
+    def diagnose(self):
+        """
+        Diagnose current state of the pipeline. TODO
+        """
+        pass
+
+    def reset(self):
+        """
+        Reset the pipeline.
+        """
+        for item in self.inputs:
+            item.reset()
+        self.dummy_job.reset()
+
+    def clean(self):
+        """
+        Fully clean the pipeline.
+        """
+        for item in self.nondummy_tasks:
+            item.delete()
+        for item in self.inputs:
+            item.delete()
+        remove_path(self.software_root+'/__pycache__', hard=True)
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        self.clean()
+        self.dummy_task.delete()
+        super(Pipeline, self).delete()
+        remove_path(self.software_root)
+        remove_path(self.input_root)
+        remove_path(self.data_root)
+        remove_path(self.config_root)
+        remove_path(self.pipe_root+'/.wpipe', hard=True)

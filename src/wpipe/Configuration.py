@@ -7,7 +7,7 @@ is available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, datetime, si
 from .core import ChildrenProxy, DictLikeChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection
+from .core import initialize_args, wpipe_to_sqlintf_connection, remove_path
 from .DPOwner import DPOwner
 
 __all__ = ['Configuration']
@@ -234,14 +234,14 @@ class Configuration(DPOwner):
         """
         str: Name of the configuration.
         """
-        si.session.commit()
+        si.commit()
         return self._configuration.name
 
     @name.setter
     def name(self, name):
         self._configuration.name = name
         self._configuration.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def config_id(self):
@@ -292,14 +292,14 @@ class Configuration(DPOwner):
         """
         str: Description of the configuration
         """
-        si.session.commit()
+        si.commit()
         return self._configuration.description
 
     @description.setter
     def description(self, description):
         self._configuration.description = description
         self._configuration.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def target_id(self):
@@ -409,3 +409,17 @@ class Configuration(DPOwner):
         """
         from .Job import Job
         return Job(self, *args, **kwargs)
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        for item in self.parameters:
+            item.delete()
+        for item in self.jobs:
+            item.delete()
+        super(Configuration, self).delete()
+        remove_path(self.confpath)
+        remove_path(self.rawpath)
+        remove_path(self.logpath)
+        remove_path(self.procpath)

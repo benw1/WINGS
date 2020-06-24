@@ -185,14 +185,14 @@ class Event(OptOwner):
         """
         str: Name of the mask which task is meant to be the fired job task.
         """
-        si.session.commit()
+        si.commit()
         return self._event.name
 
     @name.setter
     def name(self, name):
         self._event.name = name
         self._event.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def tag(self):
@@ -200,14 +200,14 @@ class Event(OptOwner):
         str: Unique tag to identify the event if multiple event instance fire
         the same task.
         """
-        si.session.commit()
+        si.commit()
         return self._event.tag
 
     @tag.setter
     def tag(self, tag):
         self._event.tag = tag
         self._event.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def event_id(self):
@@ -228,14 +228,14 @@ class Event(OptOwner):
         """
         str: Value of the mask which task is meant to be the fired job task.
         """
-        si.session.commit()
+        si.commit()
         return self._event.value
 
     @value.setter
     def value(self, value):
         self._event.value = value
         self._event.timestamp = datetime.datetime.utcnow()
-        si.session.commit()
+        si.commit()
 
     @property
     def parent_job_id(self):
@@ -338,3 +338,11 @@ class Event(OptOwner):
             if 'new_job' not in locals():
                 raise ValueError(
                     "No mask corresponding to event signature {name='%s',value='%s'}" % (self.name, self.value))
+
+    def delete(self):
+        """
+        Delete corresponding row from the database.
+        """
+        for item in self.fired_jobs:
+            item.delete()
+        super(Event, self).delete()
