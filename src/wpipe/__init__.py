@@ -277,6 +277,7 @@ def wingspipe(args=None):
     args = parser.parse_args()
     if hasattr(args, 'which'):
         my_pipe = Pipeline()
+        command = parser.prog+" "+args.which
         if args.which == 'init':
             my_pipe.description = args.description
             my_pipe.attach_tasks(args.tasks_path)
@@ -286,10 +287,13 @@ def wingspipe(args=None):
         elif args.which == 'diagnose':
             my_pipe.diagnose()
         elif args.which == 'reset':
-            my_pipe.reset()
+            if input(command+': confirm reset of pipeline at '+my_pipe.pipe_root+'? [y/yes] ') in ['y', 'yes']:
+                my_pipe.reset()
         elif args.which == 'clean':
-            my_pipe.clean()
+            if input(command+': confirm clean-up of pipeline at '+my_pipe.pipe_root+'? [y/yes] ') in ['y', 'yes']:
+                my_pipe.clean()
         elif args.which == 'delete':
-            my_pipe.delete()
+            if input(command+': confirm deletion of pipeline at '+my_pipe.pipe_root+'? [y/yes] ') in ['y', 'yes']:
+                my_pipe.delete()
     else:
         parser.print_help()
