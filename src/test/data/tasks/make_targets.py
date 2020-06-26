@@ -4,7 +4,7 @@ import wpipe as wp
 
 def register(task):
     _temp = task.mask(source='*', name='start', value=task.name)
-    _temp = task.mask(source='*', name='__init__', value='*')
+    #_temp = task.mask(source='*', name='__init__', value='*')
 
 
 if __name__ == '__main__':
