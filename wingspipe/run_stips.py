@@ -135,7 +135,7 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, run_id):
 
 '''
 
-def run_stips(event_id, dp_id, ra_dith, dec_dith, run_id):
+def run_stips(event_id, dp_id, ra_dith, dec_dith):
     catalog_dp = wp.DataProduct(dp_id)
     my_config = catalog_dp.config
     my_params = my_config.parameters
@@ -148,7 +148,7 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, run_id):
     fileroot = str(catalog_dp.relativepath)
     filename = str(catalog_dp.filename)  # for example, Mixed_h15_shell_3Mpc_Z.tbl
     filtroot = filename.split('_')[-1].split('.')[0]
-    filtername = filtdict[filtroot]
+    filtername = filtroot
     os.chdir(my_config.procpath)
     filename = fileroot + '/' + filename 
     seed = np.random.randint(9999)+1000
@@ -160,7 +160,7 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, run_id):
     print("Running ",filename,ra,dec)
     print("SEED ",seed)
     scene_general = {'ra': racent, 'dec': deccent, 'pa': pa, 'seed': seed}
-    obs = {'instrument': 'WFI', 'filters': [filtername], 'detectors': my_params['detectors'], 'distortion': False, 'oversample': my_params['oversample'], 'pupil_mask': '', 'background': 'avg', 'observations_id': dp_id, 'exptime': my_params['exptime'], 'offsets': [{'offset_id': run_id, 'offset_centre': False, 'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
+    obs = {'instrument': 'WFI', 'filters': [filtername], 'detectors': my_params['detectors'], 'distortion': False, 'oversample': my_params['oversample'], 'pupil_mask': '', 'background': 'avg', 'observations_id': dp_id, 'exptime': my_params['exptime'], 'offsets': [{'offset_id': event_id, 'offset_centre': False, 'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
     obm = ObservationModule(obs, scene_general=scene_general)
     obm.nextObservation()
     source_count_catalogues = obm.addCatalogue(str(filename))
@@ -190,8 +190,8 @@ if __name__ == '__main__':
     compname = this_event.options['name']
     ra_dither = this_event.options['ra_dither']
     dec_dither = this_event.options['dec_dither']
+    run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither))
     update_option = parent_job.options[compname]
-    run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither), update_option)
     update_option = update_option + 1
     parent_job.options[compname] = update_option
     to_run = this_event.options['to_run']

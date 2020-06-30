@@ -23,8 +23,11 @@ def discover_targets(pipeline, this_job):
 def send(dp, conf, comp_name, total, job):
     filepath = dp.relativepath + '/' + dp.filename
     dpid = dp.dp_id
+    dpconfig = dp.config
     confid = conf.config_id
-    print('TEST', dp.filename, filepath)
+    dpconfigid = dpconfig.config_id
+    #print('TEST CONFID ', confid)
+    #print('TEST DPCONFID ', dpconfigid)
     data = np.loadtxt(filepath, dtype=str, usecols=0)
     if 'type' in str(data[0]):
         print('File ', filepath, ' has type keyword, assuming STIPS-ready')
@@ -33,8 +36,11 @@ def send(dp, conf, comp_name, total, job):
         event.fire()
     elif 'ra' in str(data[0]):
         print('File ', filepath, ' has ra keyword, assuming positions defined')
-        event = job.child_event('new_fixed_catalog', jargs='0', value='0',
+        print('Generating event for dp_id: ', dpid,' and CONF: ', confid)
+        eventtag = dpid
+        event = job.child_event('new_fixed_catalog', jargs='0', value='0', tag=eventtag,
                                 options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'config_id': confid})
+        print("generated event", event.event_id, "Firing...")
         event.fire()
 
     else:

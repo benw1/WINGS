@@ -31,6 +31,8 @@ def process_fixed_catalog(my_job_id, my_dp_id):
     filepath = fileroot + '/' + filename
     wp.shutil.copy2(filepath, my_config.procpath)
     #
+    print("CONFIG PATH ",my_config.procpath)
+    print("CONFIG ID ",my_config.config_id)
     fileroot = my_config.procpath + '/'
     procdp = my_config.dataproduct(filename=filename, relativepath=fileroot, group='proc')
     stips_files, filters = read_fixed(procdp.relativepath + '/' + procdp.filename, my_config, my_job)
