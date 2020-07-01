@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-import os
+import os 
 #import subprocess
 from stips.observation_module import ObservationModule
 import numpy as np

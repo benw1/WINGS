@@ -15,34 +15,43 @@ def write_dolphot_pars(target, config, thisjob):
     datadp = my_dp[my_dp.subtype == 'dolphot_data']
     datadpid = [_dp.dp_id for _dp in datadp]
     dataname = [_dp.filename for _dp in datadp]
+    rinds = []
     zinds = []
     yinds = []
     jinds = []
     hinds = []
     finds = []
-    count = -1
+    count = 0
     for dp in datadp:
         dp_id = dp.dp_id
-        count += 1
         filt = str(dp.filtername)
+        if "F062" in filt:
+            rinds = [rinds, dp_id]
+            count += 1
         if "F087" in filt:
             zinds = [zinds, dp_id]
+            count += 1
         if "F106" in filt:
             yinds = [yinds, dp_id]
+            count += 1
         if "F129" in filt:
             jinds = [jinds, dp_id]
+            count += 1
         if "F158" in filt:
             hinds = [hinds, dp_id]
+            count += 1
         if "F184" in filt:
             finds = [finds, dp_id]
+            count += 1
+    rinds = rinds[1:]
     zinds = zinds[1:]
     yinds = yinds[1:]
     jinds = jinds[1:]
     hinds = hinds[1:]
     finds = finds[1:]
 
-    print("INDS ", zinds, yinds, jinds, hinds, hinds, finds, datadpid)
-    nimg = len(dataname)
+    print("INDS ", rinds, zinds, yinds, jinds, hinds, hinds, finds, datadpid)
+    nimg = count
     # my_params = config.parameters
     # refimage = my_params['refimage']  #will make this more flexible later
     refdp = wp.DataProduct(hinds[0])
@@ -50,6 +59,12 @@ def write_dolphot_pars(target, config, thisjob):
     with open(parfile_path, 'w') as d:
         d.write("Nimg = " + str(nimg) + "\n" +
                 "img0_file = " + refimage[:-5] + "\n")
+        rim = []
+        for rind in rinds:
+            imdp = wp.DataProduct(rind)
+            image = str(imdp.filename)
+            rim = [rim, image]
+        rim = rim[1:]
         zim = []
         for zind in zinds:
             imdp = wp.DataProduct(zind)
@@ -86,7 +101,7 @@ def write_dolphot_pars(target, config, thisjob):
         # jims = set(jim)
         # hims = set(him)
         # fims = set(fim)
-        images = [zim, yim, jim, him, fim]
+        images = [rim,zim, yim, jim, him, fim]
         i = 0
         for iimage in images:
             image = iimage[0]

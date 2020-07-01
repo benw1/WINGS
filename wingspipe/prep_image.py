@@ -62,8 +62,11 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
     imgpath = config.procpath + '/' + new_image_name
     # CHANGE FILENAME IN DATA PRODUCT.  ASK RUBAB
     dp = wp.DataProduct(int(dp_id))
-    dp.filename = new_image_name
-    # fixwcs(imagepath)
+    try:
+        dp.filename = new_image_name
+    except:
+        print("name already changed")
+    fixwcs(imgpath)
     _t1 = [dolphot_path + 'wfirstmask', '-exptime=' + str(my_params['exptime']), '-rdnoise=41.73', imgpath]
     _t2 = [dolphot_path + 'splitgroups', imgpath]
     print("T1 ", _t1)
@@ -92,12 +95,17 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
 def fixwcs(imgpath):
     # use astropy to get CDELT1 and CDELT2 from header
     data, head = fits.getdata(imgpath, header=True)
-    cd11 = head['PC1_1']
-    cd22 = head['PC2_2']
-    fits.setval(imgpath, 'CD1_1', value=cd11)
-    fits.setval(imgpath, 'CD2_2', value=cd22)
-    fits.setval(imgpath, 'CD1_2', value=0)
-    fits.setval(imgpath, 'CD2_1', value=0)
+    #cd11 = head['PC1_1']
+    #cd22 = head['PC2_2']
+    try:
+        cd11 = head['CD1_1']
+    except:
+        cd11 = head['CDELT1']
+        cd22 = head['CDELT2']
+        fits.setval(imgpath, 'CD1_1', value=cd11)
+        fits.setval(imgpath, 'CD2_2', value=cd22)
+        fits.setval(imgpath, 'CD1_2', value=0)
+        fits.setval(imgpath, 'CD2_1', value=0)
     return
 
 
