@@ -337,7 +337,6 @@ class Job(OptOwner):
             return True
         else:
             return self.task.last_modification_timestamp > self.starttime
-478j
     @property
     def task_id(self):
         """
