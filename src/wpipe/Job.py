@@ -333,8 +333,11 @@ class Job(OptOwner):
         """
         bool: True if task was modified since job started, False if not.
         """
-        return self.task.last_modification_timestamp > self.starttime
-
+        if self.starttime is None:
+            return True
+        else:
+            return self.task.last_modification_timestamp > self.starttime
+478j
     @property
     def task_id(self):
         """
@@ -485,7 +488,14 @@ class Job(OptOwner):
         """
         my_pipe = self.pipeline
         with self.logprint().open("a") as stdouterr:
-            subprocess.Popen([self.task.executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name),
+            event = self.firing_event
+            options = event.options
+            try:
+               submission_type = options['submission_type']
+               if 'pbs' in submission_type:
+                  pbs = PbsScheduler(event,self)
+            except:  
+               subprocess.Popen([self.task.executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name),
                               '-j', str(self.job_id)], cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
         # Let's send stuff to slurm
         # sql_hyak(self.task,self.job_id,self.firing_event_id)
