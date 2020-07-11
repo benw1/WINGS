@@ -7,7 +7,7 @@ available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import time, subprocess
 import asyncio
-import jinja
+# import jinja
 
 __all__ = ['PbsScheduler']
 
