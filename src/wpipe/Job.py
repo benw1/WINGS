@@ -174,6 +174,7 @@ class Job(OptOwner):
            this method is automatically called when a job is fired by a firing
            event through its method Event.fire.
     """
+
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._job = args[0] if len(args) else as_int(PARSER.parse_known_args()[0].job_id)
@@ -211,7 +212,7 @@ class Job(OptOwner):
                     if node is not None:
                         cls._job = cls._job. \
                             filter_by(node_id=node.node_id)
-                    cls._job = cls._job.\
+                    cls._job = cls._job. \
                         filter_by(attempt=attempt).one()
                 except si.orm.exc.NoResultFound:
                     cls._job = si.Job(attempt=attempt,
@@ -337,6 +338,7 @@ class Job(OptOwner):
             return True
         else:
             return self.task.last_modification_timestamp > self.starttime
+
     @property
     def task_id(self):
         """
@@ -490,12 +492,13 @@ class Job(OptOwner):
             event = self.firing_event
             options = event.options
             try:
-               submission_type = options['submission_type']
-               if 'pbs' in submission_type:
-                  pbs = PbsScheduler(event,self)
-            except:  
-               subprocess.Popen([self.task.executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name),
-                              '-j', str(self.job_id)], cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
+                submission_type = options['submission_type']
+                if 'pbs' in submission_type:
+                    from . import PbsScheduler
+                    pbs = PbsScheduler(event, self)
+            except KeyError:
+                subprocess.Popen([self.task.executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name),
+                                  '-j', str(self.job_id)], cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
         # Let's send stuff to slurm
         # sql_hyak(self.task,self.job_id,self.firing_event_id)
         # Let's send stuff to pbs
