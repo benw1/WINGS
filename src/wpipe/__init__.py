@@ -135,7 +135,7 @@ from .Task import Task
 from .Mask import Mask
 from .Job import Job
 from .Event import Event
-from .PbsScheduler import PbsScheduler
+from src.wpipe.scheduler.PbsSchedulerPsuedo import PbsScheduler
 
 __all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
            'Option', 'Target', 'Configuration', 'Parameter', 'DataProduct',

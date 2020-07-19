@@ -5,7 +5,7 @@ Contains the PbsScheduler class definition
 Please note that this module is private. The PbsScheduler class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import time, subprocess
+from src.wpipe.core import time, subprocess
 import asyncio
 # import jinja
 
