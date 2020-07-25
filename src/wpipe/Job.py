@@ -479,27 +479,6 @@ class Job(OptOwner):
                 log.write('\n')
         return self._log_dp
 
-    def submit(self):
-        """
-        Submit the job to the scheduler.
-        """
-        my_pipe = self.pipeline
-        with self.logprint().open("a") as stdouterr:
-            event = self.firing_event
-            options = event.options
-            try:
-                submission_type = options['submission_type']
-                if 'pbs' in submission_type:
-                    from . import PbsScheduler
-                    pbs = PbsScheduler(event, self)
-            except KeyError:
-                subprocess.Popen([self.task.executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name),
-                                  '-j', str(self.job_id)], cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
-        # Let's send stuff to slurm
-        # sql_hyak(self.task,self.job_id,self.firing_event_id)
-        # Let's send stuff to pbs
-        # sql_pbs(self.task,self.job_id,self.firing_event_id)
-
     def _starting_todo(self, logprint=True):
         if logprint:
             sys.stdout = sys.stderr = self.logprint().open("a")

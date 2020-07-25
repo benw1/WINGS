@@ -13,11 +13,11 @@ __all__ = ['PbsScheduler']
 
 
 class PbsScheduler(object):
-    def __init__(self, event, job):
+    def __init__(self, event, task):
         self.cores = 0
         self.memory = 0
 
-    def submit(self, event, job):
+    def submit(self, event, task):
         options = event.options
         try:
             self.cores = options['cores']
@@ -27,13 +27,13 @@ class PbsScheduler(object):
             self.memory = options['memory']
         except KeyError:
             self.memory = 100
-        task = job.task.executable + ' -j ' + str(job.job_id)
+        command = task.executable + ' -j ' + str(event.event_id)
         # Put job into PBS file
         # start async callback of execute method
 
-    def execute(self, event,):
+    def execute(self, event):
         my_pipe = event.pipeline
         pipedir = my_pipe.pipe_root
         # generate task list and pbs script files
         # pbs_command="qsub "+pbs_file
-        subprocess.run(pbs_command, shell=True)
+        # subprocess.run(pbs_command, shell=True)

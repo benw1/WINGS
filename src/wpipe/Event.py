@@ -311,7 +311,7 @@ class Event(OptOwner):
         either fires the task again if the job did not complete due to an
         error, or it does nothing if the job is just still running.
         """
-        if False:  # len(self.fired_jobs):
+        if len(self.fired_jobs):
             fired_job = self.fired_jobs[-1]
             if fired_job.has_completed:
                 if len(fired_job.child_events):
@@ -324,25 +324,33 @@ class Event(OptOwner):
                     print()  # fired_job keep going
                 else:
                     if fired_job.task_changed:
-                        with self.pipeline.dummy_job.logprint().open("a") as stdouterr:
-                            subprocess.Popen([fired_job.task.executable, '-e', str(self.event_id)],
-                                             cwd=self.pipeline.pipe_root, stdout=stdouterr, stderr=stdouterr)
+                        self.__fire(fired_job.task)
                     else:
                         print()  # task will produce same error
         else:
             for task in self.pipeline.tasks:
                 for mask in task.masks:
                     if (self.name == mask.name) & ((self.value == mask.value) | (mask.value == '*')):
-                        with self.pipeline.dummy_job.logprint().open("a") as stdouterr:
-                            subprocess.Popen([task.executable, '-e', str(self.event_id)],
-                                             cwd=self.pipeline.pipe_root, stdout=stdouterr, stderr=stdouterr)
-                        # Let's send stuff to slurm
-                        # sql_hyak(self.task,self.job_id,self.firing_event_id)
-                        # Let's send stuff to pbs
-                        # sql_pbs(self.task,self.job_id,self.firing_event_id)
+                        self.__fire(task)
                         return
             raise ValueError(
                 "No mask corresponding to event signature {name='%s',value='%s'}" % (self.name, self.value))
+
+    def __fire(self, task):  # MEH
+        with self.pipeline.dummy_job.logprint().open("a") as stdouterr:
+            options = self.options
+            try:
+                submission_type = options['submission_type']
+                if 'pbs' in submission_type:
+                    from . import PbsScheduler
+                    pbs = PbsScheduler(self, task)
+            except KeyError:
+                subprocess.Popen([task.executable, '-e', str(self.event_id)],
+                                 cwd=self.pipeline.pipe_root, stdout=stdouterr, stderr=stdouterr)
+            # Let's send stuff to slurm
+            # sql_hyak(self.task,self.job_id,self.firing_event_id)
+            # Let's send stuff to pbs
+            # sql_pbs(self.task,self.job_id,self.firing_event_id)
 
     def delete(self):
         """
