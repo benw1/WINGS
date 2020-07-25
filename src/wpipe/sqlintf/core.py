@@ -43,10 +43,9 @@ if sqlite:
 elif PARSER.parse_known_args()[0].test:
     ENGINE_URL = "mysql+pymysql://root:password@localhost:8000/server"
 else:
-    ENGINE_URL = 'mysql://wpipe:W£|£3u53r@localhost/server'
+    ENGINE_URL = 'mysql://wings:wings2025@10.150.27.94:8020/server'
+    # ENGINE_URL = 'mysql://wpipe:W£|£3u53r@localhost/server'
 
-# engine = None
-# try:
 engine = sa.create_engine(ENGINE_URL)  # , echo=True)
 """
 sqlalchemy.engine.base.Engine object: handles the connection to the database.

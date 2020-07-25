@@ -311,7 +311,7 @@ class Event(OptOwner):
         either fires the task again if the job did not complete due to an
         error, or it does nothing if the job is just still running.
         """
-        if len(self.fired_jobs):
+        if False:  # len(self.fired_jobs):
             fired_job = self.fired_jobs[-1]
             if fired_job.has_completed:
                 if len(fired_job.child_events):

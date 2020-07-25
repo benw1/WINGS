@@ -1,10 +1,9 @@
 #! /usr/bin/env python
-import os
-import subprocess
-
+import os 
+#import subprocess
+from stips.observation_module import ObservationModule
+import numpy as np
 import wpipe as wp
-
-# from stips.observation_module import ObservationModule #save for when ready
 
 on_hyak = False
 on_pbs = False
@@ -79,7 +78,7 @@ def pbs_stips(event_id, dp_id, stips_script):
     return
     # subprocess.run(['qsub',pbsfile],cwd=my_config.procpath)
 
-
+'''
 def run_stips(event_id, dp_id, ra_dith, dec_dith, run_id):
     catalog_dp = wp.DataProduct(dp_id)
     my_config = catalog_dp.config
@@ -134,6 +133,45 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, run_id):
                                 group='proc', subtype='stips_image',
                                 filtername=filtername, ra=my_params['racent'], dec=my_params['deccent'])
 
+'''
+
+def run_stips(event_id, dp_id, ra_dith, dec_dith):
+    catalog_dp = wp.DataProduct(dp_id)
+    my_config = catalog_dp.config
+    my_params = my_config.parameters
+    racent = float(my_params['racent']) + (float(ra_dith) / 3600.0)
+    deccent = float(my_params['deccent']) + (float(dec_dith) / 3600.0)
+    try:
+        pa = my_params['pa']
+    except KeyError:
+        pa = 0.0
+    fileroot = str(catalog_dp.relativepath)
+    filename = str(catalog_dp.filename)  # for example, Mixed_h15_shell_3Mpc_Z.tbl
+    filtroot = filename.split('_')[-1].split('.')[0]
+    filtername = filtroot
+    os.chdir(my_config.procpath)
+    filename = fileroot + '/' + filename 
+    seed = np.random.randint(9999)+1000
+    with open(filename) as myfile:
+       head = [next(myfile) for x in range(3)]
+    pos = head[2].split(' ')
+    crud,ra = pos[2].split('(')
+    dec,crud =  pos[4].split(')')
+    print("Running ",filename,ra,dec)
+    print("SEED ",seed)
+    scene_general = {'ra': racent, 'dec': deccent, 'pa': pa, 'seed': seed}
+    obs = {'instrument': 'WFI', 'filters': [filtername], 'detectors': my_params['detectors'], 'distortion': False, 'oversample': my_params['oversample'], 'pupil_mask': '', 'background': 'avg', 'observations_id': dp_id, 'exptime': my_params['exptime'], 'offsets': [{'offset_id': event_id, 'offset_centre': False, 'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
+    obm = ObservationModule(obs, scene_general=scene_general)
+    obm.nextObservation()
+    source_count_catalogues = obm.addCatalogue(str(filename))
+    psf_file = obm.addError()
+    fits_file, mosaic_file, params = obm.finalize(mosaic=False)
+    _dp = my_config.dataproduct(filename='sim_' + str(dp_id) + '_0.fits', relativepath=fileroot,
+                                group='proc', subtype='stips_image',
+                                filtername=filtername, ra=my_params['racent'], dec=my_params['deccent'])
+
+
+
 
 def parse_all():
     parser = wp.PARSER
@@ -152,8 +190,8 @@ if __name__ == '__main__':
     compname = this_event.options['name']
     ra_dither = this_event.options['ra_dither']
     dec_dither = this_event.options['dec_dither']
+    run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither))
     update_option = parent_job.options[compname]
-    run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither), update_option)
     update_option = update_option + 1
     parent_job.options[compname] = update_option
     to_run = this_event.options['to_run']

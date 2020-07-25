@@ -21,8 +21,18 @@ def run_dolphot(dp_id):
     dolphot_path = dolphot_path[:-10]
     dolphot = dolphot_path + "dolphot"
     parameter_file = param_dp.relativepath + '/' + param_dp.filename
-    subprocess.run([dolphot, outfile, " -p " + parameter_file, " > ", my_config.logpath + '/' + logfile],
-                   cwd=my_config.procpath)
+    print(my_config.procpath)
+    print("dolphot "+outfile+" -p"+parameter_file+" > "+ my_config.logpath + "/" + logfile)
+    scr = my_config.logpath + "/" + logfile
+    command = "dolphot "+outfile+" -p"+parameter_file+" > "+ my_config.logpath + "/" + logfile
+    pars = "-p"+parameter_file
+    print(logfile)
+    #subprocess.run([dolphot,outfile,pars,">"+my_config.logpath + '/' + logfile],cwd=my_config.procpath,shell=True)
+    _p=subprocess.run(command,cwd=my_config.procpath,shell=True)
+    print(_p)
+    _p.check_returncode()
+    #with open(logfile, "w") as f:
+    #   _p=subprocess.Popen([dolphot,outfile,pars,scr], stdout=f, shell=True, cwd=my_config.procpath)
 
 
 def hyak_dolphot(dp_id):

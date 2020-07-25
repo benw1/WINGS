@@ -5,7 +5,7 @@ Contains the Job class definition
 Please note that this module is private. The Job class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import sys, datetime, si
+from .core import sys, datetime, subprocess, si
 from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, as_int
 from .core import PARSER
@@ -208,7 +208,7 @@ class Job(OptOwner):
                     if node is not None:
                         cls._job = cls._job. \
                             filter_by(node_id=node.node_id)
-                    cls._job = cls._job.\
+                    cls._job = cls._job. \
                         filter_by(attempt=attempt).one()
                 except si.orm.exc.NoResultFound:
                     cls._job = si.Job(attempt=attempt,
@@ -478,6 +478,27 @@ class Job(OptOwner):
                 log.write(log_text)
                 log.write('\n')
         return self._log_dp
+
+    def submit(self):
+        """
+        Submit the job to the scheduler.
+        """
+        my_pipe = self.pipeline
+        with self.logprint().open("a") as stdouterr:
+            event = self.firing_event
+            options = event.options
+            try:
+                submission_type = options['submission_type']
+                if 'pbs' in submission_type:
+                    from . import PbsScheduler
+                    pbs = PbsScheduler(event, self)
+            except KeyError:
+                subprocess.Popen([self.task.executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name),
+                                  '-j', str(self.job_id)], cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
+        # Let's send stuff to slurm
+        # sql_hyak(self.task,self.job_id,self.firing_event_id)
+        # Let's send stuff to pbs
+        # sql_pbs(self.task,self.job_id,self.firing_event_id)
 
     def _starting_todo(self, logprint=True):
         if logprint:

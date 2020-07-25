@@ -10,6 +10,7 @@ import os
 import sys
 import types
 import datetime
+import time
 import subprocess
 import glob
 import shutil
@@ -23,9 +24,9 @@ import pandas as pd
 
 from . import sqlintf as si
 
-__all__ = ['importlib', 'os', 'sys', 'types', 'datetime', 'subprocess', 'glob',
-           'shutil', 'warnings', 'json', 'ast', 'atexit', 'np', 'pd', 'si',
-           'PARSER', 'as_int', 'try_scalar', 'clean_path', 'split_path',
+__all__ = ['importlib', 'os', 'sys', 'types', 'datetime', 'time', 'subprocess',
+           'glob', 'shutil', 'warnings', 'json', 'ast', 'atexit', 'np', 'pd',
+           'si', 'PARSER', 'as_int', 'try_scalar', 'clean_path', 'split_path',
            'remove_path', 'key_wpipe_separator', 'initialize_args',
            'wpipe_to_sqlintf_connection', 'return_dict_of_attrs', 'to_json',
            'ChildrenProxy', 'DictLikeChildrenProxy']

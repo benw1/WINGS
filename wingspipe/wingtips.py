@@ -61,16 +61,16 @@ class WingTips:
     '''
     def random_radec_for(self,other,shape=(4096,4096),sample=False,n=0,hasID=False):
         _i = int(hasID)
-        try:
-            if other.endswith('.fits'):
-                return WingTips.random_radec(self.n,imfile=other)
-        except AttributeError:
-            if not sample:
-                return WingTips.random_radec(self.n,center=other.center)
-            elif not bool(n):
-                return WingTips.sample_radec(n=self.n,radec1=False,radec2=other.tab[:,_i:_i+1])
-            else:
-                return WingTips.sample_radec(n=n,radec1=self.tab[:,_i:_i+1],radec2=other.tab[:,_i:_i+1])
+        #try:
+        #    if other.endswith('.fits'):
+        #        return WingTips.random_radec(self.n,imfile=other)
+        #except AttributeError:
+        if not sample:
+            return WingTips.random_radec(self.n,center=other.center)
+        elif not bool(n):
+            return WingTips.sample_radec(n=self.n,radec1=False,radec2=other.tab[:,_i:_i+1])
+        else:
+            return WingTips.sample_radec(n=n,radec1=self.tab[:,_i:_i+1],radec2=other.tab[:,_i:_i+1])
 
 
     ''' Merge two WingTips objects '''
