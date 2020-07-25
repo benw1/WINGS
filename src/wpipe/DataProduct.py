@@ -159,6 +159,7 @@ class DataProduct(OptOwner):
         or
         >>> my_dp = wp.DataProduct(my_config, filename, group)
     """
+
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._dataproduct = args[0] if len(args) else None
@@ -252,7 +253,7 @@ class DataProduct(OptOwner):
 
     @filename.setter
     def filename(self, filename):
-        os.rename(self.relativepath+'/'+self._dataproduct.filename, self.relativepath+'/'+filename)
+        os.rename(self.relativepath + '/' + self._dataproduct.filename, self.relativepath + '/' + filename)
         self._dataproduct.name = filename
         self._dataproduct.timestamp = datetime.datetime.utcnow()
         si.commit()
@@ -277,7 +278,7 @@ class DataProduct(OptOwner):
         """
         str: Path where the file the dataproduct points to is located.
         """
-        return self.relativepath+'/'+self.filename
+        return self.relativepath + '/' + self.filename
 
     @property
     def suffix(self):
@@ -464,7 +465,11 @@ class DataProduct(OptOwner):
         kwargs = self._prep_copy_symlink(path, kwargs)
         filename = kwargs['filename']
         path = kwargs['relativepath']
-        if not os.path.exists(path+'/'+filename):
+        if os.path.exists(path + '/' + filename):
+            selection = DataProduct.select(relativepath=path, filename=filename)
+            if len(selection):  # TAKE OLDEST ONE? CHECK TIMESTAMPS?
+                new_dp = selection[0]
+        if 'new_dp' not in locals():
             if '.'.join(type(dpowner).__module__.split('.')[:-1]) == 'wpipe.sqlintf':
                 dpowner.dataproducts.append(si.DataProduct(**kwargs))
                 new_dp = DataProduct(dpowner.dataproducts[-1])
@@ -472,8 +477,9 @@ class DataProduct(OptOwner):
                 new_dp = dpowner.dataproduct(**kwargs)
             else:
                 raise TypeError
-            func(self.path, path+'/'+filename)
-            return new_dp
+        if not os.path.exists(path + '/' + filename):
+            func(self.path, path + '/' + filename)
+        return new_dp
 
     def make_copy(self, path, **kwargs):
         """

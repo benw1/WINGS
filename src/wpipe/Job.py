@@ -5,7 +5,7 @@ Contains the Job class definition
 Please note that this module is private. The Job class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import sys, datetime, subprocess, si
+from .core import sys, datetime, si
 from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, as_int
 from .core import PARSER
@@ -164,15 +164,12 @@ class Job(OptOwner):
         or
         >>> new_job = my_config.job(my_task, my_node, my_event)
 
-        Once the Job object is constructed, 3 methods are important for the
-        pipeline run: logprint, child_event and submit
+        Once the Job object is constructed, 2 methods are important for the
+        pipeline run: logprint and child_event
          - Job.logprint allows the logging of a job in logfiles named after
            that job, its task and its firing event,
          - Job.child_event is the Event-generating object method of Job, which
            handles the starting of new jobs from an existing job,
-         - Job.submit plainly submits the job to the system job scheduler;
-           this method is automatically called when a job is fired by a firing
-           event through its method Event.fire.
     """
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
@@ -183,7 +180,7 @@ class Job(OptOwner):
                 cls._job = si.session.query(si.Job).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
-                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
                 event = kwargs.get('event', wpargs.get('Event', None))
                 config = kwargs.get('config',
                                     wpargs.get('Configuration',
@@ -333,7 +330,10 @@ class Job(OptOwner):
         """
         bool: True if task was modified since job started, False if not.
         """
-        return self.task.last_modification_timestamp > self.starttime
+        if self.starttime is None:
+            return True
+        else:
+            return self.task.last_modification_timestamp > self.starttime
 
     @property
     def task_id(self):
@@ -478,19 +478,6 @@ class Job(OptOwner):
                 log.write(log_text)
                 log.write('\n')
         return self._log_dp
-
-    def submit(self):
-        """
-        Submit the job to the scheduler.
-        """
-        my_pipe = self.pipeline
-        with self.logprint().open("a") as stdouterr:
-            subprocess.Popen([self.task.executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name),
-                              '-j', str(self.job_id)], cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
-        # Let's send stuff to slurm
-        # sql_hyak(self.task,self.job_id,self.firing_event_id)
-        # Let's send stuff to pbs
-        # sql_pbs(self.task,self.job_id,self.firing_event_id)
 
     def _starting_todo(self, logprint=True):
         if logprint:
