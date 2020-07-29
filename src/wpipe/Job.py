@@ -17,7 +17,6 @@ JOBINITSTATE = "Initialized"
 JOBSUBMSTATE = "Submitted"
 JOBCOMPSTATE = "Completed"
 
-
 class Job(OptOwner):
     """
         Represents a submitted job of a WINGS pipeline.
@@ -491,14 +490,36 @@ class Job(OptOwner):
         with self.logprint().open("a") as stdouterr:
             event = self.firing_event
             options = event.options
+            configParameters = event.config.parameters # dict
+
+            print(options)
+            submission_type = None
+
             try:
+                print("trying new submission type")
                 submission_type = options['submission_type']
+                print("Got the submission type: ", submission_type)
                 if 'pbs' in submission_type:
-                    from . import PbsScheduler
-                    pbs = PbsScheduler(event, self)
+                    from .scheduler.PbsScheduler import PbsScheduler
+                    # pbs = PbsScheduler(event, self)
+                    PbsScheduler.submit(event)
             except KeyError:
-                subprocess.Popen([self.task.executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name),
-                                  '-j', str(self.job_id)], cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
+                try:
+                    submission_type = configParameters['submission_type']
+                except KeyError:
+                    pass
+
+            if 'pbs' == submission_type:
+                from .scheduler.PbsScheduler import PbsScheduler
+                PbsScheduler.submit(event)
+            if 'hyak' == submission_type:
+                pass
+
+            subprocess.Popen([self.task.executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name),
+                              '-j', str(self.job_id)], cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
+
+
+
         # Let's send stuff to slurm
         # sql_hyak(self.task,self.job_id,self.firing_event_id)
         # Let's send stuff to pbs

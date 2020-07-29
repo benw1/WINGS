@@ -1,4 +1,4 @@
-from . import BaseScheduler
+from .BaseScheduler import BaseScheduler
 
 class PbsScheduler(BaseScheduler):
 
@@ -42,10 +42,12 @@ class PbsScheduler(BaseScheduler):
     ######################
 
     @staticmethod
-    def submit(key):
+    def submit(event, job):
         # Check if any scheduler exists.
+        print(event)
+        print(job)
         if (len(PbsScheduler.schedulers) == 0):  # !self._checkScheduler(stuff)):
-            PbsScheduler(key)
+            PbsScheduler(event)
             return
 
         (hasScheduler, scheduler) = PbsScheduler._checkForScheduler(key)
@@ -53,4 +55,4 @@ class PbsScheduler(BaseScheduler):
             print("A scheduler with those attributes exists")
             scheduler._submit()
         else: # No scheduler was found but we need to do the scheduling
-            PbsScheduler(key)
+            PbsScheduler(event)
