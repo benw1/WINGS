@@ -9,16 +9,16 @@ class PbsScheduler(BaseScheduler):
 
     def __init__(self, job):
         super().__init__()
-        print("Create a new scheduler")
-        self.key = self.task.name
-        #self.key = PbsKey(schedulers,job)
+        print("Check schedulers and Create a new scheduler if necessary")
+        #self.key = self.task.name
+        self.key = PbsKey(schedulers,job)
         test_new = self.key.equals(self)
         if test_new == 0:
            PbsScheduler.schedulers.append(self) # add this new scheduler to the list
         if test_new > 0:
-           ##How do we add the job to the already-existing scheduler of this key?
+           pass
         # run the submit now that the object is created
-        self._submit()
+        self._submit(scheduler)
     class PbsKey:
         def __init__(self,schedulers,event)
             self.key = self.pipeline.pipeline_id+job.task.name
@@ -34,9 +34,10 @@ class PbsScheduler(BaseScheduler):
     ## Internal Use Only ##
     #######################
 
-    def _submit(self):
+    def _submit(self,scheduler):
         # TODO: Probably need a pass in variable
         print("do a reset")
+        scheduler.jobList.append(self.task.name+" -j "+"self.job.job_id)
         super().reset()
 
 
@@ -69,10 +70,8 @@ class PbsScheduler(BaseScheduler):
         pbsfile.write("parallel --jobs",str(njobs),"--sshloginfile $PBS_NODEFILE --workdir $PWD < ",executables_list_path,"\n")
         pbsfile.close()
         executables_list = open(executables_path,"w")
-        for job in self.jobs:
-            executable = job.task.name
-            jobid = job.job_id 
-            executables_list.write(str(executable)," -j ",jobid)
+        for job in self.jobList:
+            executables_list.write(job)
         executables_list.close()
         return(pbsfilepath)        
 
