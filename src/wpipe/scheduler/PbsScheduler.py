@@ -10,33 +10,27 @@ class PbsScheduler(BaseScheduler):
     def __init__(self, job):
         super().__init__()
         print("Create a new scheduler")
-        self.key = self.task.name
-        #self.key = PbsKey(schedulers,job)
-        test_new = self.key.equals(self)
-        if test_new == 0:
-           PbsScheduler.schedulers.append(self) # add this new scheduler to the list
-        if test_new > 0:
+
+#        self.key = self.task.name
+        self.key = PbsKey(job) # create the key for our new scheduler
+
+        PbsScheduler.schedulers.append(self) # add this new scheduler to the list
            ##How do we add the job to the already-existing scheduler of this key?
+
         # run the submit now that the object is created
-        self._submit()
-    class PbsKey:
-        def __init__(self,schedulers,event)
-            self.key = self.pipeline.pipeline_id+job.task.name
-        def equals(self):
-            check = 0
-            for key in self.schedulers:
-                if self.schedulers[key] == self.key
-                   check = 1
-            return(check)
- 
-            
+        self._submitJob(job)
+
     #######################
     ## Internal Use Only ##
     #######################
 
-    def _submit(self):
+    def _submitJob(self, job):
         # TODO: Probably need a pass in variable
-        print("do a reset")
+
+        # TODO: submit list of jobs
+
+
+        # Reset the scheduler
         super().reset()
 
 
@@ -47,10 +41,13 @@ class PbsScheduler(BaseScheduler):
         qsub_command = "qsub "+pbsfilepath
         pbs_id = os.popen(qsub_command) 
         ##Need to keep track of the pbs job id.  Where can we put this?
+
+        # TODO: Use PbsKey to better cleanup the now unused scheduler
         # remove scheduler from list
         PbsScheduler.schedulers.remove(self)
 
     def setup_pbs(self):
+        # TODO: Ben put more white space in.
         now = datetime.now()
         dt_string = now.strftime("%d-%m-%Y-%H-%M-%S.%f")
         pbsfilename = dt_string+".pbs #name it with the current time
@@ -68,18 +65,23 @@ class PbsScheduler(BaseScheduler):
         pbsfile.write("cd ",self.pipeline.pipe_root\n)
         pbsfile.write("parallel --jobs",str(njobs),"--sshloginfile $PBS_NODEFILE --workdir $PWD < ",executables_list_path,"\n")
         pbsfile.close()
+
         executables_list = open(executables_path,"w")
+
         for job in self.jobs:
             executable = job.task.name
             jobid = job.job_id 
             executables_list.write(str(executable)," -j ",jobid)
         executables_list.close()
+
         return(pbsfilepath)        
 
     @staticmethod
-    def _checkForScheduler(key):
+    def _checkForScheduler(event):
+        # This will check for an existing scheduler and return it if it exists
+        tempKey = PbsKey(event)
         for scheduler in PbsScheduler.schedulers:
-            if (scheduler.key == key):
+            if (scheduler.key.equals(tempKey)): # TODO: Make sure this works properly with the PbsKey
                 return (True, scheduler)
         return (False, None)
 
@@ -89,16 +91,33 @@ class PbsScheduler(BaseScheduler):
 
     @staticmethod
     def submit(event, job):
-        # Check if any scheduler exists.
-        print(event)
-        print(job)
-        if (len(PbsScheduler.schedulers) == 0):  # !self._checkScheduler(stuff)):
+
+        # If no schedulers exist then create a new one and exit this method
+        if (len(PbsScheduler.schedulers) == 0):
             PbsScheduler(event)
             return
 
-        (hasScheduler, scheduler) = PbsScheduler._checkForScheduler(key)
-        if (hasScheduler): # check schedulers and submit to one
+        (hasScheduler, scheduler) = PbsScheduler._checkForScheduler(event)
+        if (hasScheduler): # check for existing schedulers and call submitJob for the retrieved scheduler
             print("A scheduler with those attributes exists")
-            scheduler._submit()
+            scheduler._submitJob(job)
         else: # No scheduler was found but we need to do the scheduling
             PbsScheduler(event)
+
+    ####################
+    ## Nested Classes ##
+    ####################
+
+    # out of site and out of mind
+    class PbsKey(object):
+
+        def __init__(self, event):
+            self.key = self.pipeline.pipeline_id+job.task.name
+
+        def equals(self):
+            ## TODO: Make thie return True or False
+            check = 0
+            for key in self.schedulers:
+                if self.schedulers[key] == self.key:
+                   check = 1
+            return(check)
