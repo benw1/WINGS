@@ -12,6 +12,7 @@ class PbsScheduler(BaseScheduler):
         print("Check schedulers and Create a new scheduler if necessary")
         #self.key = self.task.name
         self.key = PbsKey(schedulers,job)
+        self.jobList = list()
         test_new = self.key.equals(self)
         if test_new == 0:
            PbsScheduler.schedulers.append(self) # add this new scheduler to the list
@@ -21,9 +22,12 @@ class PbsScheduler(BaseScheduler):
         self._submit(scheduler)
         # run the submit now that the object is created
         self._submitJob(job)
+
     class PbsKey:
+
         def __init__(self,schedulers,event)
             self.key = self.pipeline.pipeline_id+job.task.name
+
         def equals(self):
             check = 0
             for key in self.schedulers:
@@ -39,15 +43,12 @@ class PbsScheduler(BaseScheduler):
     def _submit(self,scheduler):
         # TODO: Probably need a pass in variable
         print("do a reset")
-        scheduler.jobList.append(self.task.name+" -j "+"self.job.job_id)
-        # TODO: Probably need a pass in variable
 
         # TODO: submit list of jobs
-
+        self.jobList.append(self.task.name+" -j "+"self.job.job_id+"\n")
 
         # Reset the scheduler
         super().reset()
-
 
     def _execute(self):
         print("We do the scheduling now from: " + self.key)
@@ -83,10 +84,11 @@ class PbsScheduler(BaseScheduler):
 
         executables_list = open(executables_path,"w")
 
-        for job in self.jobs:
-            executable = job.task.name
-            jobid = job.job_id 
-            executables_list.write(str(executable)," -j ",jobid)
+
+        #NEED TO DETERMINE HOW TO GET THIS LIST TO BE JUST THE ONE FOR THIS SCHEDULER, AND NOT ALL JOBS FOR ALL SCHEDULERS
+
+        for job in self.jobList:
+            executables_list.write(job)
         executables_list.close()
 
         return(pbsfilepath)        
