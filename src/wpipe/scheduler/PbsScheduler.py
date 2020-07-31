@@ -1,5 +1,7 @@
 from .BaseScheduler import BaseScheduler
-from jinja2 import Environment, PackageLoader, FileSystemLoader, select_autoescape
+from jinja2 import Environment, FileSystemLoader
+import datetime
+import subprocess
 
 class PbsScheduler(BaseScheduler):
 
@@ -8,8 +10,7 @@ class PbsScheduler(BaseScheduler):
 
     def __init__(self, job):
         super().__init__()
-        print("creating a new scheduler")
-        #self.key = self.task.name
+        print("Creating a new scheduler")
 
         self._key = self.PbsKey(job)
         self._jobList = list()
@@ -25,11 +26,9 @@ class PbsScheduler(BaseScheduler):
     #######################
 
     def _submitJob(self, job):
-        # TODO: Probably need a pass in variable
+        # TODO: Change to event later
         print("do a reset")
 
-        # TODO: submit list of jobs
-        # self.jobList.append(self.task.name+" -j "+"self.job.job_id+"\n")
         self._jobList.append(job)
 
         # Reset the scheduler
@@ -37,74 +36,60 @@ class PbsScheduler(BaseScheduler):
 
     def _execute(self):
         print("We do the scheduling now from: " + self._key.getKey())
-        #Put pbs and list of tasks in the configuration root
-        # pbsfilepath = setup_pbs(self)
-        # qsub_command = "qsub "+pbsfilepath
-        # pbs_id = os.popen(qsub_command)
-        # ##Need to keep track of the pbs job id.  Where can we put this?
-        #
+
         for job in self._jobList:
             print(job.task.executable, '-p', str(job.pipeline_id), '-u', str(job.pipeline.user_name),
             '-j', str(job.job_id))
 
-        # Load the jinja file
+        # Load the jinja environment TODO: Make this more dynamic
         env = Environment(loader=FileSystemLoader("/home/tristan/workspace/WINGS/src/wpipe/templates"))
 
-        self._makeJobList(env)
-        # TODO: Use PbsKey to better cleanup the now unused scheduler
+        now = datetime.datetime.now()
+        dt_string = now.strftime("%d-%m-%Y-%H-%M-%S.%f")
+
+        pbsfilename = dt_string+".pbs" #name it with the current time
+        executables_file = dt_string+".list" #name it with the current time
+
+        pbsfilepath = self._jobList[0].pipeline.config_root+"/"+pbsfilename
+        executables_path = self._jobList[0].pipeline.config_root+"/"+executables_file
+
+        jobFileOutput = self._makeJobList(env)
+        pbsFileOutput = self._makePbsFile(env, executables_path)
+
+        with open(executables_path, 'w') as f:
+            f.write(jobFileOutput)
+        with open(pbsfilepath, 'w') as f:
+            f.write(pbsFileOutput)
+
+        # TODO: Test this out more
+        # output = subprocess.run("qsub %filePath" % (pbsfilepath), shell=True, capture_output=True)
+        # print("Qsub output:")
+        # print(output)
+
         # remove scheduler from list
         PbsScheduler.schedulers.remove(self)
 
-    # def _setup_pbs(self):
-    #     # TODO: Ben put more white space in.
-    #     now = datetime.now()
-    #     dt_string = now.strftime("%d-%m-%Y-%H-%M-%S.%f")
-    #     pbsfilename = dt_string+".pbs #name it with the current time
-    #     executables_file = dt_string+".list #name it with the current time
-    #     pbsfilepath = self.pipeline.config_root+"/"+pbsfilename
-    #     executabls_path = self.pipeline.config_root+"/"+executables_file
-    #     njobs = len(self.jobs)
-    #     pbsfile = open(pbsfilepath,"w")
-    #     pbsfile.write("#PBS -S /bin/bash\n")
-    #     pbsfile.write("#PBS -j oe\n")
-    #     pbsfile.write("#PBS -l select=1:ncpus=10:model=has\n")
-    #     pbsfile.write("#PBS -W group_list=s1692\n")
-    #     pbsfile.write("#PBS -l walltime=24:00:00\n")
-    #     pbsfile.write("source ~/.bashrc\n")
-    #     pbsfile.write("cd ",self.pipeline.pipe_root\n)
-    #     pbsfile.write("parallel --jobs",str(njobs),"--sshloginfile $PBS_NODEFILE --workdir $PWD < ",executables_list_path,"\n")
-    #     pbsfile.close()
-    #
-    #     executables_list = open(executables_path,"w")
-    #
-    #
-    #     #NEED TO DETERMINE HOW TO GET THIS LIST TO BE JUST THE ONE FOR THIS SCHEDULER, AND NOT ALL JOBS FOR ALL SCHEDULERS
-    #
-    #     for job in self.jobList:
-    #         executables_list.write(job)
-    #     executables_list.close()
-    #
-    #     return(pbsfilepath)
 
     @staticmethod
     def _checkForScheduler(job):
         # This will check for an existing scheduler and return it if it exists
         tempKey = PbsScheduler.PbsKey(job)
+
         for scheduler in PbsScheduler.schedulers:
-            if (scheduler._key.equals(tempKey)): # TODO: Make sure this works properly with the PbsKey
-                print("We found an existing scheduler")
+            if (scheduler._key.equals(tempKey)):
                 return (True, scheduler)
+
         return (False, None)
 
     def _makeJobList(self, jinjaEnv):
 
         print(jinjaEnv.list_templates())
-        template = env.get_template('SchedulerJobList.jinja')
+        template = jinjaEnv.get_template('SchedulerJobList.jinja')
 
         # Make job list into a dictionary to pass to jinja2
         jobsForJinja = list()
         for job in self._jobList:
-            jobsForJinja.append({'command' : job.task.executable + ' -p ' + str(job.pipeline_id) + ' -u ' + str(job.pipeline.user_name) +
+            jobsForJinja.append({'command': job.task.executable + ' -p ' + str(job.pipeline_id) + ' -u ' + str(job.pipeline.user_name) +
             ' -j ' + str(job.job_id)})
 
         output = template.render(jobs=jobsForJinja)
@@ -114,6 +99,19 @@ class PbsScheduler(BaseScheduler):
 
         return output
 
+    def _makePbsFile(self, jinjaEnv, exectuablesListPath):
+
+        template = jinjaEnv.get_template('PbsFile.jinja')
+
+        # create a dictionary
+        pbsDict = {'njobs': len(self._jobList), 'pipe_root': self._jobList[0].pipeline.pipe_root, 'executables_list_path': exectuablesListPath}
+
+        output = template.render(pbs=pbsDict)
+
+        print()
+        print("Jinja Pbs File:")
+        print(output)
+        return output
 
     ######################
     ### Usable Methods ###
@@ -143,12 +141,12 @@ class PbsScheduler(BaseScheduler):
 
         def __init__(self, job):
             # TODO: Make this into a dictionary later
+            # TODO: Change this to event type
             self._key = str(job.pipeline.pipeline_id) + job.task.name
             print("This is our key: " + self._key)
 
-        def equals(self, otherPbsKey):
-            # TODO: Make thie return True or False
-            if self._key == otherPbsKey.getKey():
+        def equals(self, other):
+            if self._key == other.getKey():
                 return True
             return False
 
