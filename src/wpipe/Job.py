@@ -490,12 +490,12 @@ class Job(OptOwner):
         with self.logprint().open("a") as stdouterr:
             event = self.firing_event
             options = event.options
-            configParameters = event.config.parameters # dict
 
             print(options)
             submission_type = None
 
             try:
+                configParameters = event.config.parameters  # dict
                 print("trying new submission type")
                 submission_type = options['submission_type']
                 print("Got the submission type: ", submission_type)
@@ -503,18 +503,23 @@ class Job(OptOwner):
                     from .scheduler.PbsScheduler import PbsScheduler
                     # pbs = PbsScheduler(event, self)
                     PbsScheduler.submit(event)
-            except KeyError:
+            except:
                 try:
                     submission_type = configParameters['submission_type']
-                except KeyError:
+                except:
                     pass
-
+            try:
+                submission_type = options['submission_type']
+            except KeyError:
+                pass
             if 'pbs' == submission_type:
                 from .scheduler.PbsScheduler import PbsScheduler
                 PbsScheduler.submit(event)
+                return
             if 'hyak' == submission_type:
                 pass
-
+            print(self.task.executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name),
+                              '-j', str(self.job_id))
             subprocess.Popen([self.task.executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name),
                               '-j', str(self.job_id)], cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
 
