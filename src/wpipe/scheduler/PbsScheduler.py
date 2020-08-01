@@ -1,5 +1,5 @@
 from .BaseScheduler import BaseScheduler
-from jinja2 import Environment, FileSystemLoader
+from .TemplateFactory import TemplateFactory
 import datetime
 import subprocess
 
@@ -37,24 +37,17 @@ class PbsScheduler(BaseScheduler):
     def _execute(self):
         print("We do the scheduling now from: " + self._key.getKey())
 
-        for job in self._jobList:
-            print(job.task.executable, '-p', str(job.pipeline_id), '-u', str(job.pipeline.user_name),
-            '-j', str(job.job_id))
-
-        # Load the jinja environment TODO: Make this more dynamic
-        env = Environment(loader=FileSystemLoader("/home/tristan/workspace/WINGS/src/wpipe/templates"))
-
         now = datetime.datetime.now()
         dt_string = now.strftime("%d-%m-%Y-%H-%M-%S.%f")
 
         pbsfilename = dt_string+".pbs" #name it with the current time
         executables_file = dt_string+".list" #name it with the current time
 
-        pbsfilepath = self._jobList[0].pipeline.config_root+"/"+pbsfilename
-        executables_path = self._jobList[0].pipeline.config_root+"/"+executables_file
+        pbsfilepath = self._jobList[0].pipeline.config_root + "/" + pbsfilename
+        executables_path = self._jobList[0].pipeline.config_root + "/" + executables_file
 
-        jobFileOutput = self._makeJobList(env)
-        pbsFileOutput = self._makePbsFile(env, executables_path)
+        jobFileOutput = self._makeJobList()
+        pbsFileOutput = self._makePbsFile(executables_path)
 
         with open(executables_path, 'w') as f:
             f.write(jobFileOutput)
@@ -81,10 +74,8 @@ class PbsScheduler(BaseScheduler):
 
         return (False, None)
 
-    def _makeJobList(self, jinjaEnv):
-
-        print(jinjaEnv.list_templates())
-        template = jinjaEnv.get_template('SchedulerJobList.jinja')
+    def _makeJobList(self):
+        template = TemplateFactory.getJobListTemplate()
 
         # Make job list into a dictionary to pass to jinja2
         jobsForJinja = list()
@@ -99,9 +90,10 @@ class PbsScheduler(BaseScheduler):
 
         return output
 
-    def _makePbsFile(self, jinjaEnv, exectuablesListPath):
+    def _makePbsFile(self,exectuablesListPath):
 
-        template = jinjaEnv.get_template('PbsFile.jinja')
+        # template = jinjaEnv.get_template('PbsFile.jinja')
+        template = TemplateFactory.getPbsFileTemplate()
 
         # create a dictionary
         pbsDict = {'njobs': len(self._jobList), 'pipe_root': self._jobList[0].pipeline.pipe_root, 'executables_list_path': exectuablesListPath}

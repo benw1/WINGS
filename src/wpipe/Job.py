@@ -494,6 +494,7 @@ class Job(OptOwner):
             print(options)
             submission_type = None
 
+            # TODO: Clean this mess up
             try:
                 configParameters = event.config.parameters  # dict
                 print("trying new submission type")
@@ -512,6 +513,7 @@ class Job(OptOwner):
                 submission_type = options['submission_type']
             except KeyError:
                 pass
+
             if 'pbs' == submission_type:
                 from .scheduler.PbsScheduler import PbsScheduler
                 PbsScheduler.submit(event)
