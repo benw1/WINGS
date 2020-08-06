@@ -151,8 +151,18 @@ DefaultNode = Node()
 Node object: Node object constructed at wpipe importation (see Node doc Notes)
 """
 
-if PARSER.parse_known_args()[0].job_id is not None:
-    ThisJob = Job()
+if PARSER.parse_known_args()[0].event_id is not None or PARSER.parse_known_args()[0].job_id is not None:
+    if PARSER.parse_known_args()[0].event_id is not None:
+        ThisEvent = Event()
+        try:
+            _config = Configuration(ThisEvent.options['config_id'])
+        except KeyError:
+            _config = ThisEvent.config
+        _task = Task(ThisEvent.pipeline, os.path.basename(sys.argv[0]))
+        ThisJob = ThisEvent.fired_job(len(ThisEvent.fired_jobs) + 1, _task, _config)
+        sys.argv += ['-j', str(ThisJob.job_id)]  # MEH
+    elif PARSER.parse_known_args()[0].job_id is not None:
+        ThisJob = Job()
     ThisJob._starting_todo()
     atexit.register(ThisJob._ending_todo)
 

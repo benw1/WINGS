@@ -5,9 +5,10 @@ Contains the Event class definition
 Please note that this module is private. The Event class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import datetime, si
+from .core import datetime, subprocess, si
 from .core import ChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection
+from .core import initialize_args, wpipe_to_sqlintf_connection, as_int
+from .core import PARSER
 from .OptOwner import OptOwner
 
 __all__ = ['Event']
@@ -20,7 +21,7 @@ class Event(OptOwner):
         Call signatures::
 
             Event(job, name, tag='', jargs='', value='', options={})
-            Event(keyid)
+            Event(keyid=PARSER.event_id)
             Event(_event)
 
         When __new__ is called, it queries the database for an existing
@@ -36,6 +37,10 @@ class Event(OptOwner):
         argument either:
          - the primary key id of the corresponding `events` table row
          - the `sqlintf.Event` object interfacing that table row
+        It can also be called without argument if the python script importing
+        wpipe was ran with the command-line argument --event/-e referring to a
+        valid event primary key id, in which case the consequently constructed
+        event will correspond to that event.
 
         After the instantiation of __new__ is completed, if a dictionary of
         options was given to the constructor, the __init__ method constructs
@@ -118,7 +123,7 @@ class Event(OptOwner):
 
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
-        cls._event = args[0] if len(args) else None
+        cls._event = args[0] if len(args) else as_int(PARSER.parse_known_args()[0].event_id)
         if not isinstance(cls._event, si.Event):
             keyid = kwargs.get('id', cls._event)
             if isinstance(keyid, int):
@@ -306,7 +311,7 @@ class Event(OptOwner):
         either fires the task again if the job did not complete due to an
         error, or it does nothing if the job is just still running.
         """
-        if False:  # len(self.fired_jobs):
+        if len(self.fired_jobs):
             fired_job = self.fired_jobs[-1]
             if fired_job.has_completed:
                 if len(fired_job.child_events):
@@ -319,25 +324,33 @@ class Event(OptOwner):
                     print()  # fired_job keep going
                 else:
                     if fired_job.task_changed:
-                        new_job = self.fired_job(fired_job.task, fired_job.config, fired_job.attempt + 1)
-                        new_job.submit()
+                        self.__fire(fired_job.task)
                     else:
                         print()  # task will produce same error
         else:
-            try:
-                from .Configuration import Configuration
-                configuration = Configuration(self.options['config_id'])
-            except KeyError:
-                configuration = self.config
             for task in self.pipeline.tasks:
                 for mask in task.masks:
                     if (self.name == mask.name) & ((self.value == mask.value) | (mask.value == '*')):
-                        new_job = self.fired_job(task, configuration)
-                        new_job.submit()  # pipeline should be able to run stuff and keep track if it completes
+                        self.__fire(task)
                         return
-            if 'new_job' not in locals():
-                raise ValueError(
-                    "No mask corresponding to event signature {name='%s',value='%s'}" % (self.name, self.value))
+            raise ValueError(
+                "No mask corresponding to event signature {name='%s',value='%s'}" % (self.name, self.value))
+
+    def __fire(self, task):  # MEH
+        with self.pipeline.dummy_job.logprint().open("a") as stdouterr:
+            options = self.options
+            try:
+                submission_type = options['submission_type']
+                if 'pbs' in submission_type:
+                    from . import PbsScheduler
+                    pbs = PbsScheduler(self, task)
+            except KeyError:
+                subprocess.Popen([task.executable, '-e', str(self.event_id)],
+                                 cwd=self.pipeline.pipe_root, stdout=stdouterr, stderr=stdouterr)
+            # Let's send stuff to slurm
+            # sql_hyak(self.task,self.job_id,self.firing_event_id)
+            # Let's send stuff to pbs
+            # sql_pbs(self.task,self.job_id,self.firing_event_id)
 
     def delete(self):
         """

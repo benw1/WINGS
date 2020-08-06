@@ -5,6 +5,7 @@ Contains the core import statements and developing tools of sqlintf
 Please note that this module is private. All functions and objects
 are available in the main ``sqlintf`` namespace - use that instead.
 """
+import os
 import argparse
 
 import sqlalchemy as sa
@@ -31,21 +32,13 @@ boolean: flag to call with the parser to use the in-memory sql database.
 
 if sqlite:
     ENGINE_URL = 'sqlite:///:memory:'
-    #
-    # def open_interpreter():
-    #     import code
-    #     code.interact(local=dict(globals(), **locals()))
-    #
-    # import atexit
-    #
-    # atexit.register(open_interpreter)
-
+elif 'WPIPE_ENGINEURL' in os.environ.keys():
+    ENGINE_URL = os.environ['WPIPE_ENGINEURL']
 elif PARSER.parse_known_args()[0].test:
     ENGINE_URL = "mysql+pymysql://root:password@localhost:8000/server"
 else:
     ENGINE_URL = 'mysql://wings:wings2025@10.150.27.94:8020/server'
-    ENGINE_URL = 'mysql+mysqlconnector://root:password@localhost:8000/server'
-    # ENGINE_URL = 'mysql://wpipe:W£|£3u53r@localhost/server'
+    # ENGINE_URL = 'mysql+mysqlconnector://root:password@localhost:8000/server'
 
 engine = sa.create_engine(ENGINE_URL)  # , echo=True)
 """

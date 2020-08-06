@@ -5,7 +5,7 @@ Contains the Task class definition
 Please note that this module is private. The Task class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import os, shutil, warnings, datetime, si
+from .core import os, sys, shutil, warnings, datetime, si
 from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path, remove_path
 
@@ -107,6 +107,7 @@ class Task:
 
         >>> new_job = my_task.job(my_node, my_event, my_config)
     """
+
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._task = args[0] if len(args) else None
@@ -134,7 +135,7 @@ class Task:
                                         is_exclusive=is_exclusive)
                     pipeline._pipeline.tasks.append(cls._task)
                     if base != pipeline.software_root:
-                        shutil.copy2(base+'/'+name, pipeline.software_root+'/')
+                        shutil.copy2(base + '/' + name, pipeline.software_root + '/')
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Task')
         return cls._inst
@@ -239,7 +240,7 @@ class Task:
         :obj:`datetime.datetime`: Timestamp of last modification time of the
         task script.
         """
-        return datetime.datetime.fromtimestamp(os.path.getmtime(self.executable))
+        return datetime.datetime.utcfromtimestamp(os.path.getmtime(self.executable))
 
     @property
     def pipeline_id(self):
@@ -311,13 +312,20 @@ class Task:
         """
         Import and call the function register implemented in task script.
         """
-        _temp = __import__(os.path.basename(self.pipeline.software_root) + '.' + self.name.replace('.py', ''),
-                           fromlist=[''])
+        pkg = os.path.basename(self.pipeline.software_root)
+        sub = self.name.replace('.py', '')
+        import time
+        while '_temp' not in locals():
+            try:
+                _temp = __import__(pkg + '.' + sub, fromlist=[''])
+            except ModuleNotFoundError:
+                time.sleep(3)
         if hasattr(_temp, 'register'):
             _temp.register(self)
         else:
             warnings.warn("Task " + self.pipeline.software_root + '/' + self.name +
                           " cannot be registered: no 'register' function")
+        del sys.modules[pkg + '.' + sub], sys.modules[pkg]
 
     def delete(self):
         """

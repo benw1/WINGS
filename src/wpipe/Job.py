@@ -17,6 +17,7 @@ JOBINITSTATE = "Initialized"
 JOBSUBMSTATE = "Submitted"
 JOBCOMPSTATE = "Completed"
 
+
 class Job(OptOwner):
     """
         Represents a submitted job of a WINGS pipeline.
@@ -163,17 +164,13 @@ class Job(OptOwner):
         or
         >>> new_job = my_config.job(my_task, my_node, my_event)
 
-        Once the Job object is constructed, 3 methods are important for the
-        pipeline run: logprint, child_event and submit
+        Once the Job object is constructed, 2 methods are important for the
+        pipeline run: logprint and child_event
          - Job.logprint allows the logging of a job in logfiles named after
            that job, its task and its firing event,
          - Job.child_event is the Event-generating object method of Job, which
            handles the starting of new jobs from an existing job,
-         - Job.submit plainly submits the job to the system job scheduler;
-           this method is automatically called when a job is fired by a firing
-           event through its method Event.fire.
     """
-
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._job = args[0] if len(args) else as_int(PARSER.parse_known_args()[0].job_id)
@@ -183,7 +180,7 @@ class Job(OptOwner):
                 cls._job = si.session.query(si.Job).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
-                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)
+                wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
                 event = kwargs.get('event', wpargs.get('Event', None))
                 config = kwargs.get('config',
                                     wpargs.get('Configuration',

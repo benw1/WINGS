@@ -40,6 +40,7 @@ PARSER.add_argument('--user', '-u', dest='user_name', type=str,
 PARSER.add_argument('--pipeline', '-p', dest='pipeline', type=str, default=os.getcwd(),
                     help='Path or ID of pipeline - default to current working directory')
 PARSER.add_argument('--job', '-j', dest='job_id', type=int, help='ID of this job')
+PARSER.add_argument('--event', '-e', dest='event_id', type=int, help='ID of the firing event of this job')
 
 # if os.getcwd() not in map(os.path.abspath, sys.path):
 #     sys.path.insert(0, os.getcwd())
