@@ -171,6 +171,7 @@ class Job(OptOwner):
          - Job.child_event is the Event-generating object method of Job, which
            handles the starting of new jobs from an existing job,
     """
+
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._job = args[0] if len(args) else as_int(PARSER.parse_known_args()[0].job_id)
@@ -501,10 +502,12 @@ class Job(OptOwner):
                     from .scheduler.PbsScheduler import PbsScheduler
                     # pbs = PbsScheduler(event, self)
                     PbsScheduler.submit(event)
-            except:
+                else:
+                    raise ValueError("'%s' isn't a valid 'submission_type'" % submission_type)
+            except KeyError:
                 try:
                     submission_type = configParameters['submission_type']
-                except:
+                except KeyError:
                     pass
             try:
                 submission_type = options['submission_type']
@@ -515,19 +518,14 @@ class Job(OptOwner):
                 from .scheduler.PbsScheduler import PbsScheduler
                 PbsScheduler.submit(event)
                 return
-            if 'hyak' == submission_type:
+            elif 'hyak' == submission_type:
                 pass
+            else:
+                raise ValueError("'%s' isn't a valid 'submission_type'" % submission_type)
             print(self.task.executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name),
-                              '-j', str(self.job_id))
+                  '-j', str(self.job_id))
             subprocess.Popen([self.task.executable, '-p', str(my_pipe.pipeline_id), '-u', str(my_pipe.user_name),
                               '-j', str(self.job_id)], cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
-
-
-
-        # Let's send stuff to slurm
-        # sql_hyak(self.task,self.job_id,self.firing_event_id)
-        # Let's send stuff to pbs
-        # sql_pbs(self.task,self.job_id,self.firing_event_id)
 
     def _starting_todo(self, logprint=True):
         if logprint:

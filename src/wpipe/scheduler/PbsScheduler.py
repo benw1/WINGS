@@ -110,8 +110,7 @@ class PbsScheduler(BaseScheduler):
     ######################
 
     @staticmethod
-    def submit(event):
-        job = event.parent_job
+    def submit(job):
         # If no schedulers exist then create a new one and exit this method
         if (len(PbsScheduler.schedulers) == 0):
             PbsScheduler(job)

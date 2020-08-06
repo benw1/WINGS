@@ -266,7 +266,11 @@ class Event(OptOwner):
         :obj:`Configuration`: Configuration object corresponding to parent
         configuration.
         """
-        return self.parent_job.config
+        try:
+            from . import Configuration
+            return Configuration(self.options['config_id'])
+        except KeyError:
+            return self.parent_job.config
 
     @property
     def pipeline(self):
@@ -337,20 +341,39 @@ class Event(OptOwner):
                 "No mask corresponding to event signature {name='%s',value='%s'}" % (self.name, self.value))
 
     def __fire(self, task):  # MEH
-        with self.pipeline.dummy_job.logprint().open("a") as stdouterr:
+        my_pipe = self.pipeline
+        with my_pipe.dummy_job.logprint().open("a") as stdouterr:
             options = self.options
+
+            print(options)
+            submission_type = None
+
+            # TODO: Clean this mess up
+            if self.config is not None:
+                try:
+                    configParameters = self.config.parameters  # dict
+                    submission_type = configParameters['submission_type']
+                except KeyError:
+                    pass
             try:
                 submission_type = options['submission_type']
-                if 'pbs' in submission_type:
-                    from . import PbsScheduler
-                    pbs = PbsScheduler(self, task)
             except KeyError:
+                pass
+            if submission_type is None:
+                print(task.executable, '-e', str(self.event_id))
                 subprocess.Popen([task.executable, '-e', str(self.event_id)],
-                                 cwd=self.pipeline.pipe_root, stdout=stdouterr, stderr=stdouterr)
-            # Let's send stuff to slurm
-            # sql_hyak(self.task,self.job_id,self.firing_event_id)
-            # Let's send stuff to pbs
-            # sql_pbs(self.task,self.job_id,self.firing_event_id)
+                                 cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
+            elif 'pbs' == submission_type:
+                from .scheduler.PbsScheduler import PbsScheduler
+                PbsScheduler.submit(self._generate_new_job(task))
+                return
+            elif 'hyak' == submission_type:
+                pass
+            else:
+                raise ValueError("'%s' isn't a valid 'submission_type'" % submission_type)
+
+    def _generate_new_job(self, task):
+        return self.fired_job(len(self.fired_jobs) + 1, task, self.config)
 
     def delete(self):
         """

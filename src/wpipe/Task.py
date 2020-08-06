@@ -107,7 +107,6 @@ class Task:
 
         >>> new_job = my_task.job(my_node, my_event, my_config)
     """
-
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._task = args[0] if len(args) else None

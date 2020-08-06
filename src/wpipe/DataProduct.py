@@ -159,7 +159,6 @@ class DataProduct(OptOwner):
         or
         >>> my_dp = wp.DataProduct(my_config, filename, group)
     """
-
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._dataproduct = args[0] if len(args) else None
