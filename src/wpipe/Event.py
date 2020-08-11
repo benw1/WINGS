@@ -364,7 +364,7 @@ class Event(OptOwner):
                 subprocess.Popen([task.executable, '-e', str(self.event_id)],
                                  cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
             elif 'pbs' == submission_type:
-                from .scheduler.PbsScheduler import PbsScheduler
+                from . import PbsScheduler
                 PbsScheduler.submit(self._generate_new_job(task))
                 return
             elif 'hyak' == submission_type:
