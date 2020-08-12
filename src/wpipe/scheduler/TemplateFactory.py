@@ -1,11 +1,12 @@
 from jinja2 import Template
 
+
 class TemplateFactory(object):
 
     @staticmethod
     def getJobListTemplate():
         templateString = \
-"""{% for job in jobs -%}
+            """{% for job in jobs -%}
     {{ job.command }}
 {% endfor %}
 """
@@ -15,7 +16,7 @@ class TemplateFactory(object):
     @staticmethod
     def getPbsFileTemplate():
         templateString = \
-"""#PBS -S /bin/bash
+            """#PBS -S /bin/bash
 #PBS -j oe
 #PBS -l select=1:ncpus=10:model=has
 #PBS -W group_list=s1692

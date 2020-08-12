@@ -1,10 +1,10 @@
+import datetime
+
 from .BaseScheduler import BaseScheduler
 from .TemplateFactory import TemplateFactory
-import datetime
-import subprocess
+
 
 class PbsScheduler(BaseScheduler):
-
     # Keep track of all the instances that might be spawned
     schedulers = list()
 
@@ -15,11 +15,10 @@ class PbsScheduler(BaseScheduler):
         self._key = self.PbsKey(job)
         self._jobList = list()
 
-        PbsScheduler.schedulers.append(self) # add this new scheduler to the list
+        PbsScheduler.schedulers.append(self)  # add this new scheduler to the list
 
         # run the submit now that the object is created
         self._submitJob(job)
-
 
     #######################
     ## Internal Use Only ##
@@ -40,8 +39,8 @@ class PbsScheduler(BaseScheduler):
         now = datetime.datetime.now()
         dt_string = now.strftime("%d-%m-%Y-%H-%M-%S.%f")
 
-        pbsfilename = dt_string+".pbs" #name it with the current time
-        executables_file = dt_string+".list" #name it with the current time
+        pbsfilename = dt_string + ".pbs"  # name it with the current time
+        executables_file = dt_string + ".list"  # name it with the current time
 
         pbsfilepath = self._jobList[0].pipeline.config_root + "/" + pbsfilename
         executables_path = self._jobList[0].pipeline.config_root + "/" + executables_file
@@ -62,17 +61,16 @@ class PbsScheduler(BaseScheduler):
         # remove scheduler from list
         PbsScheduler.schedulers.remove(self)
 
-
     @staticmethod
     def _checkForScheduler(job):
         # This will check for an existing scheduler and return it if it exists
         tempKey = PbsScheduler.PbsKey(job)
 
         for scheduler in PbsScheduler.schedulers:
-            if (scheduler._key.equals(tempKey)):
-                return (True, scheduler)
+            if scheduler._key.equals(tempKey):
+                return True, scheduler
 
-        return (False, None)
+        return False, None
 
     def _makeJobList(self):
         template = TemplateFactory.getJobListTemplate()
@@ -80,8 +78,9 @@ class PbsScheduler(BaseScheduler):
         # Make job list into a dictionary to pass to jinja2
         jobsForJinja = list()
         for job in self._jobList:
-            jobsForJinja.append({'command': job.task.executable + ' -p ' + str(job.pipeline_id) + ' -u ' + str(job.pipeline.user_name) +
-            ' -j ' + str(job.job_id)})
+            jobsForJinja.append(
+                {'command': job.task.executable + ' -p ' + str(job.pipeline_id) +
+                 ' -u ' + str(job.pipeline.user_name) + ' -j ' + str(job.job_id)})
 
         output = template.render(jobs=jobsForJinja)
         print()
@@ -90,13 +89,14 @@ class PbsScheduler(BaseScheduler):
 
         return output
 
-    def _makePbsFile(self,exectuablesListPath):
+    def _makePbsFile(self, exectuablesListPath):
 
         # template = jinjaEnv.get_template('PbsFile.jinja')
         template = TemplateFactory.getPbsFileTemplate()
 
         # create a dictionary
-        pbsDict = {'njobs': len(self._jobList), 'pipe_root': self._jobList[0].pipeline.pipe_root, 'executables_list_path': exectuablesListPath}
+        pbsDict = {'njobs': len(self._jobList), 'pipe_root': self._jobList[0].pipeline.pipe_root,
+                   'executables_list_path': exectuablesListPath}
 
         output = template.render(pbs=pbsDict)
 
@@ -112,15 +112,15 @@ class PbsScheduler(BaseScheduler):
     @staticmethod
     def submit(job):
         # If no schedulers exist then create a new one and exit this method
-        if (len(PbsScheduler.schedulers) == 0):
+        if len(PbsScheduler.schedulers) == 0:
             PbsScheduler(job)
             return
 
         (hasScheduler, scheduler) = PbsScheduler._checkForScheduler(job)
-        if (hasScheduler): # check for existing schedulers and call submitJob for the retrieved scheduler
+        if hasScheduler:  # check for existing schedulers and call submitJob for the retrieved scheduler
             print("A scheduler with those attributes exists")
             scheduler._submitJob(job)
-        else: # No scheduler was found but we need to do the scheduling
+        else:  # No scheduler was found but we need to do the scheduling
             PbsScheduler(job)
 
     ####################
