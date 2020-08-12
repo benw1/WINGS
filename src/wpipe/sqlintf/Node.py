@@ -24,3 +24,5 @@ class Node(Base):
     int_ip = sa.Column(sa.String(256))
     ext_ip = sa.Column(sa.String(256))
     jobs = orm.relationship("Job", back_populates="node")
+    __table_args__ = (sa.UniqueConstraint('name'),
+                      )

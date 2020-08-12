@@ -92,7 +92,7 @@ class Node:
                 # querying the database for existing row or create
                 try:
                     cls._node = si.session.query(si.Node). \
-                        filter_by(name=name).one()
+                        filter_by(name=name).with_for_update().one()
                 except si.orm.exc.NoResultFound:
                     cls._node = si.Node(name=name,
                                         int_ip=int_ip,
