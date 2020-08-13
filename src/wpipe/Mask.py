@@ -86,7 +86,7 @@ class Mask:
                 try:
                     cls._mask = si.session.query(si.Mask). \
                         filter_by(task_id=task.task_id). \
-                        filter_by(name=name).one()
+                        filter_by(name=name).with_for_update().one()
                 except si.orm.exc.NoResultFound:
                     cls._mask = si.Mask(name=name,
                                         source=source,

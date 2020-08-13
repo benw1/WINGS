@@ -126,7 +126,7 @@ class Task:
                 try:
                     cls._task = si.session.query(si.Task). \
                         filter_by(pipeline_id=pipeline.pipeline_id). \
-                        filter_by(name=name).one()
+                        filter_by(name=name).with_for_update().one()
                 except si.orm.exc.NoResultFound:
                     cls._task = si.Task(name=name,
                                         nruns=nruns,

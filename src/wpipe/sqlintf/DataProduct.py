@@ -37,3 +37,5 @@ class DataProduct(OptOwner):
     __mapper_args__ = {
         'polymorphic_identity': 'dataproduct',
     }
+    __table_args__ = (sa.UniqueConstraint('dpowner_id', 'group', 'filename'),
+                      )

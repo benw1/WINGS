@@ -122,7 +122,7 @@ class Target(OptOwner):
                 try:
                     cls._target = si.session.query(si.Target). \
                         filter_by(input_id=input.input_id). \
-                        filter_by(name=name).one()
+                        filter_by(name=name).with_for_update().one()
                 except si.orm.exc.NoResultFound:
                     cls._target = si.Target(name=name,
                                             datapath=input.pipeline.data_root+'/'+name,

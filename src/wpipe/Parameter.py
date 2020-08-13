@@ -82,7 +82,7 @@ class Parameter:
                 try:
                     cls._parameter = si.session.query(si.Parameter). \
                         filter_by(config_id=config.config_id). \
-                        filter_by(name=name).one()
+                        filter_by(name=name).with_for_update().one()
                 except si.orm.exc.NoResultFound:
                     cls._parameter = si.Parameter(name=name,
                                                   value=str(value))

@@ -25,3 +25,5 @@ class Mask(Base):
     value = sa.Column(sa.String(256))
     task_id = sa.Column(sa.Integer, sa.ForeignKey('tasks.id'))
     task = orm.relationship("Task", back_populates="masks")
+    __table_args__ = (sa.UniqueConstraint('task_id', 'name'),
+                      )

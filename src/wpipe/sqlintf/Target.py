@@ -29,3 +29,5 @@ class Target(OptOwner):
     __mapper_args__ = {
         'polymorphic_identity': 'target',
     }
+    __table_args__ = (sa.UniqueConstraint('input_id', 'name'),
+                      )

@@ -22,3 +22,5 @@ class User(Base):
     name = sa.Column(sa.String(256))
     timestamp = sa.Column(sa.TIMESTAMP)
     pipelines = orm.relationship("Pipeline", back_populates="user")
+    __table_args__ = (sa.UniqueConstraint('name'),
+                      )

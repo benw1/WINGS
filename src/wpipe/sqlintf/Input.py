@@ -29,3 +29,5 @@ class Input(DPOwner):
     __mapper_args__ = {
         'polymorphic_identity': 'input',
     }
+    __table_args__ = (sa.UniqueConstraint('pipeline_id', 'name'),
+                      )

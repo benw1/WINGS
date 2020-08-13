@@ -186,7 +186,7 @@ class DataProduct(OptOwner):
                     cls._dataproduct = si.session.query(si.DataProduct). \
                         filter_by(dpowner_id=dpowner.dpowner_id). \
                         filter_by(group=group). \
-                        filter_by(filename=filename).one()
+                        filter_by(filename=filename).with_for_update().one()
                 except si.orm.exc.NoResultFound:
                     if '.' in filename:
                         _suffix = filename.split('.')[-1]

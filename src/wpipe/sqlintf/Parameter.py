@@ -24,3 +24,5 @@ class Parameter(Base):
     timestamp = sa.Column(sa.TIMESTAMP)
     config_id = sa.Column(sa.Integer, sa.ForeignKey('configurations.id'))
     config = orm.relationship("Configuration", back_populates="parameters")
+    __table_args__ = (sa.UniqueConstraint('config_id', 'name'),
+                      )

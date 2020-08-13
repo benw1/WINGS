@@ -24,3 +24,5 @@ class Option(Base):
     timestamp = sa.Column(sa.TIMESTAMP)
     optowner_id = sa.Column(sa.Integer, sa.ForeignKey('optowners.id'))
     optowner = orm.relationship("OptOwner", back_populates="options")
+    __table_args__ = (sa.UniqueConstraint('optowner_id', 'name'),
+                      )

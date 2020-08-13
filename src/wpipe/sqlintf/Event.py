@@ -30,3 +30,5 @@ class Event(OptOwner):
     __mapper_args__ = {
         'polymorphic_identity': 'event',
     }
+    __table_args__ = (sa.UniqueConstraint('parent_job_id', 'name', 'tag'),
+                      )

@@ -85,7 +85,7 @@ class Option:
                 try:
                     cls._option = si.session.query(si.Option). \
                         filter_by(optowner_id=optowner.optowner_id). \
-                        filter_by(name=name).one()
+                        filter_by(name=name).with_for_update().one()
                 except si.orm.exc.NoResultFound:
                     cls._option = si.Option(name=name,
                                             value=str(value))
