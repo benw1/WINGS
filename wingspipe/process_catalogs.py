@@ -17,9 +17,10 @@ def register(task):
     _temp = task.mask(source='*', name='start', value=task.name)
     _temp = task.mask(source='*', name='new_match_catalog', value='*')
     _temp = task.mask(source='*', name='new_fixed_catalog', value='*')
+    _temp = task.mask(source='*', name='new_split_catalog', value='*')
 
 
-def process_fixed_catalog(my_job_id, my_dp_id):
+def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent):
     my_job = wp.Job(my_job_id)
     catalog_dp = wp.DataProduct(my_dp_id)
     my_target = catalog_dp.target
@@ -29,13 +30,16 @@ def process_fixed_catalog(my_job_id, my_dp_id):
     fileroot = str(catalog_dp.relativepath)
     filename = str(catalog_dp.filename)  # For example:  'h15.shell.5Mpc.in'
     filepath = fileroot + '/' + filename
-    wp.shutil.copy2(filepath, my_config.procpath)
+    print(fileroot,my_config.procpath)
+    if fileroot != my_config.procpath:
+       wp.shutil.copy2(filepath, my_config.procpath)
     #
     print("CONFIG PATH ",my_config.procpath)
     print("CONFIG ID ",my_config.config_id)
+    print("ra and dec ",racent,deccent)
     fileroot = my_config.procpath + '/'
     procdp = my_config.dataproduct(filename=filename, relativepath=fileroot, group='proc')
-    stips_files, filters = read_fixed(procdp.relativepath + '/' + procdp.filename, my_config, my_job)
+    stips_files, filters = read_fixed(procdp.relativepath + '/' + procdp.filename, my_config, my_job, racent, deccent)
     comp_name = 'completed' + my_target.name
     options = {comp_name: 0}
     my_job.options = options
@@ -73,7 +77,7 @@ def process_fixed_catalog(my_job_id, my_dp_id):
                     newdpid = _dp.dp_id
                     eventtag = filtname+'_ra:'+str(k)+'/'+str(ra_dithers)+'_dec:'+str(j)+'/'+str(dec_dithers)
                     new_event = my_job.child_event('new_stips_catalog', tag=eventtag,
-                                                   options={'dp_id': newdpid, 'to_run': total, 'name': comp_name,
+                                                   options={'dp_id': newdpid, 'to_run': total, 'name': comp_name,'submission_type' : 'pbs',
                                                             'ra_dither': ra_dither, 'dec_dither': dec_dither})
                     dithnum += 1
                     my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
@@ -95,7 +99,7 @@ def process_fixed_catalog(my_job_id, my_dp_id):
                                         filtername=filtname, subtype='stips_input_catalog')
             dpid = _dp.dp_id
             new_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                           options={'dp_id': dpid, 'to_run': total, 'name': comp_name,
+                                           options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'submission_type' : 'pbs',
                                                     'ra_dither': 0.0, 'dec_dither': 0.0})
             my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
             print(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
@@ -103,7 +107,7 @@ def process_fixed_catalog(my_job_id, my_dp_id):
             i += 1
 
 
-def read_fixed(filepath, my_config, my_job):
+def read_fixed(filepath, my_config, my_job, racent, deccent):
     data = pd.read_csv(filepath)
     #data.columns = map(str.upper, data.columns)
     nstars = len(data['ra'])
@@ -136,8 +140,9 @@ def read_fixed(filepath, my_config, my_job):
     dec = data['dec']
     my_job.logprint(''.join(
         ["MIXMAX COO: ", str(np.min(ra)), " ", str(np.max(ra)), " ", str(np.min(dec)), " ", str(np.max(dec)), "\n"]))
-    racent = float(my_params['racent'])
-    deccent = float(my_params['deccent'])
+    if racent == 0.0:
+        racent = float(my_params['racent'])
+        deccent = float(my_params['deccent'])
     if (racent < 0):
         racent = (np.min(ra)+np.max(ra))/2.0
         deccent = (np.min(dec)+np.max(dec))/2.0
@@ -190,7 +195,7 @@ def process_match_catalog(my_job_id, my_dp_id):
                                     filtername=filtname, subtype='stips_input_catalog')
         dpid = _dp.dp_id
         new_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                       options={'dp_id': dpid, 'to_run': total, 'name': comp_name})
+                                       options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type' : 'pbs'})
         my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
         new_event.fire()
         i += 1
@@ -410,7 +415,32 @@ if __name__ == '__main__':
         this_job = wp.Job(job_id)
         event = this_job.firing_event
         dp_id = event.options['dp_id']
+       
         if 'match' in event.name:
             process_match_catalog(job_id, dp_id)
-        else:
-            process_fixed_catalog(job_id, dp_id)
+        elif 'fixed' in event.name:
+            my_job = wp.Job(job_id)
+            catalog_dp = wp.DataProduct(dp_id)
+            my_config = catalog_dp.config
+            my_params = my_config.parameters
+            try:
+                ndetect = my_params['ndetect']
+            except:
+                ndetect = 1
+            if ndetect == 1:
+                process_fixed_catalog(job_id, dp_id, 0.0, 0.0)
+            if ndetect > 1:
+                for i in range(ndetect):
+                    dpid = dp_id
+                    new_event = my_job.child_event('split_catalog', tag=i+1,
+                                       options={'dp_id': dpid})
+                    my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  split_catalog"]))
+                    new_event.fire()
+        elif 'split' in event.name:
+            detracent = event.options['racent']
+            detdeccent = event.options['deccent']
+            my_job = wp.Job(job_id)
+            catalog_dp = wp.DataProduct(dp_id)
+            my_config = catalog_dp.config
+            my_params = my_config.parameters
+            process_fixed_catalog(job_id, dp_id, detracent, detdeccent)

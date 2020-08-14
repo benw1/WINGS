@@ -20,39 +20,60 @@ def register(task):
 
 def split_catalog(job_id,dp_id,detid):
     dp = wp.DataProduct(dp_id)
-    cat = dp.filepath + "/" + dp.filename
-    ang = orientation*(3.14159/180.0);
-    detlocs = np.loadtxt(my_pipe.swroot+'/offsets');
-    first,A1,B1 = detlocs[15,:].split(' ')
+    cat = dp.relativepath + "/" + dp.filename
+    this_job = wp.Job(job_id)
+    my_config = dp.config
+    my_params = my_config.parameters
+    racent = my_params['racent']
+    deccent = my_params['deccent']
+    my_pipe = my_config.pipeline
+    orientation = my_params['orientation']
+    backdir = my_params['background_dir']
+    ang = orientation*(3.14159/180.0)
+    detlocs = np.loadtxt(backdir+'/offsets')
+    first,A1,B1 = detlocs[15,:]
+    print(first,A1,B1)
+    print(A1)
     outfilelist = []
     ralist = []
     declist = []
    
-    foreach line in declocs:
-       detnum,Aoff,Boff = line;
-       if detnum != detid:
-          continue
-       Aoff = Aoff - A1;
-       Boff = Boff - B1;
-       yoff = Boff*np.sin(ang) + Aoff*np.cos(ang);
-       xoff = (Aoff*np.sin(ang) - Boff*np.cos(ang))/np.cos(deccent*(3.14159/180.0));
-       detracent = racent + xoff;
-       detdeccent = deccent + yoff;
-       decstr = '%.4f' % detdeccent;
-       rastr = '"%.4f' % detracent;
-       decstr =~ s/\./p/;
-       rastr =~ s/\./p/;
-       outfile = fileroot+"/"+rastr+"d"+decstr+"_"+filename;
-       ralim1 = detracent-0.14;
-       ralim2 = detracent+0.14;
-       declim1 = detdeccent-0.1;
-       declim2 = detdeccent+0.1;
-       my_data = pd.read_csv(cat)
-       keep = (my_data.ra > ralim1) & (my_data.ra < ralim2) & (my_data.dec > declim1) & (my_data.dec < declim2)
-       my_data[keep].to_csv(outfile, index=False)
-       ####NEED TO GENERATE NEW DP HERE###
-       ####THEN FIRE EVENT TO PROCESS THIS SPLIT CATALOG####  
-         
+    for line in detlocs:
+        detnum,Aoff,Boff = line
+        print(detnum,detid,Aoff,Boff,ang,np.sin(ang))
+        if int(detnum) != int(detid):
+           continue
+        Aoff = Aoff - A1
+        Boff = Boff - B1
+        yoff = Boff*np.sin(ang) + Aoff*np.cos(ang)
+        xoff = (Aoff*np.sin(ang) - Boff*np.cos(ang))/np.cos(deccent*(3.14159/180.0))
+        detracent = racent + xoff
+        detdeccent = deccent + yoff
+        decstr = '%.4f' % detdeccent
+        rastr = '"%.4f' % detracent
+        rastr = rastr.lstrip("\"")
+        decstr = decstr.strip()
+        decstr = decstr.replace('.','p')
+        rastr = rastr.replace('.','p')
+        filename = rastr.strip()+"d"+decstr.strip()+"_"+dp.filename.strip()
+        outfile = my_config.procpath.strip()+"/"+filename
+        print(outfile,my_config.procpath,rastr)
+        ralim1 = detracent-(0.1 / np.cos(deccent*(3.14159/180.0)))
+        ralim2 = detracent+(0.1 / np.cos(deccent*(3.14159/180.0)))
+        declim1 = detdeccent-0.1
+        declim2 = detdeccent+0.1
+        my_data = pd.read_csv(cat)
+        print(my_data.ra,my_data.dec,ralim1,ralim2,declim1,declim2)
+        keep = (my_data.ra > ralim1) & (my_data.ra < ralim2) & (my_data.dec > declim1) & (my_data.dec < declim2)
+        my_data[keep].to_csv(outfile, index=False)
+        _dp = my_config.dataproduct(filename=filename, relativepath=my_config.procpath, group='proc',
+                                    subtype='split_catalog')
+        dpid = _dp.dp_id
+        new_event = this_job.child_event('new_split_catalog', tag=dpid,
+                                       options={'dp_id': dpid,'racent':detracent,'deccent':detdeccent, 'submission_type':'pbs'})
+        this_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_split_catalog"]))
+        new_event.fire()
+
 
 def read_fixed(filepath, my_config, my_job, racent, deccent):
     data = pd.read_csv(filepath)
