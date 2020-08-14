@@ -167,7 +167,7 @@ class Configuration(DPOwner):
                 try:
                     cls._configuration = si.session.query(si.Configuration). \
                         filter_by(target_id=target.target_id). \
-                        filter_by(name=name).one()
+                        filter_by(name=name).with_for_update().one()
                 except si.orm.exc.NoResultFound:
                     cls._configuration = si.Configuration(name=name,
                                                           datapath=target.datapath,

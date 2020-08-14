@@ -141,7 +141,7 @@ class Event(OptOwner):
                     cls._event = si.session.query(si.Event). \
                         filter_by(parent_job_id=job.job_id). \
                         filter_by(name=name). \
-                        filter_by(tag=tag).one()
+                        filter_by(tag=tag).with_for_update().one()
                 except si.orm.exc.NoResultFound:
                     cls._event = si.Event(name=name,
                                           tag=tag,

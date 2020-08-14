@@ -84,7 +84,7 @@ class User:
                 # querying the database for existing row or create
                 try:
                     cls._user = si.session.query(si.User). \
-                        filter_by(name=name).one()
+                        filter_by(name=name).with_for_update().one()
                 except si.orm.exc.NoResultFound:
                     cls._user = si.User(name=name)
                     si.session.add(cls._user)

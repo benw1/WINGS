@@ -28,3 +28,5 @@ class Task(Base):
     pipeline = orm.relationship("Pipeline", back_populates="tasks")
     masks = orm.relationship("Mask", back_populates="task")
     jobs = orm.relationship("Job", back_populates="task")
+    __table_args__ = (sa.UniqueConstraint('pipeline_id', 'name'),
+                      )

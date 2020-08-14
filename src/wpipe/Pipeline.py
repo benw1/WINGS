@@ -205,7 +205,7 @@ class Pipeline(DPOwner):
                 try:
                     cls._pipeline = si.session.query(si.Pipeline). \
                         filter_by(user_id=user.user_id). \
-                        filter_by(pipe_root=pipe_root).one()
+                        filter_by(pipe_root=pipe_root).with_for_update().one()
                 except si.orm.exc.NoResultFound:
                     cls._pipeline = si.Pipeline(name=name,
                                                 pipe_root=pipe_root,

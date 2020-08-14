@@ -274,11 +274,14 @@ def wingspipe(args=None):
     parser_run.set_defaults(which='run')
     parser_diagnose = subparsers.add_parser('diagnose', parents=[parent_parser], add_help=False)
     parser_diagnose.set_defaults(which='diagnose')
-    parser_reset = subparsers.add_parser('reset', parents=[parent_parser], add_help=False)
+    parent_parser_with_yes_flag = si.argparse.ArgumentParser(parents=[parent_parser], add_help=False)
+    parent_parser_with_yes_flag.add_argument('--yes', '-y', dest='yes', action='store_true',
+                                             help="Don't ask for confirmation")
+    parser_reset = subparsers.add_parser('reset', parents=[parent_parser_with_yes_flag], add_help=False)
     parser_reset.set_defaults(which='reset')
-    parser_clean = subparsers.add_parser('clean', parents=[parent_parser], add_help=False)
+    parser_clean = subparsers.add_parser('clean', parents=[parent_parser_with_yes_flag], add_help=False)
     parser_clean.set_defaults(which='clean')
-    parser_delete = subparsers.add_parser('delete', parents=[parent_parser], add_help=False)
+    parser_delete = subparsers.add_parser('delete', parents=[parent_parser_with_yes_flag], add_help=False)
     parser_delete.set_defaults(which='delete')
     args = parser.parse_args()
     if hasattr(args, 'which'):
@@ -293,13 +296,19 @@ def wingspipe(args=None):
         elif args.which == 'diagnose':
             my_pipe.diagnose()
         elif args.which == 'reset':
-            if input(command+': confirm reset of pipeline at '+my_pipe.pipe_root+'? [y/yes] ') in ['y', 'yes']:
+            if True if args.yes \
+                    else input(command + ': confirm reset of pipeline at ' +
+                               my_pipe.pipe_root + '? [y/yes] ') in ['y', 'yes']:
                 my_pipe.reset()
         elif args.which == 'clean':
-            if input(command+': confirm clean-up of pipeline at '+my_pipe.pipe_root+'? [y/yes] ') in ['y', 'yes']:
+            if True if args.yes \
+                    else input(command + ': confirm clean-up of pipeline at ' +
+                               my_pipe.pipe_root + '? [y/yes] ') in ['y', 'yes']:
                 my_pipe.clean()
         elif args.which == 'delete':
-            if input(command+': confirm deletion of pipeline at '+my_pipe.pipe_root+'? [y/yes] ') in ['y', 'yes']:
+            if True if args.yes \
+                    else input(command + ': confirm deletion of pipeline at ' +
+                               my_pipe.pipe_root + '? [y/yes] ') in ['y', 'yes']:
                 my_pipe.delete()
     else:
         parser.print_help()

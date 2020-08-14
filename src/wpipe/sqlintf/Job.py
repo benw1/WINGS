@@ -36,3 +36,5 @@ class Job(OptOwner):
     __mapper_args__ = {
         'polymorphic_identity': 'job',
     }
+    __table_args__ = (sa.UniqueConstraint('task_id', 'config_id', 'firing_event_id', 'node_id', 'attempt'),
+                      )

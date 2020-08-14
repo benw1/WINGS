@@ -34,3 +34,5 @@ class Configuration(DPOwner):
     __mapper_args__ = {
         'polymorphic_identity': 'configuration',
     }
+    __table_args__ = (sa.UniqueConstraint('target_id', 'name'),
+                      )

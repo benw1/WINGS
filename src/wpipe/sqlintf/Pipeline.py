@@ -34,3 +34,5 @@ class Pipeline(DPOwner):
     __mapper_args__ = {
         'polymorphic_identity': 'pipeline',
     }
+    __table_args__ = (sa.UniqueConstraint('user_id', 'pipe_root'),
+                      )

@@ -138,7 +138,7 @@ class Input(DPOwner):
                 try:
                     cls._input = si.session.query(si.Input). \
                         filter_by(pipeline_id=pipeline.pipeline_id). \
-                        filter_by(name=name).one()
+                        filter_by(name=name).with_for_update().one()
                 except si.orm.exc.NoResultFound:
                     cls._input = si.Input(name=name,
                                           rawspath=pipeline.input_root+'/'+name,

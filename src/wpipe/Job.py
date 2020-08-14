@@ -210,7 +210,7 @@ class Job(OptOwner):
                         cls._job = cls._job. \
                             filter_by(node_id=node.node_id)
                     cls._job = cls._job. \
-                        filter_by(attempt=attempt).one()
+                        filter_by(attempt=attempt).with_for_update().one()
                 except si.orm.exc.NoResultFound:
                     cls._job = si.Job(attempt=attempt,
                                       state=JOBINITSTATE)
