@@ -314,11 +314,14 @@ class Task:
         pkg = os.path.basename(self.pipeline.software_root)
         sub = self.name.replace('.py', '')
         import time
+        """
         while '_temp' not in locals():
             try:
                 _temp = __import__(pkg + '.' + sub, fromlist=[''])
             except ModuleNotFoundError:
                 time.sleep(3)
+        """
+        _temp = __import__(pkg + '.' + sub, fromlist=[''])
         if hasattr(_temp, 'register'):
             _temp.register(self)
         else:

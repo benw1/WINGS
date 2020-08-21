@@ -139,10 +139,10 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
     catalog_dp = wp.DataProduct(dp_id)
     my_config = catalog_dp.config
     my_params = my_config.parameters
-    racent = float(my_params['racent']) + (float(ra_dith) / 3600.0)
-    deccent = float(my_params['deccent']) + (float(dec_dith) / 3600.0)
+    #racent = float(my_params['racent']) + (float(ra_dith) / 3600.0)
+    #deccent = float(my_params['deccent']) + (float(dec_dith) / 3600.0)
     try:
-        pa = my_params['pa']
+        pa = my_params['orientation']
     except KeyError:
         pa = 0.0
     fileroot = str(catalog_dp.relativepath)
@@ -157,11 +157,15 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
     pos = head[2].split(' ')
     crud,ra = pos[2].split('(')
     dec,crud =  pos[4].split(')')
-    print("Running ",filename,ra,dec)
+    print("Running ",filename,float(ra),float(dec))
     print("SEED ",seed)
-    scene_general = {'ra': racent, 'dec': deccent, 'pa': pa, 'seed': seed}
+    scene_general = {'ra': float(ra), 'dec': float(dec), 'pa': pa, 'seed': seed}
     obs = {'instrument': 'WFI', 'filters': [filtername], 'detectors': my_params['detectors'], 'distortion': False, 'oversample': my_params['oversample'], 'pupil_mask': '', 'background': 'avg', 'observations_id': dp_id, 'exptime': my_params['exptime'], 'offsets': [{'offset_id': event_id, 'offset_centre': False, 'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
-    obm = ObservationModule(obs, scene_general=scene_general)
+    obm = ObservationModule(obs, scene_general=scene_general, psf_grid_size=int(my_params['psf_grid']))
+    try:
+        os.symlink(my_params['psf_cache'],my_config.procpath+"/psf_cache")
+    except:
+        pass
     obm.nextObservation()
     source_count_catalogues = obm.addCatalogue(str(filename))
     psf_file = obm.addError()
@@ -217,7 +221,7 @@ if __name__ == '__main__':
             print(dps)
             dpid = dps.dp_id
             new_event = this_job.child_event('stips_done', tag=dps.filtername,
-                                             options={'target_id': tid, 'dp_id': dpid,
+                                             options={'target_id': tid, 'dp_id': dpid, 'submission_type': 'pbs',
                                                       'name': comp_name, 'to_run': total})
             new_event.fire()
             # this_job.logprint('stips_done but not firing any events for now\n')

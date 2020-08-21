@@ -26,9 +26,10 @@ def send(dp, conf, comp_name, total, job):
     dpconfig = dp.config
     confid = conf.config_id
     dpconfigid = dpconfig.config_id
-    #print('TEST CONFID ', confid)
-    #print('TEST DPCONFID ', dpconfigid)
-    data = np.loadtxt(filepath, dtype=str, usecols=0)
+    #data = np.loadtxt(filepath, dtype=str, usecols=0)
+    with open(filepath) as myfile:
+       data = [next(myfile) for x in range(3)]
+
     if 'type' in str(data[0]):
         print('File ', filepath, ' has type keyword, assuming STIPS-ready')
         event = job.child_event('new_stips_catalog', jargs='0', value='0',
