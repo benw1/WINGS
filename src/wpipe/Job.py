@@ -217,6 +217,7 @@ class Job(OptOwner):
                         event._event.fired_jobs.append(cls._job)
                     if node is not None:
                         node._node.jobs.append(cls._job)
+                    si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Job')
         return cls._inst
