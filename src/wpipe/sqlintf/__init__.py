@@ -50,7 +50,8 @@ from .Event import Event
 __all__ = ['sa', 'orm', 'argparse', 'PARSER', 'session', 'Base', 'User',
            'Node', 'Pipeline', 'DPOwner', 'Input', 'Option', 'OptOwner',
            'Target', 'Configuration', 'Parameter', 'DataProduct', 'Task',
-           'Mask', 'Job', 'Event', 'COMMIT_FLAG', 'commit']
+           'Mask', 'Job', 'Event', 'COMMIT_FLAG', 'commit', 'rollback',
+           'begin_nested']
 
 Base.metadata.create_all(session.bind)
 
@@ -66,6 +67,11 @@ def commit():
     """
     if COMMIT_FLAG:
         session.commit()
+
+
+rollback = session.rollback
+
+begin_nested = session.begin_nested
 
 # import eralchemy as ERA
 # ERA.render_er(wp.si.Base,"UML.pdf")
