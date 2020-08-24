@@ -135,21 +135,23 @@ class Input(DPOwner):
                 pipeline = kwargs.get('pipeline', wpargs.get('Pipeline', None))
                 base, name = os.path.split(clean_path(kwargs.get('path', args[0])))
                 # querying the database for existing row or create
+                si.begin_nested()
                 try:
-                    cls._input = si.session.query(si.Input). \
+                    cls._input = si.session.query(si.Input).with_for_update(). \
                         filter_by(pipeline_id=pipeline.pipeline_id). \
-                        filter_by(name=name).with_for_update().one()
+                        filter_by(name=name).one()
+                    si.rollback()
                 except si.orm.exc.NoResultFound:
                     cls._input = si.Input(name=name,
                                           rawspath=pipeline.input_root+'/'+name,
                                           confpath=pipeline.config_root+'/'+name)
                     pipeline._pipeline.inputs.append(cls._input)
+                    si.commit()
                     if not os.path.isdir(cls._input.rawspath):
                         os.mkdir(cls._input.rawspath)
                     cls._copy_data(base+'/'+name)
                     if not os.path.isdir(cls._input.confpath):
                         os.mkdir(cls._input.confpath)
-                si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Input')
         return cls._inst

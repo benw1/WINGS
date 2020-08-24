@@ -137,18 +137,20 @@ class Event(OptOwner):
                 jargs = kwargs.get('jargs', '' if args[2] is None else args[2])
                 value = kwargs.get('value', '' if args[3] is None else args[3])
                 # querying the database for existing row or create
+                si.begin_nested()
                 try:
-                    cls._event = si.session.query(si.Event). \
+                    cls._event = si.session.query(si.Event).with_for_update(). \
                         filter_by(parent_job_id=job.job_id). \
                         filter_by(name=name). \
-                        filter_by(tag=tag).with_for_update().one()
+                        filter_by(tag=tag).one()
+                    si.rollback()
                 except si.orm.exc.NoResultFound:
                     cls._event = si.Event(name=name,
                                           tag=tag,
                                           jargs=jargs,
                                           value=value)
                     job._job.child_events.append(cls._event)
-                si.commit()
+                    si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Event')
         return cls._inst

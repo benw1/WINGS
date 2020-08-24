@@ -164,10 +164,12 @@ class Configuration(DPOwner):
                 name = kwargs.get('name', 'default' if args[0] is None else args[0])
                 description = kwargs.get('description', '' if args[1] is None else args[1])
                 # querying the database for existing row or create
+                si.begin_nested()
                 try:
-                    cls._configuration = si.session.query(si.Configuration). \
+                    cls._configuration = si.session.query(si.Configuration).with_for_update(). \
                         filter_by(target_id=target.target_id). \
-                        filter_by(name=name).with_for_update().one()
+                        filter_by(name=name).one()
+                    si.rollback()
                 except si.orm.exc.NoResultFound:
                     cls._configuration = si.Configuration(name=name,
                                                           datapath=target.datapath,
@@ -177,6 +179,7 @@ class Configuration(DPOwner):
                                                           procpath=target.datapath + '/proc_' + name,
                                                           description=description)
                     target._target.configurations.append(cls._configuration)
+                    si.commit()
                     if not os.path.isdir(cls._configuration.confpath):
                         os.mkdir(cls._configuration.confpath)
                     confdp = target.input.dataproduct(filename=name+'.conf', group='conf')
@@ -189,7 +192,6 @@ class Configuration(DPOwner):
                         os.mkdir(cls._configuration.logpath)
                     if not os.path.isdir(cls._configuration.procpath):
                         os.mkdir(cls._configuration.procpath)
-                si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Configuration')
         return cls._inst

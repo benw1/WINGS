@@ -196,8 +196,9 @@ class Job(OptOwner):
                                   wpargs.get('Node', None))
                 attempt = kwargs.get('attempt', 1 if args[0] is None else args[0])
                 # querying the database for existing row or create
+                si.begin_nested()
                 try:
-                    cls._job = si.session.query(si.Job). \
+                    cls._job = si.session.query(si.Job).with_for_update(). \
                         filter_by(task_id=task.task_id)
                     if config is not None:
                         cls._job = cls._job. \
@@ -206,7 +207,8 @@ class Job(OptOwner):
                         cls._job = cls._job. \
                             filter_by(firing_event_id=event.event_id)
                     cls._job = cls._job. \
-                        filter_by(attempt=attempt).with_for_update().one()
+                        filter_by(attempt=attempt).one()
+                    si.rollback()
                 except si.orm.exc.NoResultFound:
                     cls._job = si.Job(attempt=attempt,
                                       state=JOBINITSTATE)
@@ -217,7 +219,7 @@ class Job(OptOwner):
                         event._event.fired_jobs.append(cls._job)
                     if node is not None:
                         node._node.jobs.append(cls._job)
-                si.commit()
+                    si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Job')
         return cls._inst
