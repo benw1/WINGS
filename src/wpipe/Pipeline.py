@@ -233,6 +233,7 @@ class Pipeline(DPOwner):
                         os.mkdir(cls._pipeline.data_root)
                     if not os.path.isdir(cls._pipeline.config_root):
                         os.mkdir(cls._pipeline.config_root)
+                si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Pipeline')
         return cls._inst
