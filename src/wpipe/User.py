@@ -88,6 +88,7 @@ class User:
                 except si.orm.exc.NoResultFound:
                     cls._user = si.User(name=name)
                     si.session.add(cls._user)
+                si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'User')
         return cls._inst

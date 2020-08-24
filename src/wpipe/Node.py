@@ -98,6 +98,7 @@ class Node:
                                         int_ip=int_ip,
                                         ext_ip=ext_ip)
                     si.session.add(cls._node)
+                si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Node')
         return cls._inst

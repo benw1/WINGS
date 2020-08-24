@@ -148,6 +148,7 @@ class Event(OptOwner):
                                           jargs=jargs,
                                           value=value)
                     job._job.child_events.append(cls._event)
+                si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Event')
         return cls._inst

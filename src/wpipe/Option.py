@@ -90,6 +90,7 @@ class Option:
                     cls._option = si.Option(name=name,
                                             value=str(value))
                     optowner._optowner.options.append(cls._option)
+                si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Option')
         return cls._inst

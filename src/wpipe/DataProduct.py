@@ -207,6 +207,7 @@ class DataProduct(OptOwner):
                                                       dec=dec,
                                                       pointing_angle=pointing_angle)
                     dpowner._dpowner.dataproducts.append(cls._dataproduct)
+                si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'DataProduct')
         return cls._inst

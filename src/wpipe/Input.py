@@ -149,6 +149,7 @@ class Input(DPOwner):
                     cls._copy_data(base+'/'+name)
                     if not os.path.isdir(cls._input.confpath):
                         os.mkdir(cls._input.confpath)
+                si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Input')
         return cls._inst

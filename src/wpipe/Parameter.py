@@ -87,6 +87,7 @@ class Parameter:
                     cls._parameter = si.Parameter(name=name,
                                                   value=str(value))
                     config._configuration.parameters.append(cls._parameter)
+                si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Parameter')
         return cls._inst

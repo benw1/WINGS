@@ -92,6 +92,7 @@ class Mask:
                                         source=source,
                                         value=value)
                     task._task.masks.append(cls._mask)
+                si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Mask')
         return cls._inst

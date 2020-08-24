@@ -135,6 +135,7 @@ class Task:
                     pipeline._pipeline.tasks.append(cls._task)
                     if base != pipeline.software_root:
                         shutil.copy2(base + '/' + name, pipeline.software_root + '/')
+                si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Task')
         return cls._inst

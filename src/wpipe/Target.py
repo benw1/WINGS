@@ -132,6 +132,7 @@ class Target(OptOwner):
                         os.mkdir(cls._target.datapath)
                     if not os.path.isdir(cls._target.dataraws):
                         os.mkdir(cls._target.dataraws)
+                si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Target')
         return cls._inst

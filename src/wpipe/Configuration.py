@@ -189,6 +189,7 @@ class Configuration(DPOwner):
                         os.mkdir(cls._configuration.logpath)
                     if not os.path.isdir(cls._configuration.procpath):
                         os.mkdir(cls._configuration.procpath)
+                si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Configuration')
         return cls._inst
