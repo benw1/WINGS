@@ -26,10 +26,13 @@ from . import sqlintf as si
 
 __all__ = ['importlib', 'os', 'sys', 'types', 'datetime', 'time', 'subprocess',
            'glob', 'shutil', 'warnings', 'json', 'ast', 'atexit', 'np', 'pd',
-           'si', 'PARSER', 'as_int', 'try_scalar', 'clean_path', 'split_path',
-           'remove_path', 'key_wpipe_separator', 'initialize_args',
-           'wpipe_to_sqlintf_connection', 'return_dict_of_attrs', 'to_json',
+           'si', 'PARSER', 'as_int', 'try_scalar', 'wait',
+           'clean_path', 'split_path', 'remove_path', 'key_wpipe_separator',
+           'initialize_args', 'wpipe_to_sqlintf_connection',
+           'return_dict_of_attrs', 'to_json',
            'ChildrenProxy', 'DictLikeChildrenProxy']
+
+NBYTE_URAND = 1
 
 PARSER = si.argparse.ArgumentParser()
 PARSER.add_argument('--user', '-u', dest='user_name', type=str,
@@ -86,6 +89,15 @@ def try_scalar(string):
         return ast.literal_eval(string)
     except (ValueError, NameError, SyntaxError):
         return string
+
+
+def wait(multiplier=1):
+    """
+    BLABLA
+    """
+    waiting = multiplier * int.from_bytes(os.urandom(NBYTE_URAND), sys.byteorder) / 2 ** (8 * NBYTE_URAND)
+    warnings.warn("Waiting %g seconds" % waiting)
+    time.sleep(waiting)
 
 
 def clean_path(path, root=''):

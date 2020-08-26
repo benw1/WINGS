@@ -15,7 +15,7 @@ class BaseScheduler(abc.ABC):
         self.reset = False
 
     def _middleman(self):
-        if self.reset == True:
+        if self.reset:
             self.reset = False
             threading.Timer(2, self._middleman).start()
         else:

@@ -10,9 +10,10 @@ import argparse
 
 import sqlalchemy as sa
 import sqlalchemy.orm as orm
+import sqlalchemy.exc as exc
 from sqlalchemy.ext.declarative import declarative_base
 
-__all__ = ['argparse', 'sa', 'orm', 'PARSER', 'engine', 'Base', 'session']
+__all__ = ['argparse', 'sa', 'orm', 'exc', 'PARSER', 'engine', 'Base', 'session']
 
 PARSER = argparse.ArgumentParser()
 """

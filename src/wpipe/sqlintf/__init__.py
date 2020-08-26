@@ -30,7 +30,7 @@ COMMIT_FLAG
 commit
     Flush and commit pending changes if COMMIT_FLAG is True
 """
-from .core import argparse, sa, orm, PARSER, session, Base
+from .core import argparse, sa, orm, exc, PARSER, session, Base
 from .User import User
 from .Node import Node
 from .Pipeline import Pipeline
@@ -47,11 +47,11 @@ from .Mask import Mask
 from .Job import Job
 from .Event import Event
 
-__all__ = ['sa', 'orm', 'argparse', 'PARSER', 'session', 'Base', 'User',
-           'Node', 'Pipeline', 'DPOwner', 'Input', 'Option', 'OptOwner',
-           'Target', 'Configuration', 'Parameter', 'DataProduct', 'Task',
-           'Mask', 'Job', 'Event', 'COMMIT_FLAG', 'commit', 'rollback',
-           'begin_nested']
+__all__ = ['sa', 'orm', 'exc', 'argparse', 'PARSER', 'session', 'Base',
+           'User', 'Node', 'Pipeline', 'DPOwner', 'Input', 'Option',
+           'OptOwner', 'Target', 'Configuration', 'Parameter', 'DataProduct',
+           'Task', 'Mask', 'Job', 'Event',
+           'COMMIT_FLAG', 'commit', 'rollback', 'begin_nested']
 
 Base.metadata.create_all(session.bind)
 

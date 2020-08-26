@@ -5,9 +5,9 @@ Contains the Job class definition
 Please note that this module is private. The Job class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import sys, datetime, subprocess, si
+from .core import sys, warnings, datetime, si
 from .core import ChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection, as_int
+from .core import initialize_args, wpipe_to_sqlintf_connection, as_int, wait
 from .core import PARSER
 from .OptOwner import OptOwner
 
@@ -196,30 +196,43 @@ class Job(OptOwner):
                                   wpargs.get('Node', None))
                 attempt = kwargs.get('attempt', 1 if args[0] is None else args[0])
                 # querying the database for existing row or create
-                si.begin_nested()
-                try:
-                    cls._job = si.session.query(si.Job).with_for_update(). \
-                        filter_by(task_id=task.task_id)
-                    if config is not None:
-                        cls._job = cls._job. \
-                            filter_by(config_id=config.config_id)
-                    if event is not None:
-                        cls._job = cls._job. \
-                            filter_by(firing_event_id=event.event_id)
-                    cls._job = cls._job. \
-                        filter_by(attempt=attempt).one()
-                    si.rollback()
-                except si.orm.exc.NoResultFound:
-                    cls._job = si.Job(attempt=attempt,
-                                      state=JOBINITSTATE)
-                    task._task.jobs.append(cls._job)
-                    if config is not None:
-                        config._configuration.jobs.append(cls._job)
-                    if event is not None:
-                        event._event.fired_jobs.append(cls._job)
-                    if node is not None:
-                        node._node.jobs.append(cls._job)
-                    si.commit()
+                commit_fails = 0
+                while commit_fails >= 0:
+                    this_transaction = si.begin_nested()
+                    try:
+                        si.begin_nested()
+                        try:
+                            cls._job = si.session.query(si.Job).with_for_update(). \
+                                filter_by(task_id=task.task_id)
+                            if config is not None:
+                                cls._job = cls._job. \
+                                    filter_by(config_id=config.config_id)
+                            if event is not None:
+                                cls._job = cls._job. \
+                                    filter_by(firing_event_id=event.event_id)
+                            cls._job = cls._job. \
+                                filter_by(attempt=attempt).one()
+                            si.rollback()
+                        except si.orm.exc.NoResultFound:
+                            cls._job = si.Job(attempt=attempt,
+                                              state=JOBINITSTATE)
+                            task._task.jobs.append(cls._job)
+                            if config is not None:
+                                config._configuration.jobs.append(cls._job)
+                            if event is not None:
+                                event._event.fired_jobs.append(cls._job)
+                            if node is not None:
+                                node._node.jobs.append(cls._job)
+                            si.commit()
+                        commit_fails = -1
+                    except si.exc.OperationalError as Err:
+                        commit_fails += 1
+                        warnings.warn(
+                            "Encountered an OperationalError (%s) - Attempting rollback" % repr(Err.statement))
+                        this_transaction.rollback()
+                        warnings.warn("Rollback successful")
+                        wait(commit_fails)
+                        warnings.warn("Repeating attempt of failing transaction")
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Job')
         return cls._inst

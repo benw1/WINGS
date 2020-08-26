@@ -178,7 +178,8 @@ class Pipeline(DPOwner):
                     cls._pipeline = si.session.query(si.Pipeline).filter_by(id=keyid).one()
                     si.rollback()
                 except si.orm.exc.NoResultFound:
-                    raise(si.orm.exc.NoResultFound("No row was found for one(): make sure the .wpipe/ directory was removed"))
+                    raise(si.orm.exc.NoResultFound(
+                        "No row was found for one(): make sure the .wpipe/ directory was removed"))
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=8)
