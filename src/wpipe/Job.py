@@ -229,8 +229,11 @@ class Job(OptOwner):
                         commit_fails += 1
                         warnings.warn(
                             "Encountered an OperationalError (%s) - Attempting rollback" % repr(Err.statement))
-                        this_transaction.rollback()
-                        warnings.warn("Rollback successful")
+                        try:
+                            this_transaction.rollback()
+                            warnings.warn("Rollback successful")
+                        except si.exc.OperationalError as Err:
+                            warnings.warn("Rollback unsuccessful (%s) - Proceeding anyway" % repr(Err.statement))
                         wait(commit_fails)
                         warnings.warn("Repeating attempt of failing transaction")
         # verifying if instance already exists and return
