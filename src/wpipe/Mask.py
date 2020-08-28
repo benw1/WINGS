@@ -83,18 +83,20 @@ class Mask:
                 source = kwargs.get('source', '' if args[1] is None else args[1])
                 value = kwargs.get('value', '' if args[2] is None else args[2])
                 # querying the database for existing row or create
-                si.begin_nested()
-                try:
-                    cls._mask = si.session.query(si.Mask).with_for_update(). \
-                        filter_by(task_id=task.task_id). \
-                        filter_by(name=name).one()
-                    si.rollback()
-                except si.orm.exc.NoResultFound:
-                    cls._mask = si.Mask(name=name,
-                                        source=source,
-                                        value=value)
-                    task._task.masks.append(cls._mask)
-                    si.commit()
+                for retry in si.retrying_nested():
+                    with retry:
+                        si.begin_nested()
+                        try:
+                            cls._mask = si.session.query(si.Mask).with_for_update(). \
+                                filter_by(task_id=task.task_id). \
+                                filter_by(name=name).one()
+                            si.rollback()
+                        except si.orm.exc.NoResultFound:
+                            cls._mask = si.Mask(name=name,
+                                                source=source,
+                                                value=value)
+                            task._task.masks.append(cls._mask)
+                            si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Mask')
         return cls._inst

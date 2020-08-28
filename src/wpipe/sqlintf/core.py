@@ -8,12 +8,13 @@ are available in the main ``sqlintf`` namespace - use that instead.
 import os
 import argparse
 
+import tenacity as tn
 import sqlalchemy as sa
 import sqlalchemy.orm as orm
 import sqlalchemy.exc as exc
 from sqlalchemy.ext.declarative import declarative_base
 
-__all__ = ['argparse', 'sa', 'orm', 'exc', 'PARSER', 'engine', 'Base', 'session']
+__all__ = ['argparse', 'tn', 'sa', 'orm', 'exc', 'PARSER', 'engine', 'Base', 'session']
 
 PARSER = argparse.ArgumentParser()
 """

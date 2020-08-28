@@ -82,15 +82,17 @@ class User:
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
                 name = kwargs.get('name', PARSER.parse_known_args()[0].user_name if args[0] is None else args[0])
                 # querying the database for existing row or create
-                si.begin_nested()
-                try:
-                    cls._user = si.session.query(si.User).with_for_update(). \
-                        filter_by(name=name).one()
-                    si.rollback()
-                except si.orm.exc.NoResultFound:
-                    cls._user = si.User(name=name)
-                    si.session.add(cls._user)
-                    si.commit()
+                for retry in si.retrying_nested():
+                    with retry:
+                        si.begin_nested()
+                        try:
+                            cls._user = si.session.query(si.User).with_for_update(). \
+                                filter_by(name=name).one()
+                            si.rollback()
+                        except si.orm.exc.NoResultFound:
+                            cls._user = si.User(name=name)
+                            si.session.add(cls._user)
+                            si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'User')
         return cls._inst

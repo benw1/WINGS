@@ -30,7 +30,7 @@ COMMIT_FLAG
 commit
     Flush and commit pending changes if COMMIT_FLAG is True
 """
-from .core import argparse, sa, orm, exc, PARSER, session, Base
+from .core import argparse, tn, sa, orm, exc, PARSER, session, Base
 from .User import User
 from .Node import Node
 from .Pipeline import Pipeline
@@ -72,6 +72,29 @@ def commit():
 rollback = session.rollback
 
 begin_nested = session.begin_nested
+
+
+def retrying_nested():
+    def before(retry_state):
+        global TRANSACTION
+        TRANSACTION = begin_nested()
+
+    def after(retry_state):
+        global TRANSACTION
+        try:
+            retry_state.outcome.result()
+        except exc.OperationalError as Err:
+            print("Encountered %s\n%s\n\nAttempting rollback\n" % (Err.orig, Err.statement))
+        try:
+            TRANSACTION.rollback()
+            print("Rollback successful\n")
+        except exc.OperationalError as Err:
+            print("Rollback unsuccessful %s\n%s\n\nProceeding anyway\n" % (Err.orig, Err.statement))
+
+    return tn.Retrying(retry=tn.retry_if_exception_type(exc.OperationalError),
+                       wait=tn.wait_random_exponential(multiplier=0.1),
+                       before=before,
+                       after=after)
 
 # import eralchemy as ERA
 # ERA.render_er(wp.si.Base,"UML.pdf")
