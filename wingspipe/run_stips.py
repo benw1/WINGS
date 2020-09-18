@@ -146,11 +146,11 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
     except KeyError:
         pa = 0.0
     fileroot = str(catalog_dp.relativepath)
-    filename = str(catalog_dp.filename)  # for example, Mixed_h15_shell_3Mpc_Z.tbl
-    filtroot = filename.split('_')[-1].split('.')[0]
+    filename1 = str(catalog_dp.filename)  # for example, Mixed_h15_shell_3Mpc_Z.tbl
+    filtroot = filename1.split('_')[-1].split('.')[0]
     filtername = filtroot
     os.chdir(my_config.procpath)
-    filename = fileroot + '/' + filename 
+    filename = fileroot + '/' + filename1 
     seed = np.random.randint(9999)+1000
     with open(filename) as myfile:
        head = [next(myfile) for x in range(3)]
@@ -171,7 +171,7 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
     psf_file = obm.addError()
     fits_file, mosaic_file, params = obm.finalize(mosaic=False)
     _dp = my_config.dataproduct(filename='sim_' + str(dp_id) + '_0.fits', relativepath=fileroot,
-                                group='proc', subtype='stips_image',
+                                group='proc', datatype='stips_image', subtype=filename1,
                                 filtername=filtername, ra=my_params['racent'], dec=my_params['deccent'])
 
 
@@ -199,11 +199,13 @@ if __name__ == '__main__':
     update_option = update_option + 1
     parent_job.options[compname] = update_option
     to_run = this_event.options['to_run']
-    completed = update_option
+    #completed = update_option
     catalogID = this_event.options['dp_id']
     catalogDP = wp.DataProduct(catalogID)
     this_conf = catalogDP.config
     this_target = this_conf.target
+    image_dps = wp.DataProduct.select(config_id=this_conf.config_id, datatype="stips_image")
+    completed = len(image_dps) 
     print(''.join(["Completed ", str(completed), " of ", str(to_run)]))
     this_job.logprint(''.join(["Completed ", str(completed), " of ", str(to_run), "\n"]))
     if completed >= to_run:
@@ -211,7 +213,6 @@ if __name__ == '__main__':
         DP = wp.DataProduct(this_dp_id)
         tid = DP.target_id
         path = this_conf.procpath
-        image_dps = wp.DataProduct.select(config_id=this_conf.config_id, subtype="stips_image")
         comp_name = 'completed' + this_target.name
         options = {comp_name: 0}
         this_job.options = options
@@ -220,7 +221,7 @@ if __name__ == '__main__':
         for dps in image_dps:
             print(dps)
             dpid = dps.dp_id
-            new_event = this_job.child_event('stips_done', tag=dps.filtername,
+            new_event = this_job.child_event('stips_done', tag=dpid,
                                              options={'target_id': tid, 'dp_id': dpid, 'submission_type': 'pbs',
                                                       'name': comp_name, 'to_run': total})
             new_event.fire()

@@ -70,7 +70,8 @@ def split_catalog(job_id,dp_id,detid):
                                     subtype='split_catalog')
         dpid = _dp.dp_id
         new_event = this_job.child_event('new_split_catalog', tag=dpid,
-                                       options={'dp_id': dpid,'racent':detracent,'deccent':detdeccent, 'submission_type':'pbs'})
+                                       options={'dp_id': dpid,'racent':detracent,'deccent':detdeccent,'submission_type':'pbs'})
+        print("Firing event test")
         this_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_split_catalog"]))
         new_event.fire()
 

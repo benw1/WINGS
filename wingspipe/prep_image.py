@@ -52,22 +52,24 @@ def send(dpid, conf, comp_name, total, job):
 def prep_image(imgpath, filtname, config, thisjob, dp_id):
     thisjob.logprint(''.join(['running ', imgpath, ' in filter ', filtname]))
     print("GOT DP ", str(dp_id))
+    dp = wp.DataProduct(int(dp_id))
+    incatname = dp.subtype
+    incatpre = incatname.split('.')[0]
     my_params = config.parameters
-    dolphot_path = which('wfirstmask')
-    dolphot_path = dolphot_path[:-10]
+    dolphot_path = which('romanmask')
+    dolphot_path = dolphot_path[:-9]
     target = config.target
     targetname = target.name
     print(targetname, " TARGET\n")
-    new_image_name = targetname + '_' + filtname + ".fits"
+    #new_image_name = targetname + '_' + str(dp_id) + '_' + filtname + ".fits"
+    new_image_name = incatpre + ".fits"
     imgpath = config.procpath + '/' + new_image_name
-    # CHANGE FILENAME IN DATA PRODUCT.  ASK RUBAB
-    dp = wp.DataProduct(int(dp_id))
     try:
         dp.filename = new_image_name
     except:
         print("name already changed")
     fixwcs(imgpath)
-    _t1 = [dolphot_path + 'wfirstmask', '-exptime=' + str(my_params['exptime']), '-rdnoise=41.73', imgpath]
+    _t1 = [dolphot_path + 'romanmask', '-exptime=' + str(my_params['exptime']), '-rdnoise=12.0', imgpath]
     _t2 = [dolphot_path + 'splitgroups', imgpath]
     print("T1 ", _t1)
     print("T2 ", _t2)

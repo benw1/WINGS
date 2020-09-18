@@ -48,7 +48,7 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent):
         dec_dithers = my_params['dec_dithers']
         dither_size = my_params['dither_size']
         centdec = my_params['deccent']
-        total = len(stips_files) * (int(ra_dithers) * int(dec_dithers))
+        total = len(stips_files) * (int(ra_dithers) * int(dec_dithers))*np.int(my_params['ndetect'])
         i = 0
         for stips_cat in stips_files:
             filtname = filters[i]
@@ -76,8 +76,11 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent):
                     _dp = my_config.dataproduct(filename=dithfilename, relativepath=my_config.procpath, group='raw')
                     newdpid = _dp.dp_id
                     eventtag = filtname+'_ra:'+str(k)+'/'+str(ra_dithers)+'_dec:'+str(j)+'/'+str(dec_dithers)
+                    #new_event = my_job.child_event('new_stips_catalog', tag=eventtag,
+                    #                               options={'dp_id': newdpid, 'to_run': total, 'name': comp_name,'submission_type' : 'pbs',
+                    #                                        'ra_dither': ra_dither, 'dec_dither': dec_dither})
                     new_event = my_job.child_event('new_stips_catalog', tag=eventtag,
-                                                   options={'dp_id': newdpid, 'to_run': total, 'name': comp_name,'submission_type' : 'pbs',
+                                                   options={'dp_id': newdpid, 'to_run': total, 'name': comp_name,
                                                             'ra_dither': ra_dither, 'dec_dither': dec_dither})
                     dithnum += 1
                     my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
@@ -91,7 +94,7 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent):
         my_job.logprint("No Dithers Found")
         print("No Dithers Found")
         print("STIPS",stips_files,filters)
-        total = len(stips_files)
+        total = len(stips_files)*np.int(my_params['ndetect'])
         i = 0
         for stips_cat in stips_files:
             filtname = filters[i]
@@ -101,6 +104,9 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent):
             new_event = my_job.child_event('new_stips_catalog', tag=filtname,
                                            options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'submission_type' : 'pbs',
                                                     'ra_dither': 0.0, 'dec_dither': 0.0})
+            #new_event = my_job.child_event('new_stips_catalog', tag=filtname,
+            #                               options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 
+            #                                        'ra_dither': 0.0, 'dec_dither': 0.0})
             my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
             print(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
             new_event.fire()
@@ -386,14 +392,14 @@ def link_stips_catalogs(my_config):
                     dec_dither = dither_size * (int(j))
                     eventtag = filtname+'_ra:'+str(k)+'/'+str(ra_dithers)+'_dec:'+str(j)+'/'+str(dec_dithers)
                     my_event = my_job.child_event('new_stips_catalog', tag=eventtag,
-                                                  options={'dp_id': dpid, 'to_run': total, 'name': comp_name,
+                                                  options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'pbs',
                                                            'ra_dither': ra_dither, 'dec_dither': dec_dither})
                     my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
                     my_event.fire()
 
         except KeyError:
             my_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                          options={'dp_id': dpid, 'to_run': total, 'name': comp_name})
+                                          options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'pbs'})
             my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
             my_event.fire()
 
