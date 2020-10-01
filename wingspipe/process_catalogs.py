@@ -296,7 +296,7 @@ def getgalradec(infile, ra, dec, magni, background):
     filedir = background + '/'
     outfile = starpre + '_' + filt + '.tbl'
     flux = wtips.get_counts(magni[:, 0], zp_ab[0])
-    wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile)
+    wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/100)))
     stars = wtips([outfile])
     galaxies = wtips([filedir + filt + '.txt'])  # this file will be provided pre-made
     radec = galaxies.random_radec_for(stars)
