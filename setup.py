@@ -38,5 +38,5 @@ setup(name='wpipe',
       package_dir={'': 'src'},
       install_requires=['numpy', 'pandas', 'tenacity', 'tables', 'sqlalchemy',
                         'mysql-connector-python', 'mysqlclient', 'astropy', 'jinja2'],
-      scripts=['bin/wingspipe']
+      scripts=['bin/wingspipe', 'bin/pbsconsumer.py']
       )

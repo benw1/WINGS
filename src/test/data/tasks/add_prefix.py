@@ -20,4 +20,4 @@ if __name__ == '__main__':
         for line in file:
             print(my_conf.parameters['suffix'] + line, end='')
     my_job.logprint("Edited file to add prefix to it")
-    my_job.child_event('add_proc').fire()
+    my_job.child_event('add_proc', options={'submission_type': 'pbs'}).fire()

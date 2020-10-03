@@ -18,4 +18,7 @@ if __name__ == '__main__':
                 my_target.options = {"Configuration '"+my_conf.name+"' completed": False}
                 my_job.logprint("Starting target "+my_target.name+" config "+my_conf.name)
                 my_job.child_event('add_prefix', tag="config_id#"+str(my_conf.config_id),
-                                   options={'config_id': my_conf.config_id}).fire()  # , 'submission_type': 'pbs'}).fire()
+                                   options={'config_id': my_conf.config_id}).fire()
+                my_job.child_event('add_prefix', tag="config_id2_#" + str(my_conf.config_id),
+                                   options={'config_id': my_conf.config_id}).fire()
+
