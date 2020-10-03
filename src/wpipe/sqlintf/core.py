@@ -52,10 +52,8 @@ sqlalchemy.engine.base.Engine object: handles the connection to the database.
 engine = sa.create_engine("mysql+pymysql://root:password@localhost:8000/server")
 
 if not sqlite:
-    # engine.execute("CREATE DATABASE IF NOT EXISTS wpipe")
+    engine.execute("CREATE DATABASE IF NOT EXISTS wpipe")
     engine.execute("USE wpipe")
-
-engine.execute("USE wpipe") # TODO: Make sure to remove
 
 Base = declarative_base()
 """
