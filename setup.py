@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 try:
     from setuptools import setup
 except ImportError:
@@ -6,7 +7,7 @@ except ImportError:
 
 # metadata are set in the below file, but use this here to avoid warnings.
 __author__ = __copyright__ = __credits__ = __license__ = __version__ = __maintainer__ = __email__ = __status__ = None
-exec(open("src/wpipe/__metadata__.py").read())
+exec(open(os.path.split(os.path.abspath(__file__))[0] + "/src/wpipe/__metadata__.py").read())
 
 long_description = ""
 
@@ -35,7 +36,7 @@ setup(name='wpipe',
       python_requires='>=3',
       packages=['wpipe', 'wpipe.sqlintf', 'wpipe.scheduler'],
       package_dir={'': 'src'},
-      install_requires=['numpy', 'pandas', 'tables', 'sqlalchemy',
+      install_requires=['numpy', 'pandas', 'tenacity', 'tables', 'sqlalchemy',
                         'mysql-connector-python', 'mysqlclient', 'astropy', 'jinja2'],
       scripts=['bin/wingspipe', 'bin/pbsconsumer.py']
       )

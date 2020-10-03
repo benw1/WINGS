@@ -204,40 +204,43 @@ class Pipeline(DPOwner):
                 description = kwargs.get('description',
                                          '' if args[6] is None else args[6])
                 # querying the database for existing row or create
-                si.begin_nested()
-                try:
-                    cls._pipeline = si.session.query(si.Pipeline).with_for_update(). \
-                        filter_by(user_id=user.user_id). \
-                        filter_by(pipe_root=pipe_root).one()
-                    si.rollback()
-                except si.orm.exc.NoResultFound:
-                    cls._pipeline = si.Pipeline(name=name,
-                                                pipe_root=pipe_root,
-                                                software_root=software_root,
-                                                input_root=input_root,
-                                                data_root=data_root,
-                                                config_root=config_root,
-                                                description=description)
-                    user._user.pipelines.append(cls._pipeline)
-                    si.commit()
-                    if not os.path.isdir(cls._pipeline.pipe_root+'/.wpipe'):
-                        os.mkdir(cls._pipeline.pipe_root+'/.wpipe')
-                    if not os.path.isfile(cls._pipeline.pipe_root+'/.wpipe/pipe.conf'):
-                        to_json(cls._pipeline, cls._pipeline.pipe_root+'/.wpipe/pipe.conf', orient='records')
-                    cls._pipeline.dataproducts.append(si.DataProduct(filename='pipe.conf',
-                                                                     group='conf',
-                                                                     relativepath=cls._pipeline.pipe_root+'/.wpipe'))
-                    if not os.path.isdir(cls._pipeline.software_root):
-                        os.mkdir(cls._pipeline.software_root)
-                    if not os.path.isfile(cls._pipeline.software_root+'/__init__.py'):
-                        with open(cls._pipeline.software_root+'/__init__.py', 'w') as file:
-                            file.write("def register(task):\n    return")
-                    if not os.path.isdir(cls._pipeline.input_root):
-                        os.mkdir(cls._pipeline.input_root)
-                    if not os.path.isdir(cls._pipeline.data_root):
-                        os.mkdir(cls._pipeline.data_root)
-                    if not os.path.isdir(cls._pipeline.config_root):
-                        os.mkdir(cls._pipeline.config_root)
+                for retry in si.retrying_nested():
+                    with retry:
+                        si.begin_nested()
+                        try:
+                            cls._pipeline = si.session.query(si.Pipeline).with_for_update(). \
+                                filter_by(user_id=user.user_id). \
+                                filter_by(pipe_root=pipe_root).one()
+                            si.rollback()
+                        except si.orm.exc.NoResultFound:
+                            cls._pipeline = si.Pipeline(name=name,
+                                                        pipe_root=pipe_root,
+                                                        software_root=software_root,
+                                                        input_root=input_root,
+                                                        data_root=data_root,
+                                                        config_root=config_root,
+                                                        description=description)
+                            user._user.pipelines.append(cls._pipeline)
+                            si.commit()
+                            if not os.path.isdir(cls._pipeline.pipe_root+'/.wpipe'):
+                                os.mkdir(cls._pipeline.pipe_root+'/.wpipe')
+                            if not os.path.isfile(cls._pipeline.pipe_root+'/.wpipe/pipe.conf'):
+                                to_json(cls._pipeline, cls._pipeline.pipe_root+'/.wpipe/pipe.conf', orient='records')
+                            cls._pipeline.dataproducts.append(si.DataProduct(filename='pipe.conf',
+                                                                             group='conf',
+                                                                             relativepath=cls._pipeline.pipe_root+
+                                                                                          '/.wpipe'))
+                            if not os.path.isdir(cls._pipeline.software_root):
+                                os.mkdir(cls._pipeline.software_root)
+                            if not os.path.isfile(cls._pipeline.software_root+'/__init__.py'):
+                                with open(cls._pipeline.software_root+'/__init__.py', 'w') as file:
+                                    file.write("def register(task):\n    return")
+                            if not os.path.isdir(cls._pipeline.input_root):
+                                os.mkdir(cls._pipeline.input_root)
+                            if not os.path.isdir(cls._pipeline.data_root):
+                                os.mkdir(cls._pipeline.data_root)
+                            if not os.path.isdir(cls._pipeline.config_root):
+                                os.mkdir(cls._pipeline.config_root)
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Pipeline')
         return cls._inst

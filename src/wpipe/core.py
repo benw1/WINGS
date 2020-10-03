@@ -26,13 +26,10 @@ from . import sqlintf as si
 
 __all__ = ['importlib', 'os', 'sys', 'types', 'datetime', 'time', 'subprocess',
            'glob', 'shutil', 'warnings', 'json', 'ast', 'atexit', 'np', 'pd',
-           'si', 'PARSER', 'as_int', 'try_scalar', 'wait',
-           'clean_path', 'split_path', 'remove_path', 'key_wpipe_separator',
-           'initialize_args', 'wpipe_to_sqlintf_connection',
-           'return_dict_of_attrs', 'to_json',
+           'si', 'PARSER', 'as_int', 'try_scalar', 'clean_path', 'split_path',
+           'remove_path', 'key_wpipe_separator', 'initialize_args',
+           'wpipe_to_sqlintf_connection', 'return_dict_of_attrs', 'to_json',
            'ChildrenProxy', 'DictLikeChildrenProxy']
-
-NBYTE_URAND = 1
 
 PARSER = si.argparse.ArgumentParser()
 PARSER.add_argument('--user', '-u', dest='user_name', type=str,
@@ -91,15 +88,6 @@ def try_scalar(string):
         return string
 
 
-def wait(multiplier=1):
-    """
-    BLABLA
-    """
-    waiting = multiplier * int.from_bytes(os.urandom(NBYTE_URAND), sys.byteorder) / 2 ** (8 * NBYTE_URAND)
-    warnings.warn("Waiting %g seconds" % waiting)
-    time.sleep(waiting)
-
-
 def clean_path(path, root=''):
     """
     Returns given path in absolute format expanding variables and user flags.
@@ -119,7 +107,7 @@ def clean_path(path, root=''):
     if path is not None:
         path = os.path.expandvars(os.path.expanduser(path))
         root = os.path.expandvars(os.path.expanduser(root))
-        return os.path.abspath([root+'/', ''][os.path.isabs(path) or not(os.path.isabs(root))]+path)
+        return os.path.abspath([root + '/', ''][os.path.isabs(path) or not (os.path.isabs(root))] + path)
 
 
 def split_path(path):
@@ -213,7 +201,7 @@ def initialize_args(args, kwargs, nargs):
     args = list(wpargs.pop() for _i in range(len(wpargs)) if key_wpipe_separator(wpargs[-1]))[::-1]
     wpargs = dict((type(wparg).__name__, wparg) for wparg in wpargs)
     kwargs = dict((key, item) for key, item in kwargs.items() if item is not None)
-    args += max(nargs-len(args), 0)*[None]
+    args += max(nargs - len(args), 0) * [None]
     return wpargs, args, kwargs
 
 
@@ -291,6 +279,7 @@ class ChildrenProxy:
         child_attr : string
             Child attribute that distinguishes the children from one another.
     """
+
     def __init__(self, parent, children_attr, cls_name, child_attr='name'):
         self._parent = parent
         self._children_attr = children_attr
@@ -359,6 +348,7 @@ class DictLikeChildrenProxy(ChildrenProxy):
         child_value : string
             Child attribute that returns its stored value.
     """
+
     def __init__(self, parent, children_attr, cls_name, child_attr='name', child_value='value'):
         super(DictLikeChildrenProxy, self).__init__(parent, children_attr, cls_name, child_attr)
         self._child_value = child_value

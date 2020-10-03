@@ -82,17 +82,19 @@ class Option:
                 name = kwargs.get('name', args[0])
                 value = kwargs.get('value', args[1])
                 # querying the database for existing row or create
-                si.begin_nested()
-                try:
-                    cls._option = si.session.query(si.Option).with_for_update(). \
-                        filter_by(optowner_id=optowner.optowner_id). \
-                        filter_by(name=name).one()
-                    si.rollback()
-                except si.orm.exc.NoResultFound:
-                    cls._option = si.Option(name=name,
-                                            value=str(value))
-                    optowner._optowner.options.append(cls._option)
-                    si.commit()
+                for retry in si.retrying_nested():
+                    with retry:
+                        si.begin_nested()
+                        try:
+                            cls._option = si.session.query(si.Option).with_for_update(). \
+                                filter_by(optowner_id=optowner.optowner_id). \
+                                filter_by(name=name).one()
+                            si.rollback()
+                        except si.orm.exc.NoResultFound:
+                            cls._option = si.Option(name=name,
+                                                    value=str(value))
+                            optowner._optowner.options.append(cls._option)
+                            si.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Option')
         return cls._inst
