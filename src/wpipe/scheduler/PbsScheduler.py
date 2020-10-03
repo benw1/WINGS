@@ -131,8 +131,8 @@ class PbsScheduler(BaseScheduler):
     class PbsKey(object):
 
         def __init__(self, jobdata):
-            self._key = jobdata.getTaskName()
-            # self._key = str(job.pipeline.pipeline_id) + job.task.name
+            #self._key = jobdata.getTaskName() # For debugging
+            self._key = str(jobdata.getPipelineId()) + jobdata.getTaskName()
             print("This is our key: " + self._key)
 
         def equals(self, other):
