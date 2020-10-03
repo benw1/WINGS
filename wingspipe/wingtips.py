@@ -1,8 +1,8 @@
 #! /usr/bin/env python
-'''
+"""
 WFIRST Infrared Nearby Galaxies Test Image Product Simulator
 Produces input files for the WFIRST STIPS simulator
-'''
+"""
 import time
 import resource
 import gc
@@ -13,26 +13,27 @@ from astropy.table import Table
 
 
 class WingTips:
-    '''
+    """
     Initialize WingTips object
-    '''
-
-    def __init__(self, infile=[], center=[0, 0]):
+    """
+    def __init__(self, infile=[], center=[0, 0], **kwargs):
+        print("Starting WingTips __init__ %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         if len(infile) == 0:
             self.tab = np.array([])
         else:
             if isinstance(infile, str):
                 infile = [infile]
-            self.tab = WingTips.read_stips(infile[0])
+            self.tab = WingTips.read_stips(infile[0], **kwargs)
+            print("After read_stips %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
             if len(infile) > 1:
                 for i in range(1, len(infile)):
-                    _tab = WingTips.read_stips(infile[i])
+                    _tab = WingTips.read_stips(infile[i], **kwargs)
                     self.tab = np.vstack((self.tab, _tab))
             center = WingTips.get_center(self.tab[:, 0], self.tab[:, 1])
         self.center = center
         self.n = self.tab.shape[0]
         self.infile = infile
-        return None
+        gc.collect()
 
     ''' Strip coordinates from WingTips object '''
 
@@ -70,7 +71,7 @@ class WingTips:
         #        return WingTips.random_radec(self.n,imfile=other)
         # except AttributeError:
         if not sample:
-            return WingTips.random_radec(self.n, center=other.center)
+            return WingTips.random_radec(self.n, center=other.center, shape=shape)
         elif not bool(n):
             return WingTips.sample_radec(n=self.n, radec1=False, radec2=other.tab[:, _i:_i + 1])
         else:
@@ -111,22 +112,24 @@ class WingTips:
         NOTE: ipac format to look into for finite max_writing_packet
         """
         _tab = WingTips.get_tabular(self.tab, hasID, hasCmnt, saveID)
-        print("After get_tabular %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1024))
+        print("After get_tabular %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         _nms = ('id', 'ra', 'dec', 'flux', 'type', 'n', 're', 'phi', 'ratio', 'notes')
         _fmt = ('%10d', '%15.7f', '%15.7f', '%15.7f', '%8s', '%10.3f', '%15.7f', '%15.7f', '%15.7f', '%8s')
         _t = Table(_tab, names=_nms)
         del _tab
         gc.collect()
-        print("After astropy.Table %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1024))
+        print("After astropy.Table %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         _length = len(_t)
         _max = min(max_writing_packet, _length)
-        for i in range(int(np.ceil(_length/_max))):
+        for i in range(int(np.ceil(_length / _max))):
             if ipac:
-                ascii.write(_t[i*_max:(i+1)*_max], outfile, format='ipac', formats=dict(zip(_nms, _fmt)))
+                ascii.write(_t[i * _max:(i + 1) * _max], outfile, format='ipac', formats=dict(zip(_nms, _fmt)))
             else:
-                ascii.write(_t[i*_max:(i+1)*_max], outfile, format=['fixed_width_no_header', 'fixed_width'][i == 0],
+                ascii.write(_t[i * _max:(i + 1) * _max], outfile,
+                            format=['fixed_width_no_header', 'fixed_width'][i == 0],
                             delimiter='', formats=dict(zip(_nms, _fmt)))
-        print("After ascii.write %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1024))
+        print("After ascii.write %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
+        gc.collect()
         return print('Wrote out %s \n' % outfile)
 
     @staticmethod
@@ -135,7 +138,7 @@ class WingTips:
         """
         Build a WingTips class object from scratch
         """
-        print("Starting memory %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1024))
+        print("Starting memory %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         _temp = WingTips()
         _temp.n = len(flux)
         _temp.infile = ['fromScratch']
@@ -159,10 +162,10 @@ class WingTips:
                 Type = np.repeat(np.array(['sersic']), len(flux))
         elif len(Type) == _temp.n:
             Type = np.array(Type)
-        print("After defining Type %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1024))
+        print("After defining Type %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         #
         _tab = np.array([ra, dec, flux, Type, n, re, phi, ratio], dtype='object').T
-        print("After defining _tab %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1024))
+        print("After defining _tab %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         del ra, dec, flux, Type, n, re, phi, ratio,
         #
         if len(ID) == _temp.n:
@@ -174,7 +177,7 @@ class WingTips:
         #
         _temp.tab = np.array(_tab)
         del _tab
-        print("After defining _temp.tab %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1024))
+        print("After defining _temp.tab %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         #
         if outfile is None:
             return _temp
@@ -184,34 +187,21 @@ class WingTips:
                               max_writing_packet=max_writing_packet)
             outfile.close()
 
-    ''' 
-    Read in a STIPS input file in ascii format and 
-    return corrsponding NumPy array
-    '''
-
     @staticmethod
-    def read_stips(infile, getRADEC=True, getID=False, getCmnt=False):
-        _tab = []
-        _infile = ascii.read(infile)
+    def read_stips(infile, getRADEC=True, getID=False, getCmnt=False, **kwargs):
+        """
+        Read in a STIPS input file in ascii format and
+        return corresponding NumPy array
+        """
+        include_names = getID * ['id'] + \
+                        getRADEC * ['ra', 'dec'] + \
+                        ['flux', 'type', 'n', 're', 'phi', 'ratio'] + \
+                        getCmnt * ['comment']
+        kwargs['include_names'] = include_names
+        _infile = ascii.read(infile, **kwargs)
+        print("After ascii.read %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         print('\nRead in %s \n' % infile)
-
-        if getID:
-            _tab.append(_infile['id'])
-        if getRADEC:
-            _tab.append(_infile['ra'])
-            _tab.append(_infile['dec'])
-
-        _tab.append(_infile['flux'])
-        _tab.append(_infile['type'])
-        _tab.append(_infile['n'])
-        _tab.append(_infile['re'])
-        _tab.append(_infile['phi'])
-        _tab.append(_infile['ratio'])
-
-        if getCmnt:
-            _tab.append(_infile['comment'])
-
-        return np.array(_tab).T
+        return np.array(_infile.as_array().tolist(), dtype='object')
 
     @staticmethod
     def get_tabular(_tab, hasID=False, hasCmnt=False, saveID=False):
@@ -224,12 +214,12 @@ class WingTips:
             _ID = np.array(np.linspace(1, _n, _n), ndmin=2).T
             _tab = np.hstack((_ID, _tab[:, _i:]))
             del _ID
-            print("After ~saveID %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1024))
+            print("After ~saveID %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         if ~hasCmnt:
             _cmnt = np.array(np.repeat(np.array(['comment']), _tab.shape[0], ), ndmin=2).T
             _tab = np.hstack((_tab, _cmnt))
             del _cmnt
-            print("After ~hasCmnt %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1024))
+            print("After ~hasCmnt %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         return [_tab[:, 0].astype(float), _tab[:, 1].astype(float), _tab[:, 2].astype(float),
                 _tab[:, 3].astype(float), _tab[:, 4], _tab[:, 5].astype(float),
                 _tab[:, 6].astype(float), _tab[:, 7].astype(float),
