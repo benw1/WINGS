@@ -2,6 +2,7 @@ import datetime
 
 from .BaseScheduler import BaseScheduler
 from .TemplateFactory import TemplateFactory
+import subprocess
 
 
 class PbsScheduler(BaseScheduler):
@@ -54,9 +55,9 @@ class PbsScheduler(BaseScheduler):
             f.write(pbsFileOutput)
 
         # TODO: Test this out more
-        # output = subprocess.run("qsub %filePath" % (pbsfilepath), shell=True, capture_output=True)
-        # print("Qsub output:")
-        # print(output)
+        output = subprocess.run("qsub %s" % (pbsfilepath), shell=True, capture_output=True)
+        print("Qsub output:")
+        print(output)
 
         # remove scheduler from list
         PbsScheduler.schedulers.remove(self)
