@@ -49,7 +49,7 @@ sqlalchemy.engine.base.Engine object: handles the connection to the database.
 # except sa.exc.OperationalError: # revert to some default on error
 #     print("We got here")
 #     engine = sa.create_engine("mysql+pymysql://root:password@localhost:8000/server")
-# engine = sa.create_engine("mysql+pymysql://root:password@localhost:8000/server")
+engine = sa.create_engine("mysql+pymysql://root:password@localhost:8000/server")
 
 if not sqlite:
     engine.execute("CREATE DATABASE IF NOT EXISTS wpipe")
