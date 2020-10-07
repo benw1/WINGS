@@ -170,8 +170,9 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
     source_count_catalogues = obm.addCatalogue(str(filename))
     psf_file = obm.addError()
     fits_file, mosaic_file, params = obm.finalize(mosaic=False)
+    detname = filename1.split('_')[2]
     _dp = my_config.dataproduct(filename='sim_' + str(dp_id) + '_0.fits', relativepath=fileroot,
-                                group='proc', datatype='stips_image', subtype=filename1,
+                                group='proc', data_type='stips_image', subtype=detname,
                                 filtername=filtername, ra=my_params['racent'], dec=my_params['deccent'])
 
 
@@ -204,7 +205,7 @@ if __name__ == '__main__':
     catalogDP = wp.DataProduct(catalogID)
     this_conf = catalogDP.config
     this_target = this_conf.target
-    image_dps = wp.DataProduct.select(config_id=this_conf.config_id, datatype="stips_image")
+    image_dps = wp.DataProduct.select(config_id=this_conf.config_id, data_type="stips_image")
     completed = len(image_dps) 
     print(''.join(["Completed ", str(completed), " of ", str(to_run)]))
     this_job.logprint(''.join(["Completed ", str(completed), " of ", str(to_run), "\n"]))

@@ -7,12 +7,12 @@ def register(task):
     _temp = task.mask(source='*', name='images_prepped', value='*')
 
 
-def write_dolphot_pars(target, config, thisjob):
-    parfile_name = target.name + ".param"
+def write_dolphot_pars(target, config, thisjob, detname):
+    parfile_name = target.name + "_" + detname + ".param"
     parfile_path = config.confpath + '/' + parfile_name
     thisjob.logprint(''.join(["Writing dolphot pars now in ", parfile_path, "\n"]))
     my_dp = config.dataproducts
-    datadp = my_dp[my_dp.subtype == 'dolphot_data']
+    datadp = my_dp[my_dp.subtype == detname]
     datadpid = [_dp.dp_id for _dp in datadp]
     dataname = [_dp.filename for _dp in datadp]
     rinds = []
@@ -170,13 +170,14 @@ if __name__ == '__main__':
     this_job_id = args.job_id
     this_job = wp.Job(this_job_id)
     this_event = this_job.firing_event
+    detname = this_event.options['detname']
     this_event_id = this_event.event_id
     this_config = this_job.config
     this_target = this_config.target
     tid = this_target.target_id
-    paramdp = write_dolphot_pars(this_target, this_config, this_job)
+    paramdp = write_dolphot_pars(this_target, this_config, this_job, detname)
     dpid = int(paramdp.dp_id)
     this_job.logprint(''.join(["Parameter file DPID ", str(dpid), "\n"]))
-    newevent = this_job.child_event('parameters_written', options={'target_id': tid, 'dp_id': dpid})
+    newevent = this_job.child_event('parameters_written', tag=dpid, options={'target_id': tid, 'dp_id': dpid})
     newevent.fire()
     this_job.logprint('parameters_written\n')

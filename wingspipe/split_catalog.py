@@ -37,7 +37,7 @@ def split_catalog(job_id,dp_id,detid):
     outfilelist = []
     ralist = []
     declist = []
-   
+ 
     for line in detlocs:
         detnum,Aoff,Boff = line
         print(detnum,detid,Aoff,Boff,ang,np.sin(ang))
@@ -56,6 +56,15 @@ def split_catalog(job_id,dp_id,detid):
         decstr = decstr.replace('.','p')
         rastr = rastr.replace('.','p')
         filename = rastr.strip()+"d"+decstr.strip()+"_"+dp.filename.strip()
+        detname = rastr.strip()+"d"+decstr.strip()
+        
+        try:
+           detnames = this_config.parameters['detnames']
+           new_detnames = detnames+" "+detname
+        except:
+           new_detnames = detname
+        wp.Parameter(my_config, name='detnames', value=new_detnames)
+
         outfile = my_config.procpath.strip()+"/"+filename
         print(outfile,my_config.procpath,rastr)
         ralim1 = detracent-(0.1 / np.cos(deccent*(3.14159/180.0)))

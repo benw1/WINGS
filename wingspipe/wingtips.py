@@ -194,7 +194,7 @@ class WingTips:
             _temp.write_stips(outfile, hasID=bool(ID), hasCmnt=bool(notes), saveID=bool(ID),
                               max_writing_packet=max_writing_packet)
             outfile.close()
-
+            del _temp
     @staticmethod
     def read_stips(infile, getRADEC=True, getID=False, getCmnt=False, **kwargs):
         """
