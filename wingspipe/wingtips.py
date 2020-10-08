@@ -24,7 +24,9 @@ class WingTips:
     """
     Initialize WingTips object
     """
+
     def __init__(self, infile=[], center=[0, 0], **kwargs):
+        gc.collect()
         specialprint("Starting WingTips __init__ %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         if len(infile) == 0:
             self.tab = np.array([])
@@ -116,9 +118,8 @@ class WingTips:
                     max_writing_packet=np.inf):
         """
         Write out a STIPS input file
-
-        NOTE: ipac format to look into for finite max_writing_packet
         """
+        gc.collect()
         _tab = WingTips.get_tabular(self.tab, hasID, hasCmnt, saveID)
         specialprint("After get_tabular %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         _nms = ('id', 'ra', 'dec', 'flux', 'type', 'n', 're', 'phi', 'ratio', 'notes')
@@ -129,13 +130,13 @@ class WingTips:
         specialprint("After astropy.Table %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         _length = len(_t)
         _max = min(max_writing_packet, _length)
+        outfile = open(outfile, 'w')
         for i in range(int(np.ceil(_length / _max))):
-            if ipac:
-                ascii.write(_t[i * _max:(i + 1) * _max], outfile, format='ipac', formats=dict(zip(_nms, _fmt)))
-            else:
-                ascii.write(_t[i * _max:(i + 1) * _max], outfile,
-                            format=['fixed_width_no_header', 'fixed_width'][i == 0],
-                            delimiter='', formats=dict(zip(_nms, _fmt)))
+            ascii.write(_t[i * _max:(i + 1) * _max], outfile,
+                        format=['fixed_width_no_header', ['fixed_width', 'ipac'][ipac]][i == 0],
+                        formats=dict(zip(_nms, _fmt)),
+                        **[{'delimiter': ' ', 'delimiter_pad': ''}, {}][(ipac and i == 0)])
+        outfile.close()
         specialprint("After ascii.write %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         gc.collect()
         return specialprint('Wrote out %s \n' % outfile)
@@ -146,6 +147,7 @@ class WingTips:
         """
         Build a WingTips class object from scratch
         """
+        gc.collect()
         specialprint("Starting memory %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         _temp = WingTips()
         _temp.n = len(flux)
@@ -174,7 +176,8 @@ class WingTips:
         #
         _tab = np.array([ra, dec, flux, Type, n, re, phi, ratio], dtype='object').T
         specialprint("After defining _tab %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
-        del ra, dec, flux, Type, n, re, phi, ratio,
+        del ra, dec, flux, Type, n, re, phi, ratio
+        gc.collect()
         #
         if len(ID) == _temp.n:
             _tab = np.hstack((np.array(ID, ndmin=2).T, _tab))
@@ -185,15 +188,16 @@ class WingTips:
         #
         _temp.tab = np.array(_tab)
         del _tab
+        gc.collect()
         specialprint("After defining _temp.tab %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         #
         if outfile is None:
             return _temp
         else:
-            outfile = open(outfile, 'w')
             _temp.write_stips(outfile, hasID=bool(ID), hasCmnt=bool(notes), saveID=bool(ID),
                               max_writing_packet=max_writing_packet)
-            outfile.close()
+        del _temp
+        gc.collect()
 
     @staticmethod
     def read_stips(infile, getRADEC=True, getID=False, getCmnt=False, **kwargs):
@@ -201,6 +205,7 @@ class WingTips:
         Read in a STIPS input file in ascii format and
         return corresponding NumPy array
         """
+        gc.collect()
         include_names = getID * ['id'] + \
                         getRADEC * ['ra', 'dec'] + \
                         ['flux', 'type', 'n', 're', 'phi', 'ratio'] + \
@@ -209,7 +214,10 @@ class WingTips:
         _infile = ascii.read(infile, **kwargs)
         specialprint("After ascii.read %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         specialprint('\nRead in %s \n' % infile)
-        return np.array(_infile.as_array().tolist(), dtype='object')
+        _temp = np.array(_infile.as_array().tolist(), dtype='object')
+        del _infile
+        gc.collect()
+        return _temp
 
     @staticmethod
     def get_tabular(_tab, hasID=False, hasCmnt=False, saveID=False):
@@ -228,6 +236,7 @@ class WingTips:
             _tab = np.hstack((_tab, _cmnt))
             del _cmnt
             specialprint("After ~hasCmnt %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
+        gc.collect()
         return [_tab[:, 0].astype(float), _tab[:, 1].astype(float), _tab[:, 2].astype(float),
                 _tab[:, 3].astype(float), _tab[:, 4], _tab[:, 5].astype(float),
                 _tab[:, 6].astype(float), _tab[:, 7].astype(float),
