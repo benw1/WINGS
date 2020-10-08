@@ -149,9 +149,11 @@ if __name__ == '__main__':
         parent_job_id = this_event.parent_job_id
         parent_job = this_event.parent_job
         compname = this_event.options['name']
+        wp.si.session.execute('LOCK TABLES options, optowners, jobs WRITE')
         update_option = parent_job.options[compname]
         update_option = update_option + 1
         parent_job.options[compname] = update_option
+        wp.si.session.execute('UNLOCK TABLES')
         to_run = this_event.options['to_run']
         completed = update_option
         catalogID = this_event.options['dp_id']
@@ -160,7 +162,10 @@ if __name__ == '__main__':
         print(''.join(["Completed ", str(completed), " of ", str(to_run)]))
         this_job.logprint(''.join(["Completed ", str(completed), " of ", str(to_run), "\n"]))
         if completed >= to_run:
-            new_event = this_job.child_event('images_prepped', options={'target_id': tid})
-            new_event.fire()
-            this_job.logprint('images_prepped\n')
-            this_job.logprint(''.join(["Event= ", str(new_event.event_id), " images_prepped\n"]))
+            detnames1 = this_config.parameters['detnames']
+            detnames = detnames1.split(' ')
+            for detname in detnames:
+                new_event = this_job.child_event('images_prepped', tag=detector, options={'target_id': tid,'detname': detname})
+                new_event.fire()
+                this_job.logprint('images_prepped\n')
+                this_job.logprint(''.join(["Event= ", str(new_event.event_id), " images_prepped\n"]))
