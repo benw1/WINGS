@@ -1,5 +1,4 @@
 # This class makes it so we can pickle and unpickle the info we need for the pbs scheduler for a job
-# TODO: Add some sort of enforcement of attributes
 class JobData:
     def __init__(self, job):
         # Attributes for PbsKey
@@ -14,6 +13,24 @@ class JobData:
         self._pipeline_id = job.pipeline_id
         self._pipeline_username = job.pipeline.user_name
         self._job_id = job.job_id
+
+    def validate(self):
+        errors = ""
+        if self._task_name is None:
+            errors += "Job for scheduler has no task name\n"
+        if self._pipeline_pipe_root is None:
+            errors += "Job for scheduler has no pipe root\n"
+        if self._pipeline_config_root is None:
+            errors += "Job for scheduler has no pipeline configuration root\n"
+        if self._task_executable is None:
+            errors += "Job for scheduler has no task executable\n"
+        if self._pipeline_id is None:
+            errors += "Job for scheduler has no pipeline id\n"
+        if self._pipeline_username is None:
+            errors += "Job for scheduler has no pipeline username\n"
+        if self._job_id is None:
+            errors += "Job for scheduler has no job id\n"
+        return errors
 
     def getTaskName(self):
         return self._task_name
