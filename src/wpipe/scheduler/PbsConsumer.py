@@ -1,5 +1,3 @@
-from multiprocessing import Process
-import threading
 import asyncio
 import pickle
 import socket
@@ -30,17 +28,10 @@ class PipelineObjectProtocol(asyncio.Protocol):
                 return
         except UnicodeDecodeError:
             jobdata = pickle.loads(data)
-
-        # TODO: Check object type
-
-        # print(jobdata)
-        # print(jobdata.getTaskName())
-        # print(jobdata.getPipelinePipeRoot())
-        # print(jobdata.getPipelineConfigRoot())
-        # print(jobdata.getTaskExecutable())
-        # print(jobdata.getPipelineId())
-        # print(jobdata.getPipelineUserName())
-        # print(jobdata.getJobId())
+            errors = jobdata.validate()
+            if errors != "":
+                print("Errors in JobData: %s" % errors)
+                return
 
         PbsScheduler.submit(jobdata)
 
@@ -68,8 +59,13 @@ def sendJobToPbs(pipejob):
     else:
         # Store what we need in a new class and pickle
         jobData = JobData(pipejob)
+        errors = jobData.validate()
+
+        if errors != "":
+            print("Errors in JobData: %s" % errors)
+            return
+
         serialized = pickle.dumps(jobData)
-        print(jobData)
 
     # open TCP connection and sendall bytes
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
