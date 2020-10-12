@@ -3,7 +3,7 @@ import pickle
 import socket
 from .JobData import JobData
 from .PbsScheduler import PbsScheduler
-from wpipe.sqlintf.core import session
+#from wpipe.sqlintf.core import session
 
 # This processes incoming pickled pipeline objects
 class PipelineObjectProtocol(asyncio.Protocol):
@@ -45,12 +45,13 @@ def checkPbsConnection():
 # Used by clients to send to the PbsConsumer
 def sendJobToPbs(pipejob):
     import re
-    hostMachine = re.search('(?<=@).+(?=:)', str(session.get_bind().url))
+    #hostMachine = re.search('(?<=@).+(?=:)', str(session.get_bind().url))
+    hostMachine = '10.150.27.94'
 
     if hostMachine is None:
         hostMachine = 'localhost'
-    else:
-        hostMachine = hostMachine.group()
+    #else:
+    #    hostMachine = hostMachine.group()
 
     # Turn our object into bytes for sending
     serialized = None

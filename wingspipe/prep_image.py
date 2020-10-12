@@ -62,7 +62,7 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
     targetname = target.name
     print(targetname, " TARGET\n")
     #new_image_name = targetname + '_' + str(dp_id) + '_' + filtname + ".fits"
-    new_image_name = incatpre + ".fits"
+    new_image_name = targetname + '_' + incatpre + '_' + str(dp_id) + '_' + filtname + ".fits"
     imgpath = config.procpath + '/' + new_image_name
     try:
         dp.filename = new_image_name

@@ -167,7 +167,7 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     file3 = my_config.procpath + '/' + file2 + '.' + file1[-1]
     galradec = getgalradec(file3, ra * 0.0 + racent, dec * 0.0 + deccent, magni, background)
     stips_lists, filters = write_stips(file3, ra, dec, magni, background,
-                                       galradec, racent, deccent, starsonly, filtsinm)
+                                       galradec, racent, deccent, starsonly, filtsinm, my_job)
     del magni
     gc.collect()
     stips_in = np.append(stips_in, stips_lists)
@@ -303,7 +303,7 @@ def getgalradec(infile, ra, dec, magni, background):
     return radec
 
 
-def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, starsonly, filtsinm):
+def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, starsonly, filtsinm,my_job):
     filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
     zp_ab = np.array([26.5, 26.365, 26.357, 26.320, 26.367, 25.913])
     zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588])
@@ -327,15 +327,22 @@ def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, s
         flux = wtips.get_counts(magni[:, mindex], zp_vega[j])
         # This makes a stars only input list
         wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/1000)))
+        my_job.logprint("LINE 330")
         stars = wtips([outfile], fast_reader={'chunk_size': 2**20})
+        my_job.logprint("LINE 332")
         galaxies = wtips([background + '/' + filt + '.txt'])  # this file will be provided pre-made
+        my_job.logprint("LINE 334")
         galaxies.flux_to_Sb()  # galaxy flux to surface brightness
         galaxies.replace_radec(galradec)  # distribute galaxies across starfield
+        my_job.logprint("LINE 337")
         if starsonly < 1:
             stars.merge_with(galaxies)  # merge stars and galaxies list
         outfile = filedir + 'Mixed' + '_' + outfilename
         mixedfilename = 'Mixed' + '_' + outfilename
-        stars.write_stips(outfile, ipac=True)
+        stars.write_stips(outfile, ipac=True, max_writing_packet=int(np.round(len(flux)/1000)))
+        del stars
+        del galaxies
+        gc.collect()
         with open(outfile, 'r+') as f:
             content = f.read()
             f.seek(0, 0)
@@ -345,9 +352,6 @@ def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, s
                     '  ' + str(deccent) + ')\n' +
                     content)
         f.close()
-        del stars
-        del galaxies
-        gc.collect()
         outfiles = np.append(outfiles, mixedfilename)
         filters = np.append(filters, str(filt))
     return outfiles, filters

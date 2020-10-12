@@ -78,63 +78,6 @@ def pbs_stips(event_id, dp_id, stips_script):
     return
     # subprocess.run(['qsub',pbsfile],cwd=my_config.procpath)
 
-'''
-def run_stips(event_id, dp_id, ra_dith, dec_dith, run_id):
-    catalog_dp = wp.DataProduct(dp_id)
-    my_config = catalog_dp.config
-    my_params = my_config.parameters
-    racent = float(my_params['racent']) + (float(ra_dith) / 3600.0)
-    deccent = float(my_params['deccent']) + (float(dec_dith) / 3600.0)
-    try:
-        pa = my_params['pa']
-    except KeyError:
-        pa = 0.0
-    fileroot = str(catalog_dp.relativepath)
-    filename = str(catalog_dp.filename)  # for example, Mixed_h15_shell_3Mpc_Z.tbl
-    filtroot = filename.split('_')[-1].split('.')[0]
-    filtername = filtdict[filtroot]
-    stips_script = my_config.confpath + '/run_stips_' + str(dp_id) + '.py'
-    with open(stips_script, 'w') as f:
-        f.write('from stips.observation_module import ObservationModule' + '\n' +
-                'import numpy as np\n' +
-                'import os\n' +
-                'os.chdir(\'' + my_config.procpath + '\')\n' +
-                'filename = \'' + fileroot + '/' + filename + '\'\n' +
-                'seed = np.random.randint(9999)+1000' + '\n' +
-                'with open(filename) as myfile:' + '\n' +
-                '   head = [next(myfile) for x in range(3)]' + '\n' +
-                'pos = head[2].split(\' \')' + '\n' +
-                'crud,ra = pos[2].split(\'(\')' + '\n' +
-                'dec,crud =  pos[4].split(\')\')' + '\n' +
-                'print(\"Running \",filename,ra,dec)' + '\n' +
-                'print(\"SEED \",seed)' + '\n' +
-                'scene_general = ' +
-                '{\'ra\': ' + str(racent) + ', \'dec\': ' + str(deccent) + ',' +
-                ' \'pa\': ' + str(pa) + ', \'seed\': seed}' + '\n' +
-                'obs = ' +
-                '{\'instrument\': \'WFI\', \'filters\': [\'' + filtername + '\'], \'detectors\': 1,' +
-                ' \'distortion\': False, \'oversample\': ' + str(my_params['oversample']) + ', \'pupil_mask\': \'\',' +
-                ' \'background\': \'avg\', \'observations_id\': ' + str(dp_id) + ',' +
-                ' \'exptime\': ' + str(my_params['exptime']) + ',' +
-                ' \'offsets\': [' +
-                '{\'offset_id\': ' + str(run_id) + ', \'offset_centre\': False,' +
-                ' \'offset_ra\': 0.0, \'offset_dec\': 0.0, \'offset_pa\': 0.0}]}' + '\n' +
-                'obm = ObservationModule(obs, scene_general=scene_general)' + '\n' +
-                'obm.nextObservation()' + '\n' + 'source_count_catalogues = obm.addCatalogue(str(filename))' + '\n' +
-                'psf_file = obm.addError()' + '\n' +
-                'fits_file, mosaic_file, params = obm.finalize(mosaic=False)' + '\n')
-    if on_hyak:
-        hyak_stips(event_id, dp_id, stips_script)
-    elif on_pbs:
-        pbs_stips(event_id, dp_id, stips_script)
-    else:
-        os.system("python " + stips_script)
-    _dp = my_config.dataproduct(filename='sim_' + str(dp_id) + '_0.fits', relativepath=fileroot,
-                                group='proc', subtype='stips_image',
-                                filtername=filtername, ra=my_params['racent'], dec=my_params['deccent'])
-
-'''
-
 def run_stips(event_id, dp_id, ra_dith, dec_dith):
     catalog_dp = wp.DataProduct(dp_id)
     my_config = catalog_dp.config
@@ -170,7 +113,7 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
     source_count_catalogues = obm.addCatalogue(str(filename))
     psf_file = obm.addError()
     fits_file, mosaic_file, params = obm.finalize(mosaic=False)
-    detname = filename1.split('_')[2]
+    detname = filename1.split('_')[1]
     _dp = my_config.dataproduct(filename='sim_' + str(dp_id) + '_0.fits', relativepath=fileroot,
                                 group='proc', data_type='stips_image', subtype=detname,
                                 filtername=filtername, ra=my_params['racent'], dec=my_params['deccent'])

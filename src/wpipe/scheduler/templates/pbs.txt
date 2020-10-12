@@ -1,0 +1,9 @@
+#PBS -S /bin/bash
+#PBS -j oe
+#PBS -l select=[number_of_nodes]:ncpus=[cpus_per_node]:model=has
+#PBS -W group_list=s1692
+#PBS -l walltime=24:00:00
+source ~/.bashrc
+cd [directory]
+parallel --jobs [jobs] --sshloginfile $PBS_NODEFILE --workdir $PWD < [job_list]
+
