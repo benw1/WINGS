@@ -3,14 +3,13 @@ import pickle
 import socket
 from .JobData import JobData
 from .PbsScheduler import PbsScheduler
-#from wpipe.sqlintf.core import session
+from wpipe.sqlintf.core import session
 
 # This processes incoming pickled pipeline objects
 class PipelineObjectProtocol(asyncio.Protocol):
 
     def __init__(self):
         self.transport = None
-
     # Called when a connection is made.
     # Transport is like a socket but we don't really use it.
     def connection_made(self, transport):
@@ -38,7 +37,7 @@ class PipelineObjectProtocol(asyncio.Protocol):
 
 def checkPbsConnection():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    connected = s.connect_ex(('127.0.0.1', 5000))
+    connected = s.connect_ex(('10.150.27.94', 5000))
     s.close()
     return connected # non zero for unconnected
 
@@ -47,6 +46,7 @@ def sendJobToPbs(pipejob):
     import re
     #hostMachine = re.search('(?<=@).+(?=:)', str(session.get_bind().url))
     hostMachine = '10.150.27.94'
+    #hostMachine = 'localhost'
 
     if hostMachine is None:
         hostMachine = 'localhost'
@@ -76,12 +76,14 @@ def sendJobToPbs(pipejob):
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    coroutine = loop.create_server(lambda: PipelineObjectProtocol(), '127.0.0.1', 5000)
+    coroutine = loop.create_server(lambda: PipelineObjectProtocol(), '10.150.27.94', 5000)
     server = loop.run_until_complete(coroutine)
 
     try:
         # TODO: Make this more sophisticated
         # Set to turn off after two days.
+        print("IN TRY SHUTTING SESSION DOWN")
+        session.close()
         loop.call_later(172800, lambda: sendJobToPbs("poisonpill"))  # This kills the server after some time
         loop.run_forever()
     finally:
