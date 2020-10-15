@@ -80,7 +80,10 @@ def retrying_nested():
         retry_state.TRANSACTION = begin_nested()
 
         def _commit():
-            retry_state.TRANSACTION.commit()
+            try:
+                retry_state.TRANSACTION.commit()
+            except exc.ResourceClosedError:
+                pass
             commit()
 
         retry_state.commit = _commit

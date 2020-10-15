@@ -164,20 +164,21 @@ class Pipeline(DPOwner):
         configuration file. The third and last one called run_pipeline
         simply starts the pipeline run.
     """
+
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._pipeline = args[0] if len(args) else as_int(PARSER.parse_known_args()[0].pipeline)
         if not isinstance(cls._pipeline, si.Pipeline):
             if isinstance(cls._pipeline, str):
-                if os.path.isfile(cls._pipeline+'/.wpipe/pipe.conf'):
-                    with open(cls._pipeline+'/.wpipe/pipe.conf', 'r') as jsonfile:
+                if os.path.isfile(cls._pipeline + '/.wpipe/pipe.conf'):
+                    with open(cls._pipeline + '/.wpipe/pipe.conf', 'r') as jsonfile:
                         cls._pipeline = int(json.load(jsonfile)[0]['id'])
             keyid = kwargs.get('id', cls._pipeline)
             if isinstance(keyid, int):
                 try:
                     cls._pipeline = si.session.query(si.Pipeline).filter_by(id=keyid).one()
                 except si.orm.exc.NoResultFound:
-                    raise(si.orm.exc.NoResultFound(
+                    raise (si.orm.exc.NoResultFound(
                         "No row was found for one(): make sure the .wpipe/ directory was removed"))
             else:
                 # gathering construction arguments
@@ -221,18 +222,18 @@ class Pipeline(DPOwner):
                                                         description=description)
                             user._user.pipelines.append(cls._pipeline)
                             this_nested.commit()
-                            if not os.path.isdir(cls._pipeline.pipe_root+'/.wpipe'):
-                                os.mkdir(cls._pipeline.pipe_root+'/.wpipe')
-                            if not os.path.isfile(cls._pipeline.pipe_root+'/.wpipe/pipe.conf'):
-                                to_json(cls._pipeline, cls._pipeline.pipe_root+'/.wpipe/pipe.conf', orient='records')
+                            if not os.path.isdir(cls._pipeline.pipe_root + '/.wpipe'):
+                                os.mkdir(cls._pipeline.pipe_root + '/.wpipe')
+                            if not os.path.isfile(cls._pipeline.pipe_root + '/.wpipe/pipe.conf'):
+                                to_json(cls._pipeline, cls._pipeline.pipe_root + '/.wpipe/pipe.conf', orient='records')
                             cls._pipeline.dataproducts.append(si.DataProduct(filename='pipe.conf',
                                                                              group='conf',
-                                                                             relativepath=cls._pipeline.pipe_root+
+                                                                             relativepath=cls._pipeline.pipe_root +
                                                                                           '/.wpipe'))
                             if not os.path.isdir(cls._pipeline.software_root):
                                 os.mkdir(cls._pipeline.software_root)
-                            if not os.path.isfile(cls._pipeline.software_root+'/__init__.py'):
-                                with open(cls._pipeline.software_root+'/__init__.py', 'w') as file:
+                            if not os.path.isfile(cls._pipeline.software_root + '/__init__.py'):
+                                with open(cls._pipeline.software_root + '/__init__.py', 'w') as file:
                                     file.write("def register(task):\n    return")
                             if not os.path.isdir(cls._pipeline.input_root):
                                 os.mkdir(cls._pipeline.input_root)
@@ -255,7 +256,7 @@ class Pipeline(DPOwner):
         if not hasattr(self, '_dpowner'):
             self._dpowner = self._pipeline
         if not hasattr(self, '_dummy_task'):
-            self._dummy_task = self.task(self.software_root+'/__init__.py')
+            self._dummy_task = self.task(self.software_root + '/__init__.py')
         if not hasattr(self, '_dummy_job'):
             self._dummy_job = self.dummy_task.job()
         super(Pipeline, self).__init__()
@@ -475,7 +476,7 @@ class Pipeline(DPOwner):
         """
         tasks_path = clean_path(tasks_path)
         if tasks_path is not None:
-            for task_path in glob.glob(tasks_path+'/*'):
+            for task_path in glob.glob(tasks_path + '/*'):
                 if os.path.isfile(task_path) and os.access(task_path, os.X_OK):
                     self.task(task_path).register()
 
@@ -492,7 +493,7 @@ class Pipeline(DPOwner):
         """
         inputs_path = clean_path(inputs_path)
         if inputs_path is not None:
-            for input_path in glob.glob(inputs_path+'/*'):
+            for input_path in glob.glob(inputs_path + '/*'):
                 if os.access(inputs_path, os.R_OK):
                     self.input(input_path).make_config(config_file)
 
@@ -526,7 +527,7 @@ class Pipeline(DPOwner):
             item.delete()
         for item in self.inputs:
             item.delete()
-        remove_path(self.software_root+'/__pycache__', hard=True)
+        remove_path(self.software_root + '/__pycache__', hard=True)
 
     def delete(self):
         """
@@ -539,4 +540,4 @@ class Pipeline(DPOwner):
         remove_path(self.input_root)
         remove_path(self.data_root)
         remove_path(self.config_root)
-        remove_path(self.pipe_root+'/.wpipe', hard=True)
+        remove_path(self.pipe_root + '/.wpipe', hard=True)
