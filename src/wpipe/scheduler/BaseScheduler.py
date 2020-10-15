@@ -11,13 +11,13 @@ class BaseScheduler(abc.ABC):
     """
 
     def __init__(self):
-        threading.Timer(2, self._middleman).start()
+        threading.Timer(20, self._middleman).start()
         self.reset = False
 
     def _middleman(self):
         if self.reset:
             self.reset = False
-            threading.Timer(2, self._middleman).start()
+            threading.Timer(20, self._middleman).start()
         else:
             self._execute()
 

@@ -42,7 +42,7 @@ else:
     ENGINE_URL = 'mysql://wings:wings2025@10.150.27.94:8020/server'
     # ENGINE_URL = 'mysql+mysqlconnector://root:password@localhost:8000/server'
 
-engine = sa.create_engine(ENGINE_URL)  # , echo=True)
+engine = sa.create_engine(ENGINE_URL, echo=True)
 """
 sqlalchemy.engine.base.Engine object: handles the connection to the database.
 """
