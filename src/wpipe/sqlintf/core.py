@@ -22,6 +22,8 @@ argparse.ArgumentParser object: pre-instantiated parser.
 
 For usage, call object-method PARSER.print_help in interpreter.
 """
+PARSER.add_argument('--verbose', '-v', dest='verbose', action='store_true',
+                    help='Verbose mode for wpipe')
 PARSER.add_argument('--sqlite', '-s', dest='sqlite', action='store_true',
                     help='Use the in-memory sql database for testing purpose')
 PARSER.add_argument('--github-test', dest='test', action='store_true',
@@ -31,6 +33,8 @@ sqlite = PARSER.parse_known_args()[0].sqlite
 """
 boolean: flag to call with the parser to use the in-memory sql database.
 """
+
+verbose = PARSER.parse_known_args()[0].verbose
 
 if sqlite:
     ENGINE_URL = 'sqlite:///:memory:'
@@ -42,7 +46,7 @@ else:
     ENGINE_URL = 'mysql://wings:wings2025@10.150.27.94:8020/server'
     # ENGINE_URL = 'mysql+mysqlconnector://root:password@localhost:8000/server'
 
-engine = sa.create_engine(ENGINE_URL)  # , echo=True)
+engine = sa.create_engine(ENGINE_URL, echo=verbose)
 """
 sqlalchemy.engine.base.Engine object: handles the connection to the database.
 """
