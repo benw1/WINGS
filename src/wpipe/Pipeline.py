@@ -176,7 +176,6 @@ class Pipeline(DPOwner):
             if isinstance(keyid, int):
                 try:
                     cls._pipeline = si.session.query(si.Pipeline).filter_by(id=keyid).one()
-                    si.rollback()
                 except si.orm.exc.NoResultFound:
                     raise(si.orm.exc.NoResultFound(
                         "No row was found for one(): make sure the .wpipe/ directory was removed"))
@@ -206,12 +205,12 @@ class Pipeline(DPOwner):
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        si.begin_nested()
+                        this_nested = si.begin_nested()
                         try:
                             cls._pipeline = si.session.query(si.Pipeline).with_for_update(). \
                                 filter_by(user_id=user.user_id). \
                                 filter_by(pipe_root=pipe_root).one()
-                            si.rollback()
+                            this_nested.rollback()
                         except si.orm.exc.NoResultFound:
                             cls._pipeline = si.Pipeline(name=name,
                                                         pipe_root=pipe_root,
@@ -221,7 +220,7 @@ class Pipeline(DPOwner):
                                                         config_root=config_root,
                                                         description=description)
                             user._user.pipelines.append(cls._pipeline)
-                            si.commit()
+                            this_nested.commit()
                             if not os.path.isdir(cls._pipeline.pipe_root+'/.wpipe'):
                                 os.mkdir(cls._pipeline.pipe_root+'/.wpipe')
                             if not os.path.isfile(cls._pipeline.pipe_root+'/.wpipe/pipe.conf'):
@@ -241,6 +240,7 @@ class Pipeline(DPOwner):
                                 os.mkdir(cls._pipeline.data_root)
                             if not os.path.isdir(cls._pipeline.config_root):
                                 os.mkdir(cls._pipeline.config_root)
+                        retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Pipeline')
         return cls._inst

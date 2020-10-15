@@ -125,21 +125,22 @@ class Task:
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        si.begin_nested()
+                        this_nested = si.begin_nested()
                         try:
                             cls._task = si.session.query(si.Task).with_for_update(). \
                                 filter_by(pipeline_id=pipeline.pipeline_id). \
                                 filter_by(name=name).one()
-                            si.rollback()
+                            this_nested.rollback()
                         except si.orm.exc.NoResultFound:
                             cls._task = si.Task(name=name,
                                                 nruns=nruns,
                                                 run_time=run_time,
                                                 is_exclusive=is_exclusive)
                             pipeline._pipeline.tasks.append(cls._task)
-                            si.commit()
+                            this_nested.commit()
                             if base != pipeline.software_root:
                                 shutil.copy2(base + '/' + name, pipeline.software_root + '/')
+                        retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Task')
         return cls._inst

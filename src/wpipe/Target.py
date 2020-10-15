@@ -121,22 +121,23 @@ class Target(OptOwner):
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        si.begin_nested()
+                        this_nested = si.begin_nested()
                         try:
                             cls._target = si.session.query(si.Target).with_for_update(). \
                                 filter_by(input_id=input.input_id). \
                                 filter_by(name=name).one()
-                            si.rollback()
+                            this_nested.rollback()
                         except si.orm.exc.NoResultFound:
                             cls._target = si.Target(name=name,
                                                     datapath=input.pipeline.data_root+'/'+name,
                                                     dataraws=input.rawspath)
                             input._input.targets.append(cls._target)
-                            si.commit()
+                            this_nested.commit()
                             if not os.path.isdir(cls._target.datapath):
                                 os.mkdir(cls._target.datapath)
                             if not os.path.isdir(cls._target.dataraws):
                                 os.mkdir(cls._target.dataraws)
+                        retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Target')
         return cls._inst

@@ -139,20 +139,21 @@ class Event(OptOwner):
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        si.begin_nested()
+                        this_nested = si.begin_nested()
                         try:
                             cls._event = si.session.query(si.Event).with_for_update(). \
                                 filter_by(parent_job_id=job.job_id). \
                                 filter_by(name=name). \
                                 filter_by(tag=tag).one()
-                            si.rollback()
+                            this_nested.rollback()
                         except si.orm.exc.NoResultFound:
                             cls._event = si.Event(name=name,
                                                   tag=tag,
                                                   jargs=jargs,
                                                   value=value)
                             job._job.child_events.append(cls._event)
-                            si.commit()
+                            this_nested.commit()
+                        retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Event')
         return cls._inst
