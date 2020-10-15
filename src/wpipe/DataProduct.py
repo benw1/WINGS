@@ -184,13 +184,13 @@ class DataProduct(OptOwner):
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        si.begin_nested()
+                        this_nested = si.begin_nested()
                         try:
                             cls._dataproduct = si.session.query(si.DataProduct).with_for_update(). \
                                 filter_by(dpowner_id=dpowner.dpowner_id). \
                                 filter_by(group=group). \
                                 filter_by(filename=filename).one()
-                            si.rollback()
+                            this_nested.rollback()
                         except si.orm.exc.NoResultFound:
                             if '.' in filename:
                                 _suffix = filename.split('.')[-1]
@@ -211,7 +211,8 @@ class DataProduct(OptOwner):
                                                               dec=dec,
                                                               pointing_angle=pointing_angle)
                             dpowner._dpowner.dataproducts.append(cls._dataproduct)
-                            si.commit()
+                            this_nested.commit()
+                        retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'DataProduct')
         return cls._inst

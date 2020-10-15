@@ -92,17 +92,18 @@ class Node:
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        si.begin_nested()
+                        this_nested = si.begin_nested()
                         try:
                             cls._node = si.session.query(si.Node).with_for_update(). \
                                 filter_by(name=name).one()
-                            si.rollback()
+                            this_nested.rollback()
                         except si.orm.exc.NoResultFound:
                             cls._node = si.Node(name=name,
                                                 int_ip=int_ip,
                                                 ext_ip=ext_ip)
                             si.session.add(cls._node)
-                            si.commit()
+                            this_nested.commit()
+                        retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Node')
         return cls._inst

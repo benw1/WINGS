@@ -77,17 +77,21 @@ begin_nested = session.begin_nested
 
 def retrying_nested():
     def before(retry_state):
-        global TRANSACTION
-        TRANSACTION = begin_nested()
+        retry_state.TRANSACTION = begin_nested()
+
+        def _commit():
+            retry_state.TRANSACTION.commit()
+            commit()
+
+        retry_state.commit = _commit
 
     def after(retry_state):
-        global TRANSACTION
         try:
             retry_state.outcome.result()
         except exc.OperationalError as Err:
             print("Encountered %s\n%s\n\nAttempting rollback\n" % (Err.orig, Err.statement))
         try:
-            TRANSACTION.rollback()
+            retry_state.TRANSACTION.rollback()
             print("Rollback successful\n")
         except exc.OperationalError as Err:
             print("Rollback unsuccessful %s\n%s\n\nProceeding anyway\n" % (Err.orig, Err.statement))
@@ -96,6 +100,16 @@ def retrying_nested():
                        wait=tn.wait_random_exponential(multiplier=0.1),
                        before=before,
                        after=after)
+
+
+def show_engine_status():
+    a = session.execute("SHOW ENGINE INNODB STATUS;").fetchall()
+    return a[0][2]
+
+
+def show_transactions_status():
+    a = show_engine_status()
+    return a.split('\nTRANSACTIONS\n')[1].split('\nFILE I/O\n')[0]
 
 # import eralchemy as ERA
 # ERA.render_er(wp.si.Base,"UML.pdf")

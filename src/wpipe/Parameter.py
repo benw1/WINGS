@@ -81,17 +81,18 @@ class Parameter:
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        si.begin_nested()
+                        this_nested = si.begin_nested()
                         try:
                             cls._parameter = si.session.query(si.Parameter).with_for_update(). \
                                 filter_by(config_id=config.config_id). \
                                 filter_by(name=name).one()
-                            si.rollback()
+                            this_nested.rollback()
                         except si.orm.exc.NoResultFound:
                             cls._parameter = si.Parameter(name=name,
                                                           value=str(value))
                             config._configuration.parameters.append(cls._parameter)
-                            si.commit()
+                            this_nested.commit()
+                        retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Parameter')
         return cls._inst

@@ -137,23 +137,24 @@ class Input(DPOwner):
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        si.begin_nested()
+                        this_nested = si.begin_nested()
                         try:
                             cls._input = si.session.query(si.Input).with_for_update(). \
                                 filter_by(pipeline_id=pipeline.pipeline_id). \
                                 filter_by(name=name).one()
-                            si.rollback()
+                            this_nested.rollback()
                         except si.orm.exc.NoResultFound:
                             cls._input = si.Input(name=name,
                                                   rawspath=pipeline.input_root+'/'+name,
                                                   confpath=pipeline.config_root+'/'+name)
                             pipeline._pipeline.inputs.append(cls._input)
-                            si.commit()
+                            this_nested.commit()
                             if not os.path.isdir(cls._input.rawspath):
                                 os.mkdir(cls._input.rawspath)
                             cls._copy_data(base+'/'+name)
                             if not os.path.isdir(cls._input.confpath):
                                 os.mkdir(cls._input.confpath)
+                        retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Input')
         return cls._inst

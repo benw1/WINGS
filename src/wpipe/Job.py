@@ -198,7 +198,7 @@ class Job(OptOwner):
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        si.begin_nested()
+                        this_nested = si.begin_nested()
                         try:
                             cls._job = si.session.query(si.Job).with_for_update(). \
                                 filter_by(task_id=task.task_id)
@@ -210,7 +210,7 @@ class Job(OptOwner):
                                     filter_by(firing_event_id=event.event_id)
                             cls._job = cls._job. \
                                 filter_by(attempt=attempt).one()
-                            si.rollback()
+                            this_nested.rollback()
                         except si.orm.exc.NoResultFound:
                             cls._job = si.Job(attempt=attempt,
                                               state=JOBINITSTATE)
@@ -221,7 +221,8 @@ class Job(OptOwner):
                                 event._event.fired_jobs.append(cls._job)
                             if node is not None:
                                 node._node.jobs.append(cls._job)
-                            si.commit()
+                            this_nested.commit()
+                        retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Job')
         return cls._inst
