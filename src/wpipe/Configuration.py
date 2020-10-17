@@ -150,6 +150,7 @@ class Configuration(DPOwner):
         or
         >>> my_config = wp.Configuration(my_target, name_of_config)
     """
+
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._configuration = args[0] if len(args) else None
@@ -163,6 +164,9 @@ class Configuration(DPOwner):
                 target = kwargs.get('target', wpargs.get('Target', None))
                 name = kwargs.get('name', 'default' if args[0] is None else args[0])
                 description = kwargs.get('description', '' if args[1] is None else args[1])
+                # pre-loading dataproducts to avoid extra-querying in the middle
+                confdp = target.input.dataproduct(filename=name + '.conf', group='conf')
+                rawdps = [rawdp for rawdp in target.input.rawdataproducts]
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
@@ -184,16 +188,16 @@ class Configuration(DPOwner):
                             this_nested.commit()
                             if not os.path.isdir(cls._configuration.confpath):
                                 os.mkdir(cls._configuration.confpath)
-                            confdp = target.input.dataproduct(filename=name+'.conf', group='conf')
-                            confdp.symlink(cls._configuration.confpath, dpowner=cls._configuration, group='conf')
                             if not os.path.isdir(cls._configuration.rawpath):
                                 os.mkdir(cls._configuration.rawpath)
-                            for rawdp in target.input.rawdataproducts:
-                                rawdp.symlink(cls._configuration.rawpath, dpowner=cls._configuration, group='raw')
                             if not os.path.isdir(cls._configuration.logpath):
                                 os.mkdir(cls._configuration.logpath)
                             if not os.path.isdir(cls._configuration.procpath):
                                 os.mkdir(cls._configuration.procpath)
+                            with si.hold_commit():
+                                confdp.symlink(cls._configuration.confpath, dpowner=cls._configuration, group='conf')
+                                for rawdp in rawdps:
+                                    rawdp.symlink(cls._configuration.rawpath, dpowner=cls._configuration, group='raw')
                         retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Configuration')

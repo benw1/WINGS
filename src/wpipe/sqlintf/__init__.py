@@ -61,6 +61,31 @@ boolean: flag to control the automatic committing.
 """
 
 
+def deactivate_commit():
+    global COMMIT_FLAG
+    COMMIT_FLAG = False
+
+
+def activate_commit():
+    global COMMIT_FLAG
+    COMMIT_FLAG = True
+
+
+class HoldCommit:
+    def __init__(self):
+        pass
+
+    def __enter__(self):
+        deactivate_commit()
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        activate_commit()
+
+
+def hold_commit():
+    return HoldCommit()
+
+
 def commit():
     """
     Flush and commit pending changes if COMMIT_FLAG is True.

@@ -294,16 +294,16 @@ def wingspipe(args=None):
             my_pipe.attach_tasks(args.tasks_path)
             my_pipe.attach_inputs(args.inputs_path, args.config_file)
         elif args.which == 'run':
-
-            if checkPbsConnection() != 0:
-                print("Starting a PBS scheduler ...")
-                import subprocess
-                subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"],
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                #subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"]) # Have everything print to the main terminal for now
-                time.sleep(1)
-            else:
-                print("PBS scheduler already running ...")
+            if not('WPIPE_NO_PBS_SCHEDULER' in os.environ.keys()):
+                if checkPbsConnection() != 0:
+                    print("Starting a PBS scheduler ...")
+                    import subprocess
+                    subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"],
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    #subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"]) # Have everything print to the main terminal for now
+                    time.sleep(1)
+                else:
+                    print("PBS scheduler already running ...")
             my_pipe.run()
 
         elif args.which == 'diagnose':

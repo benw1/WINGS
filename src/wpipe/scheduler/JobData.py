@@ -1,3 +1,6 @@
+from .. import si
+
+
 # This class makes it so we can pickle and unpickle the info we need for the pbs scheduler for a job
 class JobData:
     def __init__(self, job):
@@ -13,6 +16,7 @@ class JobData:
         self._pipeline_id = job.pipeline_id
         self._pipeline_username = job.pipeline.user_name
         self._job_id = job.job_id
+        self._verbose = si.core.verbose
 
     def validate(self):
         errors = ""
@@ -52,3 +56,6 @@ class JobData:
 
     def getJobId(self):
         return self._job_id
+
+    def getVerbose(self):
+        return self._verbose

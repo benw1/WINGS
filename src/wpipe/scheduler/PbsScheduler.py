@@ -81,7 +81,8 @@ class PbsScheduler(BaseScheduler):
         for jobdata in self._jobList:
             jobsForJinja.append(
                 {'command': jobdata.getTaskExecutable() + ' -p ' + str(jobdata.getPipelineId()) +
-                 ' -u ' + str(jobdata.getPipelineUserName()) + ' -j ' + str(jobdata.getJobId())})
+                 ' -u ' + str(jobdata.getPipelineUserName()) + ' -j ' + str(jobdata.getJobId()) +
+                 bool(jobdata.getVerbose())*' -v'})
 
         output = template.render(jobs=jobsForJinja)
         print()
@@ -90,14 +91,14 @@ class PbsScheduler(BaseScheduler):
 
         return output
 
-    def _makePbsFile(self, exectuablesListPath):
+    def _makePbsFile(self, executablesListPath):
 
         # template = jinjaEnv.get_template('PbsFile.jinja')
         template = TemplateFactory.getPbsFileTemplate()
 
         # create a dictionary
         pbsDict = {'njobs': len(self._jobList), 'pipe_root': self._jobList[0].getPipelinePipeRoot(),
-                   'executables_list_path': exectuablesListPath}
+                   'executables_list_path': executablesListPath}
 
         output = template.render(pbs=pbsDict)
 
