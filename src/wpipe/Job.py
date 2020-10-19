@@ -5,7 +5,7 @@ Contains the Job class definition
 Please note that this module is private. The Job class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import sys, warnings, datetime, si
+from .core import sys, logging, datetime, si
 from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, as_int
 from .core import PARSER
@@ -504,7 +504,9 @@ class Job(OptOwner):
             from . import DefaultNode
             self.node = DefaultNode
         if logprint:
-            sys.stdout = sys.stderr = self.logprint().open("a")
+            logprint = self.logprint()
+            sys.stdout = sys.stderr = logprint.open("a")
+            logging.basicConfig(filename=logprint.path, format="%(asctime)s %(levelname)s %(name)s %(message)s")
         self.state = JOBSUBMSTATE
         self._job.starttime = datetime.datetime.utcnow()
         self._job.timestamp = datetime.datetime.utcnow()

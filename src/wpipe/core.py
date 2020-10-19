@@ -12,6 +12,7 @@ import types
 import datetime
 import time
 import subprocess
+import logging
 import glob
 import shutil
 import warnings
@@ -25,10 +26,11 @@ import pandas as pd
 from . import sqlintf as si
 
 __all__ = ['importlib', 'os', 'sys', 'types', 'datetime', 'time', 'subprocess',
-           'glob', 'shutil', 'warnings', 'json', 'ast', 'atexit', 'np', 'pd',
-           'si', 'PARSER', 'as_int', 'try_scalar', 'clean_path', 'split_path',
-           'remove_path', 'key_wpipe_separator', 'initialize_args',
-           'wpipe_to_sqlintf_connection', 'return_dict_of_attrs', 'to_json',
+           'logging', 'glob', 'shutil', 'warnings', 'json', 'ast', 'atexit',
+           'np', 'pd', 'si', 'PARSER', 'as_int', 'try_scalar', 'clean_path',
+           'split_path', 'remove_path', 'key_wpipe_separator',
+           'initialize_args', 'wpipe_to_sqlintf_connection',
+           'return_dict_of_attrs', 'to_json',
            'ChildrenProxy', 'DictLikeChildrenProxy']
 
 PARSER = si.PARSER  # argparse.ArgumentParser()
