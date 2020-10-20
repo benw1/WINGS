@@ -92,7 +92,6 @@ def commit():
     """
     if COMMIT_FLAG:
         session.commit()
-        session.commit()
 
 
 rollback = session.rollback
