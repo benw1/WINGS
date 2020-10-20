@@ -14,8 +14,8 @@ import sqlalchemy.orm as orm
 import sqlalchemy.exc as exc
 from sqlalchemy.ext.declarative import declarative_base
 
-#__all__ = ['argparse', 'tn', 'sa', 'orm', 'exc', 'PARSER', 'engine', 'Base', 'session']
-__all__ = ['argparse', 'tn', 'sa', 'orm', 'exc', 'verbose', 'PARSER', 'engine', 'Base', 'session']
+__all__ = ['argparse', 'tn', 'sa', 'orm', 'exc', 'PARSER', 'verbose',
+           'engine', 'Base', 'session']
 
 PARSER = argparse.ArgumentParser()
 """
