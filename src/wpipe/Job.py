@@ -315,6 +315,13 @@ class Job(OptOwner):
         return self._job.endtime
 
     @property
+    def not_submitted(self):
+        """
+        bool: True if job is in an init state, False if not.
+        """
+        return self.state == JOBINITSTATE
+
+    @property
     def is_active(self):
         """
         bool: True if job is active, False if not.
