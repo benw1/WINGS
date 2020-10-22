@@ -17,8 +17,8 @@ def run_dolphot(dp_id):
     targname = my_target.name
     outfile = targname + '.phot'
     logfile = outfile + ".log"
-    dolphot_path = which('wfirstmask')
-    dolphot_path = dolphot_path[:-10]
+    dolphot_path = which('romanmask')
+    dolphot_path = dolphot_path[:-9]
     dolphot = dolphot_path + "dolphot"
     parameter_file = param_dp.relativepath + '/' + param_dp.filename
     print(my_config.procpath)
@@ -74,8 +74,6 @@ def hyak_dolphot(dp_id):
 
 def parse_all():
     parser = wp.PARSER
-    parser.add_argument('--E', '-e', type=int, dest='event_id',
-                        help='Event ID')
     parser.add_argument('--DP', '-dp', type=int, dest='dp_id',
                         help='Dataproduct ID')
 
