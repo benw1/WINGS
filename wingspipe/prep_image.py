@@ -2,6 +2,7 @@
 import glob
 import subprocess
 from shutil import which
+import time
 
 from astropy.io import fits
 import wpipe as wp
@@ -64,6 +65,9 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
     #new_image_name = targetname + '_' + str(dp_id) + '_' + filtname + ".fits"
     new_image_name = targetname + '_' + incatpre + '_' + str(dp_id) + '_' + filtname + ".fits"
     imgpath = config.procpath + '/' + new_image_name
+    outims = outimages(imgpath)
+    if len(outims) > 0:
+        return
     try:
         dp.filename = new_image_name
     except:
@@ -139,6 +143,10 @@ if __name__ == '__main__':
         this_event_id = this_event.event_id
         this_config = this_job.config
         print(this_config.config_id)
+
+        print("checking detnames")
+        numdet = int(this_config.parameters['ndetect'])
+
         this_dp_id = this_event.options['dp_id']
         tid = this_event.options['target_id']
         this_target = this_config.target
@@ -149,7 +157,7 @@ if __name__ == '__main__':
         parent_job_id = this_event.parent_job_id
         parent_job = this_event.parent_job
         compname = this_event.options['name']
-        wp.si.session.execute('LOCK TABLES options, optowners, jobs WRITE')
+        wp.si.session.execute('LOCK TABLES options WRITE, optowners WRITE, jobs WRITE')
         update_option = parent_job.options[compname]
         update_option = update_option + 1
         parent_job.options[compname] = update_option
@@ -159,13 +167,21 @@ if __name__ == '__main__':
         catalogID = this_event.options['dp_id']
         catalogDP = wp.DataProduct(catalogID)
         this_conf = catalogDP.config
-        print(''.join(["Completed ", str(completed), " of ", str(to_run)]))
         this_job.logprint(''.join(["Completed ", str(completed), " of ", str(to_run), "\n"]))
-        if completed >= to_run:
+        if completed == to_run:
             detnames1 = this_config.parameters['detnames']
-            detnames = detnames1.split(' ')
-            for detname in detnames:
-                new_event = this_job.child_event('images_prepped', tag=detector, options={'target_id': tid,'detname': detname})
+            this_job.logprint(''.join(["Detnames =",detnames1,"\n"]))
+            for i in range(numdet):
+       
+                detparname = "det"+str(i+1)+"name"
+                detname = this_config.parameters[detparname]
+                print(detparname)
+                print(detname)
+         
+                new_event = this_job.child_event('images_prepped', tag=detname, options={'target_id': tid,'detname': detname})
+                this_job.logprint('about to fire')
                 new_event.fire()
+                this_job.logprint('fired')
                 this_job.logprint('images_prepped\n')
-                this_job.logprint(''.join(["Event= ", str(new_event.event_id), " images_prepped\n"]))
+                this_job.logprint(''.join(["Event= ", str(new_event.event_id),"\n",detname,"\n","images_prepped\n"]))
+                time.sleep(1)

@@ -8,13 +8,15 @@ def register(task):
 
 
 def write_dolphot_pars(target, config, thisjob, detname):
-    parfile_name = target.name + "_" + detname + ".param"
+    #parfile_name = target.name + "_" + detname + ".param"
+    parfile_name = detname + ".param"
     parfile_path = config.confpath + '/' + parfile_name
     thisjob.logprint(''.join(["Writing dolphot pars now in ", parfile_path, "\n"]))
     my_dp = config.dataproducts
-    datadp = my_dp[my_dp.subtype == detname]
+    datadp = my_dp[my_dp.subtype == 'dolphot_data']
     datadpid = [_dp.dp_id for _dp in datadp]
     dataname = [_dp.filename for _dp in datadp]
+    print("DATANAME ",dataname)
     rinds = []
     zinds = []
     yinds = []
@@ -25,22 +27,23 @@ def write_dolphot_pars(target, config, thisjob, detname):
     for dp in datadp:
         dp_id = dp.dp_id
         filt = str(dp.filtername)
-        if "F062" in filt:
+        fname = dp.filename
+        if "F062" in filt and detname in fname:
             rinds = [rinds, dp_id]
             count += 1
-        if "F087" in filt:
+        if "F087" in filt and detname in fname:
             zinds = [zinds, dp_id]
             count += 1
-        if "F106" in filt:
+        if "F106" in filt and detname in fname:
             yinds = [yinds, dp_id]
             count += 1
-        if "F129" in filt:
+        if "F129" in filt and detname in fname:
             jinds = [jinds, dp_id]
             count += 1
-        if "F158" in filt:
+        if "F158" in filt and detname in fname:
             hinds = [hinds, dp_id]
             count += 1
-        if "F184" in filt:
+        if "F184" in filt and detname in fname:
             finds = [finds, dp_id]
             count += 1
     rinds = rinds[1:]
@@ -56,6 +59,11 @@ def write_dolphot_pars(target, config, thisjob, detname):
     # refimage = my_params['refimage']  #will make this more flexible later
     refdp = wp.DataProduct(hinds[0])
     refimage = str(refdp.filename)
+    if "sim" in refimage:
+       refimage = target.name + '_' + detname + '_' + str(refdp.dp_id) + '_' + refdp.filtername + ".fits"
+    else:
+       print("No sim")
+    print(refimage)
     with open(parfile_path, 'w') as d:
         d.write("Nimg = " + str(nimg) + "\n" +
                 "img0_file = " + refimage[:-5] + "\n")
@@ -63,6 +71,8 @@ def write_dolphot_pars(target, config, thisjob, detname):
         for rind in rinds:
             imdp = wp.DataProduct(rind)
             image = str(imdp.filename)
+            if 'sim' in image:
+               image = target.name + '_' + detname + '_' + str(imdp.dp_id) + '_' + imdp.filtername + ".fits"
             rim = [rim, image]
         rim = rim[1:]
         zim = []
@@ -178,6 +188,6 @@ if __name__ == '__main__':
     paramdp = write_dolphot_pars(this_target, this_config, this_job, detname)
     dpid = int(paramdp.dp_id)
     this_job.logprint(''.join(["Parameter file DPID ", str(dpid), "\n"]))
-    newevent = this_job.child_event('parameters_written', tag=dpid, options={'target_id': tid, 'dp_id': dpid})
+    newevent = this_job.child_event('parameters_written', tag=dpid, options={'target_id': tid, 'dp_id': dpid, 'submission_type': 'pbs'})
     newevent.fire()
     this_job.logprint('parameters_written\n')
