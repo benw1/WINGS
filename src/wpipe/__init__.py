@@ -157,7 +157,7 @@ Node object: Node object constructed at wpipe importation (see Node doc Notes)
 if PARSER.parse_known_args()[0].event_id is not None or PARSER.parse_known_args()[0].job_id is not None:
     if PARSER.parse_known_args()[0].event_id is not None:
         ThisEvent = Event()
-        if ThisEvent.fired_jobs[-1].is_active() if len(ThisEvent.fired_jobs) else False:
+        if ThisEvent.fired_jobs[-1].is_active if len(ThisEvent.fired_jobs) else False:
             print("Event with id %d has a job attempt that is currently running - exiting" % ThisEvent.event_id)
             sys.exit()
         else:
@@ -166,10 +166,10 @@ if PARSER.parse_known_args()[0].event_id is not None or PARSER.parse_known_args(
     elif PARSER.parse_known_args()[0].job_id is not None:
         ThisJob = Job()
         ThisEvent = ThisJob.firing_event
-        if ThisJob.is_active():
+        if ThisJob.is_active:
             print("Job with id %d is currently running - exiting" % ThisJob.job_id)
             sys.exit()
-        elif not ThisJob.not_submitted():
+        elif not ThisJob.not_submitted:
             ThisJob.reset()
     ThisJob._starting_todo()
     atexit.register(ThisJob._ending_todo)
