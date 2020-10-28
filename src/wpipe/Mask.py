@@ -136,7 +136,7 @@ class Mask:
         """
         str: Name of the mask.
         """
-        si.commit()
+        si.refresh(self._mask)
         return self._mask.name
 
     @name.setter
@@ -157,7 +157,7 @@ class Mask:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.commit()
+        si.refresh(self._mask)
         return self._mask.timestamp
 
     @property

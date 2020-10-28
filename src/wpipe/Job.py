@@ -282,7 +282,7 @@ class Job(OptOwner):
         """
         str: State of this job.
         """
-        si.commit()
+        si.refresh(self._job)
         return self._job.state
 
     @state.setter
@@ -303,7 +303,7 @@ class Job(OptOwner):
         """
         :obj:`datetime.datetime`: Timestamp of job starting time.
         """
-        si.commit()
+        si.refresh(self._job)
         return self._job.starttime
 
     @property
@@ -311,7 +311,7 @@ class Job(OptOwner):
         """
         :obj:`datetime.datetime`: Timestamp of job ending time.
         """
-        si.commit()
+        si.refresh(self._job)
         return self._job.endtime
 
     @property
@@ -368,7 +368,7 @@ class Job(OptOwner):
         """
         int: Primary key id of the table row of parent node.
         """
-        si.commit()
+        si.refresh(self._job)
         return self._job.node_id
 
     @property
@@ -376,7 +376,7 @@ class Job(OptOwner):
         """
         bool: True if Job object is associated to a Node object, False if not.
         """
-        si.commit()
+        si.refresh(self._job)
         return self._job.node is not None
 
     @property
@@ -452,7 +452,7 @@ class Job(OptOwner):
         """
         int: Primary key id of the table row of parent event.
         """
-        si.commit()
+        si.refresh(self._job)
         return self._job.firing_event_id
 
     @property

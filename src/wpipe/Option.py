@@ -135,7 +135,7 @@ class Option:
         """
         str: Name of the option.
         """
-        si.commit()
+        si.refresh(self._option)
         return self._option.name
 
     @name.setter
@@ -156,7 +156,7 @@ class Option:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.commit()
+        si.refresh(self._option)
         return self._option.timestamp
 
     @property
@@ -164,7 +164,7 @@ class Option:
         """
         str: Value of the option.
         """
-        si.commit()
+        si.refresh(self._option)
         return self._option.value
 
     @value.setter

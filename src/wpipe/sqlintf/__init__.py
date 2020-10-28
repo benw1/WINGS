@@ -85,6 +85,14 @@ class HoldCommit:
 def hold_commit():
     return HoldCommit()
 
+# @contextlib.contextmanager
+# def hold_commit():
+#     activate_commit()
+#     try:
+#         yield
+#     finally:
+#         deactivate_commit()
+
 
 def commit():
     """
@@ -93,6 +101,8 @@ def commit():
     if COMMIT_FLAG:
         session.commit()
 
+
+refresh = session.refresh
 
 rollback = session.rollback
 

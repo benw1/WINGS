@@ -184,7 +184,7 @@ class Task:
         """
         str: Name of the task.
         """
-        si.commit()
+        si.refresh(self._task)
         return self._task.name
 
     @name.setter
@@ -205,7 +205,7 @@ class Task:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.commit()
+        si.refresh(self._task)
         return self._task.timestamp
 
     @property
@@ -213,7 +213,7 @@ class Task:
         """
         int: ###BEN###
         """
-        si.commit()
+        si.refresh(self._task)
         return self._task.nruns
 
     @property
@@ -221,7 +221,7 @@ class Task:
         """
         int: ###BEN###
         """
-        si.commit()
+        si.refresh(self._task)
         return self._task.run_time
 
     @property
@@ -229,7 +229,7 @@ class Task:
         """
         int: ###BEN###
         """
-        si.commit()
+        si.refresh(self._task)
         return self._task.is_exclusive
 
     @property

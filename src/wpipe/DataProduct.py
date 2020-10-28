@@ -253,7 +253,7 @@ class DataProduct(OptOwner):
         """
         str: Name of the file the dataproduct points to.
         """
-        si.commit()
+        si.refresh(self._dataproduct)
         return self._dataproduct.filename
 
     @filename.setter

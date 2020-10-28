@@ -182,7 +182,7 @@ class Target(OptOwner):
         """
         str: Name of the target.
         """
-        si.commit()
+        si.refresh(self._target)
         return self._target.name
 
     @name.setter

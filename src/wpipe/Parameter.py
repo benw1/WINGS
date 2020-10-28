@@ -151,7 +151,7 @@ class Parameter:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.commit()
+        si.refresh(self._parameter)
         return self._parameter.timestamp
 
     @property
@@ -159,7 +159,7 @@ class Parameter:
         """
         str: Value of the parameter.
         """
-        si.commit()
+        si.refresh(self._parameter)
         return self._parameter.value
 
     @value.setter

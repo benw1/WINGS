@@ -196,7 +196,7 @@ class Event(OptOwner):
         """
         str: Name of the mask which task is meant to be the fired job task.
         """
-        si.commit()
+        si.refresh(self._event)
         return self._event.name
 
     @name.setter
@@ -211,7 +211,7 @@ class Event(OptOwner):
         str: Unique tag to identify the event if multiple event instance fire
         the same task.
         """
-        si.commit()
+        si.refresh(self._event)
         return self._event.tag
 
     @tag.setter
@@ -239,7 +239,7 @@ class Event(OptOwner):
         """
         str: Value of the mask which task is meant to be the fired job task.
         """
-        si.commit()
+        si.refresh(self._event)
         return self._event.value
 
     @value.setter

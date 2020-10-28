@@ -244,7 +244,7 @@ class Configuration(DPOwner):
         """
         str: Name of the configuration.
         """
-        si.commit()
+        si.refresh(self._configuration)
         return self._configuration.name
 
     @name.setter
@@ -302,7 +302,7 @@ class Configuration(DPOwner):
         """
         str: Description of the configuration
         """
-        si.commit()
+        si.refresh(self._configuration)
         return self._configuration.description
 
     @description.setter

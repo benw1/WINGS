@@ -216,7 +216,7 @@ class Input(DPOwner):
         """
         str: Name of the input.
         """
-        si.commit()
+        si.refresh(self._input)
         return self._input.name
 
     @name.setter
