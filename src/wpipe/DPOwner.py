@@ -43,7 +43,7 @@ class DPOwner:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.commit()
+        si.refresh(self._dpowner)
         return self._dpowner.timestamp
 
     @property

@@ -145,7 +145,7 @@ class Node:
         """
         str: Name of node.
         """
-        si.commit()
+        si.refresh(self._node)
         return self._node.name
 
     @name.setter
@@ -166,7 +166,7 @@ class Node:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.commit()
+        si.refresh(self._node)
         return self._node.timestamp
 
     @property

@@ -6,6 +6,7 @@ Please note that this module is private. All functions and objects
 are available in the main ``wpipe`` namespace - use that instead.
 """
 import importlib
+import contextlib
 import os
 import sys
 import types
@@ -261,7 +262,6 @@ def to_json(obj, *args, **kwargs):
     args, kwargs
         Refer to :meth:`pandas.DataFrame.to_json` for parameters
     """
-    si.commit()
     pd.DataFrame(return_dict_of_attrs(obj),
                  index=[0]).to_json(*args, **kwargs)
 
@@ -287,15 +287,16 @@ class ChildrenProxy:
         self._children_attr = children_attr
         self._cls_name = cls_name
         self._child_attr = child_attr
+        self._work_with_sqlintf = 0
 
     def __repr__(self):
-        si.commit()
+        self._refresh()
         return 'Children(' + ', '.join(
             map(lambda child: self._cls_name + '(' + repr(getattr(child, self._child_attr)) + ')',
                 self.children)) + ')'
 
     def __len__(self):
-        si.commit()
+        self._refresh()
         return len(self.children)
 
     def __iter__(self):
@@ -316,21 +317,40 @@ class ChildrenProxy:
 
     def __getitem__(self, item):
         if np.ndim(item) == 0:
-            si.commit()
-            if hasattr(self.children[item], '_wpipe_object'):
-                return self.children[item]._wpipe_object
+            if self._work_with_sqlintf == 0:
+                self._refresh()
+                if hasattr(self.children[item], '_wpipe_object'):
+                    return self.children[item]._wpipe_object
+                else:
+                    return getattr(sys.modules['wpipe'], self._cls_name)(self.children[item])
             else:
-                return getattr(sys.modules['wpipe'], self._cls_name)(self.children[item])
+                return self.children[item]
         else:
-            return np.array([self[i] for i in range(len(self))])[item].tolist()
+            return [self[i] for i in np.arange(len(self))[item]]
 
     def __getattr__(self, item):
         if hasattr(getattr(sys.modules['wpipe'], self._cls_name), item):
-            return np.array([getattr(self[i], item) for i in range(len(self))])
+            self._refresh()
+            with self._with_sqlintf():
+                return np.array([getattr(self[i], item) for i in range(len(self))])
+
+    @contextlib.contextmanager
+    def _with_sqlintf(self):
+        self._work_with_sqlintf += 1
+        try:
+            yield
+        finally:
+            self._work_with_sqlintf -= 1
 
     @property
     def children(self):
         return getattr(self._parent, self._children_attr)
+
+    def _refresh(self, **kwargs):
+        if self._work_with_sqlintf == 0:
+            si.refresh(self._parent, **kwargs)
+            for child in self.children:
+                si.refresh(child, **kwargs)
 
 
 class DictLikeChildrenProxy(ChildrenProxy):
@@ -356,13 +376,13 @@ class DictLikeChildrenProxy(ChildrenProxy):
         self._child_value = child_value
 
     def __repr__(self):
-        si.commit()
+        self._refresh()
         return repr(dict(self._items))
 
     def __getitem__(self, item):
-        si.commit()
         if isinstance(item, int):
             return super(DictLikeChildrenProxy, self).__getitem__(item)
+        self._refresh()
         _temp = self._items
         try:
             key = val = None
@@ -373,7 +393,7 @@ class DictLikeChildrenProxy(ChildrenProxy):
             raise KeyError(item)
 
     def __setitem__(self, item, value):
-        si.commit()
+        self._refresh()
         _temp = self._items
         try:
             key = None

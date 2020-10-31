@@ -134,7 +134,7 @@ class User:
         """
         str: Name of user.
         """
-        si.commit()
+        si.refresh(self._user)
         return self._user.name
 
     @name.setter
@@ -155,7 +155,7 @@ class User:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.commit()
+        si.refresh(self._user)
         return self._user.timestamp
 
     @property

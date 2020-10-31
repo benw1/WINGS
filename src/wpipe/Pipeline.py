@@ -291,7 +291,7 @@ class Pipeline(DPOwner):
         """
         str: Name of the pipeline.
         """
-        si.commit()
+        si.refresh(self._pipeline)
         return self._pipeline.name
 
     @name.setter
@@ -312,7 +312,7 @@ class Pipeline(DPOwner):
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.commit()
+        si.refresh(self._pipeline)
         return self._pipeline.timestamp
 
     @property
@@ -359,7 +359,7 @@ class Pipeline(DPOwner):
         """
         str: Description of the pipeline.
         """
-        si.commit()
+        si.refresh(self._pipeline)
         return self._pipeline.description
 
     @description.setter

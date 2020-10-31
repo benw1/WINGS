@@ -44,7 +44,7 @@ class OptOwner:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.commit()
+        si.refresh(self._optowner)
         return self._optowner.timestamp
 
     @property
