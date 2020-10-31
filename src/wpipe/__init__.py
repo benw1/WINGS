@@ -308,9 +308,9 @@ def wingspipe(args=None):
                 if checkPbsConnection() != 0:
                     print("Starting a PBS scheduler ...")
                     import subprocess
-                    subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"],
-                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    #subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"]) # Have everything print to the main terminal for now
+                    # subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"],
+                                     # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"]) # Have everything print to the main terminal for now
                     time.sleep(1)
                 else:
                     print("PBS scheduler already running ...")

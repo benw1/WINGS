@@ -22,8 +22,7 @@ if __name__ == '__main__':
             connection = checkPbsConnection()
             if connection != 0:
                 print("Starting PbsConsumer ...")
-                subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"])#,
-                #                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"])
             else:
                 print("PbsConsumer is already running ...")
         elif args.which == 'stop':

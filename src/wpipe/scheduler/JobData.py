@@ -18,6 +18,15 @@ class JobData:
         self._job_id = job.job_id
         self._verbose = si.core.verbose
 
+        print(job.firing_event.options)
+        event_options = job.firing_event.options
+        try:
+            self._job_time = event_options['job_time']
+        except KeyError:
+            self._job_time = None
+
+
+    # These are required
     def validate(self):
         errors = ""
         if self._task_name is None:
@@ -59,3 +68,24 @@ class JobData:
 
     def getVerbose(self):
         return self._verbose
+
+    def getTime(self):
+        return self._job_time
+
+    def setTime(self, time):
+        self._job_time = time
+
+    # For pretty printing or logging
+    def toString(self):
+        string = 'JobData:\n'
+        string += '\tTask Name: {}\n'.format(self.getTaskName())
+        string += '\tPipeline Pipe Root: {}\n'.format(self.getPipelinePipeRoot())
+        string += '\tPipeline Config Root: {}\n'.format(self.getPipelineConfigRoot())
+        string += '\tTask Executable: {}\n'.format(self.getTaskExecutable())
+        string += '\tPipeline ID: {}\n'.format(self.getPipelineId())
+        string += '\tPipeline Username: {}\n'.format(self.getPipelineUserName())
+        string += '\tJob ID: {}\n'.format(self.getJobId())
+        string += '\tSet verbosity to: {}\n'.format(self.getVerbose())
+        if self.getTime() is not None:
+            string += '\tJob Time: {}\n'.format(self.getTime())
+        return string
