@@ -10,8 +10,9 @@ class PbsScheduler(BaseScheduler):
     schedulers = list()
 
     def __init__(self, jobdata):
-        super().__init__()
-        print("Creating a new scheduler")
+
+        super().__init__(jobdata.getTime() if jobdata.getTime() is not None else 20) # passed in value or default timer amount (seconds).
+        print("Creating a new scheduler ...")
 
         self._key = self.PbsKey(jobdata)
         self._jobList = list()
@@ -27,7 +28,6 @@ class PbsScheduler(BaseScheduler):
 
     def _submitJob(self, jobdata):
         # TODO: Change to event later
-        print("do a reset")
 
         self._jobList.append(jobdata)
 
@@ -93,7 +93,6 @@ class PbsScheduler(BaseScheduler):
 
     def _makePbsFile(self, executablesListPath):
 
-        # template = jinjaEnv.get_template('PbsFile.jinja')
         template = TemplateFactory.getPbsFileTemplate()
 
         # create a dictionary
@@ -120,7 +119,7 @@ class PbsScheduler(BaseScheduler):
 
         (hasScheduler, scheduler) = PbsScheduler._checkForScheduler(jobdata)
         if hasScheduler:  # check for existing schedulers and call submitJob for the retrieved scheduler
-            print("A scheduler with those attributes exists")
+            print('Adding job to scheduler with key {} ...'.format(scheduler._key.getKey()))
             scheduler._submitJob(jobdata)
         else:  # No scheduler was found but we need to do the scheduling
             PbsScheduler(jobdata)
@@ -133,9 +132,8 @@ class PbsScheduler(BaseScheduler):
     class PbsKey(object):
 
         def __init__(self, jobdata):
-            #self._key = jobdata.getTaskName() # For debugging
+            #self._key = jobdata.getTaskName()  # For debugging
             self._key = str(jobdata.getPipelineId()) + jobdata.getTaskName()
-            print("This is our key: " + self._key)
 
         def equals(self, other):
             if self._key == other.getKey():
