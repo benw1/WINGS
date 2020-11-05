@@ -10,6 +10,8 @@ import contextlib
 import os
 import sys
 import types
+import itertools
+import numbers
 import datetime
 import time
 import subprocess
@@ -32,7 +34,7 @@ __all__ = ['importlib', 'os', 'sys', 'types', 'datetime', 'time', 'subprocess',
            'split_path', 'remove_path', 'key_wpipe_separator',
            'initialize_args', 'wpipe_to_sqlintf_connection',
            'return_dict_of_attrs', 'to_json',
-           'ChildrenProxy', 'DictLikeChildrenProxy']
+           'BaseProxy', 'ChildrenProxy', 'DictLikeChildrenProxy']
 
 PARSER = si.PARSER  # argparse.ArgumentParser()
 PARSER.add_argument('--user', '-u', dest='user_name', type=str,
@@ -266,6 +268,99 @@ def to_json(obj, *args, **kwargs):
                  index=[0]).to_json(*args, **kwargs)
 
 
+class BaseProxy:
+    def __new__(cls, *args, **kwargs):
+        if cls is BaseProxy:
+            proxy = getattr(kwargs.pop('parent', None),
+                            kwargs.pop('attr_name', ''))
+            if kwargs.pop('try_scalar', False):
+                proxy = try_scalar(proxy)
+            if isinstance(proxy, str):
+                cls = StringProxy
+            elif isinstance(proxy, numbers.Number):
+                cls = NumberProxy
+            elif isinstance(proxy, datetime.datetime):
+                cls = DatetimeProxy
+            else:
+                raise ValueError("Invalid proxy type %s" % type(proxy))
+            args = [proxy]
+            return cls.__new__(cls, *args, *kwargs)
+        return super().__new__(cls, *args, *kwargs)
+
+    def __init__(self, *args, **kwargs):
+        self._parent = kwargs.pop('parent', None)
+        self._attr_name = kwargs.pop('attr_name', '')
+        self._try_scalar = kwargs.pop('try_scalar', False)
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @property
+    def attr_name(self):
+        return self._attr_name
+
+    @property
+    def try_scalar(self):
+        return self._try_scalar
+
+
+class StringProxy(BaseProxy, str):
+    pass
+
+
+class NumberProxy(BaseProxy):
+    def __new__(cls, *args, **kwargs):
+        if cls is NumberProxy:
+            proxy = args[0]
+            if isinstance(proxy, int):
+                cls = IntProxy
+            elif isinstance(proxy, float):
+                cls = FloatProxy
+            else:
+                raise ValueError("Invalid proxy type %s" % type(proxy))
+            return cls.__new__(cls, *args, *kwargs)
+        return super().__new__(cls, *args, *kwargs)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)
+
+    def __iadd__(self, other):
+        for retry in si.retrying_nested():
+            with retry:
+                _temp = si.session.query(self.parent.__class__).with_for_update().filter_by(id=self.parent.id).one()
+                setattr(_temp, self.attr_name,
+                        [lambda x:x, try_scalar][self._try_scalar](getattr(_temp, self.attr_name)) + other)
+                retry.retry_state.commit()
+        return BaseProxy(parent=self.parent,
+                         attr_name=self.attr_name,
+                         try_scalar=self.try_scalar)
+
+
+class IntProxy(NumberProxy, int):
+    pass
+
+
+class FloatProxy(NumberProxy, float):
+    pass
+
+
+class DatetimeProxy(BaseProxy, datetime.datetime):
+    def __new__(cls, *args, **kwargs):
+        if cls is DatetimeProxy:
+            args = [
+                args[0].year,
+                args[0].month,
+                args[0].day,
+                args[0].hour,
+                args[0].minute,
+                args[0].second,
+                args[0].microsecond,
+                args[0].tzinfo
+            ]
+        return super().__new__(cls, *args, *kwargs)
+
+
 class ChildrenProxy:
     """
         Proxy to access children of a Wpipe object.
@@ -381,31 +476,38 @@ class DictLikeChildrenProxy(ChildrenProxy):
 
     def __getitem__(self, item):
         if isinstance(item, int):
-            return super(DictLikeChildrenProxy, self).__getitem__(item)
+            return getattr(super(DictLikeChildrenProxy, self).__getitem__(item), self._child_value)
         self._refresh()
-        _temp = self._items
+        _temp = self._keys_children
         try:
-            key = val = None
+            key = child = None
             while key != item:
-                key, val = next(_temp)
-            return try_scalar(val)
+                key, child = next(_temp)
+            return BaseProxy(parent=child,
+                             attr_name=self._child_value,
+                             try_scalar=True)
         except StopIteration:
             raise KeyError(item)
 
     def __setitem__(self, item, value):
-        self._refresh()
-        _temp = self._items
-        try:
-            key = None
-            count = -1
-            while key != item:
-                key, val = next(_temp)
-                count += 1
-            child = self.children[count]
-            setattr(child, self._child_value, value)
-        except StopIteration:
-            raise KeyError(item)
+        if not isinstance(value, BaseProxy):
+            self._refresh()
+            _temp = self._keys_children
+            try:
+                key = None
+                count = -1
+                while key != item:
+                    key, child = next(_temp)
+                    count += 1
+                child = self.children[count]
+                setattr(child, self._child_value, value)
+            except StopIteration:
+                raise KeyError(item)
+
+    @property
+    def _keys_children(self):
+        return map(lambda child: (getattr(child, self._child_attr), child), self.children)
 
     @property
     def _items(self):
-        return map(lambda child: (getattr(child, self._child_attr), getattr(child, self._child_value)), self.children)
+        return itertools.starmap(lambda key, child: (key, getattr(child, self._child_value)), self._keys_children)
