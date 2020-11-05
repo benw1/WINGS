@@ -476,7 +476,7 @@ class DictLikeChildrenProxy(ChildrenProxy):
 
     def __getitem__(self, item):
         if isinstance(item, int):
-            return getattr(super(DictLikeChildrenProxy, self).__getitem__(item), self._child_value)
+            return super(DictLikeChildrenProxy, self).__getitem__(item)
         self._refresh()
         _temp = self._keys_children
         try:
