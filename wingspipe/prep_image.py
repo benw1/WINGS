@@ -167,7 +167,7 @@ if __name__ == '__main__':
         parent_job.options[compname] += 1
         ######
         to_run = this_event.options['to_run']
-        completed = update_option
+        completed = int(parent_job.options[compname])
         catalogID = this_event.options['dp_id']
         catalogDP = wp.DataProduct(catalogID)
         this_conf = catalogDP.config
