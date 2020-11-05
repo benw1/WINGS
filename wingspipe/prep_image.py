@@ -157,11 +157,15 @@ if __name__ == '__main__':
         parent_job_id = this_event.parent_job_id
         parent_job = this_event.parent_job
         compname = this_event.options['name']
-        wp.si.session.execute('LOCK TABLES options WRITE, optowners WRITE, jobs WRITE')
-        update_option = parent_job.options[compname]
-        update_option = update_option + 1
-        parent_job.options[compname] = update_option
-        wp.si.session.execute('UNLOCK TABLES')
+        #########
+        # wp.si.session.execute('LOCK TABLES options WRITE, optowners WRITE, jobs WRITE')
+        # update_option = parent_job.options[compname]
+        # update_option = update_option + 1
+        # parent_job.options[compname] = update_option
+        # wp.si.session.execute('UNLOCK TABLES')
+        ######
+        parent_job.options[compname] += 1
+        ######
         to_run = this_event.options['to_run']
         completed = update_option
         catalogID = this_event.options['dp_id']
