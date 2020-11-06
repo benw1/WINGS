@@ -289,12 +289,17 @@ class BaseProxy:
 
     def __init__(self, *args, **kwargs):
         self._parent = kwargs.pop('parent', None)
+        self._parent_id = int(self.parent.id)
         self._attr_name = kwargs.pop('attr_name', '')
         self._try_scalar = kwargs.pop('try_scalar', False)
 
     @property
     def parent(self):
         return self._parent
+
+    @property
+    def parent_id(self):
+        return self._parent_id
 
     @property
     def attr_name(self):
@@ -328,13 +333,14 @@ class NumberProxy(BaseProxy):
     def __iadd__(self, other):
         for retry in si.retrying_nested():
             with retry:
-                _temp = si.session.query(self.parent.__class__).with_for_update().filter_by(id=self.parent.id).one()
+                _temp = si.session.query(self.parent.__class__).with_for_update().filter_by(id=self.parent_id).one()
                 setattr(_temp, self.attr_name,
                         [lambda x:x, try_scalar][self._try_scalar](getattr(_temp, self.attr_name)) + other)
+                _temp = BaseProxy(parent=self.parent,
+                                  attr_name=self.attr_name,
+                                  try_scalar=self.try_scalar)
                 retry.retry_state.commit()
-        return BaseProxy(parent=self.parent,
-                         attr_name=self.attr_name,
-                         try_scalar=self.try_scalar)
+        return _temp
 
 
 class IntProxy(NumberProxy, int):

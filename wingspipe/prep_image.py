@@ -164,10 +164,12 @@ if __name__ == '__main__':
         # parent_job.options[compname] = update_option
         # wp.si.session.execute('UNLOCK TABLES')
         ######
-        parent_job.options[compname] += 1
+        update_option = parent_job.options[compname]
+        wp.si.commit()
+        update_option += 1
         ######
         to_run = this_event.options['to_run']
-        completed = int(parent_job.options[compname])
+        completed = int(update_option)
         catalogID = this_event.options['dp_id']
         catalogDP = wp.DataProduct(catalogID)
         this_conf = catalogDP.config
