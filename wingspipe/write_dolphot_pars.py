@@ -12,8 +12,10 @@ def write_dolphot_pars(target, config, thisjob, detname):
     parfile_name = detname + ".param"
     parfile_path = config.confpath + '/' + parfile_name
     thisjob.logprint(''.join(["Writing dolphot pars now in ", parfile_path, "\n"]))
-    my_dp = config.dataproducts
-    datadp = my_dp[my_dp.subtype == 'dolphot_data']
+    #my_dp = config.dataproducts
+    #datadp = my_dp[my_dp.subtype == 'dolphot_data']
+    my_dp = [ _temp for _temp in config.dataproducts]
+    datadp = [ _temp for _temp in config.dataproducts if _temp.subtype == 'dolphot_data']
     datadpid = [_dp.dp_id for _dp in datadp]
     dataname = [_dp.filename for _dp in datadp]
     print("DATANAME ",dataname)
