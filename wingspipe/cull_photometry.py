@@ -29,45 +29,44 @@ def register(task):
     _temp = task.mask(source='*', name='dolphot_done', value='*')
 
 
-feature_names = ['err', 'SNR', 'Sharpness', 'Crowding']
+FEAT_NAMES = ['err', 'SNR', 'Sharpness', 'Crowding']
 
 # filter names
-filters = np.array(['F062', 'F087', 'F106', 'F129', 'F158', 'F184'])
-filtershort = np.array(['F062', 'F087', 'F106', 'F129', 'F158', 'F184'])
+FILTERS = np.array(['F062', 'F087', 'F106', 'F129', 'F158', 'F184'])
+FILTERSHORT = np.array(['F062', 'F087', 'F106', 'F129', 'F158', 'F184'])
 
 # AB magnitude Zero points
-AB_Vega = np.array([0.2, 0.487, 0.653, 0.958, 1.287, 1.552])
+AB_VEGA = np.array([0.2, 0.487, 0.653, 0.958, 1.287, 1.552])
 
-fits_files = ["sim_1_0.fits", "sim_2_0.fits", "sim_3_0.fits",
+FITS_FILES = ["sim_1_0.fits", "sim_2_0.fits", "sim_3_0.fits",
               "sim_4_0.fits", "sim_5_0.fits"]
 
-sky_coord = np.zeros(len(filters))
-ref_fits = int(3)
-use_radec = False
+SKY_COORD = np.zeros(len(FILTERS))
+REF_FITS = int(3)
+USE_RADEC = False
 
 
-def cull_photometry(myConfig, dp_id):
-    phot_dp = wp.DataProduct(dp_id)
+def cull_photometry(this_config, this_dp_id):
+    phot_dp = wp.DataProduct(this_dp_id)
     phot = phot_dp.filename
-    procpath = myConfig.procpath
-    target = myConfig.target
+    procpath = this_config.procpath
+    target = this_config.target
     targname = target.name
     targroot = targname.split('.')[0]
     photpath = procpath + "/" + phot
     print("PHOT PATH: ", photpath, "\n")
-
     clean_all(photpath, tol=5.0, test_size=0.75, valid_mag=30.0, targroot=targroot)
 
 
 def clean_all(filename='10_10_phot.txt',
-              feature_names=feature_names,
-              filters=filters,
-              AB_Vega=AB_Vega,
-              fits_files=fits_files,
-              ref_fits=ref_fits,
-              sky_coord=sky_coord,
+              feature_names=None,
+              filters=FILTERS,
+              # ab_vega=AB_VEGA,
+              fits_files=None,
+              ref_fits=REF_FITS,
+              sky_coord=SKY_COORD,
               tol=2., test_size=0.1, valid_mag=30.,
-              use_radec=use_radec,
+              use_radec=USE_RADEC,
               show_plot=False,
               targroot='',
               opt=None):
@@ -77,7 +76,10 @@ def clean_all(filename='10_10_phot.txt',
 
     Calls read_data(), prep_data(), classify() and makePlots().
     """
-
+    if fits_files is None:
+        fits_files = FITS_FILES
+    if feature_names is None:
+        feature_names = FEAT_NAMES
     if opt is None:
         opt = {'evaluate': True,
                'summary': True,
@@ -86,43 +88,45 @@ def clean_all(filename='10_10_phot.txt',
                'saveClean': True}
     fileroot, filename = get_fileroot(filename)
     filepre = filename.split('.')[0]
-
     if use_radec:
-        sky_coord = [wcs.WCS(fits.open(fileroot + imfile)[1].header) \
-                     for imfile in fits_files]
-
+        sky_coord = [wcs.WCS(fits.open(fileroot + imfile)[1].header) for imfile in fits_files]
     input_data, output_data = read_data(filename=filename,
                                         fileroot=fileroot,
                                         targroot=targroot,
                                         filters=filters)
-
-    in_DF, out_DF, out_LAB = prep_data(input_data, output_data,
+    in_df, out_df, out_lab = prep_data(input_data, output_data,
                                        use_radec=use_radec,
                                        sky_coord=sky_coord,
                                        filters=filters,
                                        tol=tol,
                                        valid_mag=valid_mag,
                                        ref_fits=ref_fits)
-
     clf = MLPc(hidden_layer_sizes=(10, 10, 10),
                activation='logistic',
                solver='lbfgs',
                max_iter=20000,
                shuffle=True,
                warm_start=False,
-               early_stopping=True)  # ,
-    # n_iter_no_change=10)
-
-    new_labels = classify(out_DF, out_LAB,
+               early_stopping=True)  # , n_iter_no_change=10)
+    new_labels = classify(out_df, out_lab,
                           filters=filters,
                           feature_names=feature_names,
                           test_size=test_size,
                           fileroot=fileroot,
                           opt=opt,
                           clf=clf)
-
     if opt['plots']:
-        makePlots(in_DF, out_DF, new_labels,
+        make_plots(in_df, out_df, new_labels,
+                   sky_coord=sky_coord,
+                   filters=filters,
+                   fileroot=fileroot,
+                   nameroot=filepre,
+                   tol=tol,
+                   use_radec=use_radec,
+                   ref_fits=ref_fits,
+                   show_plot=show_plot)
+    if opt['saveClean']:
+        save_cats(input_data, output_data, out_df, new_labels,
                   sky_coord=sky_coord,
                   filters=filters,
                   fileroot=fileroot,
@@ -130,25 +134,13 @@ def clean_all(filename='10_10_phot.txt',
                   tol=tol,
                   use_radec=use_radec,
                   ref_fits=ref_fits,
-                  show_plot=show_plot)
-
-    if opt['saveClean']:
-        saveCats(input_data, output_data, out_DF, new_labels,
-                 sky_coord=sky_coord,
-                 filters=filters,
-                 fileroot=fileroot,
-                 nameroot=filepre,
-                 tol=tol,
-                 use_radec=use_radec,
-                 ref_fits=ref_fits,
-                 valid_mag=valid_mag)
-
+                  valid_mag=valid_mag)
     return print('\n')
 
 
-def classify(out_DF, out_LAB,
-             filters=filters,
-             feature_names=feature_names,
+def classify(out_df, out_lab,
+             filters=FILTERS,
+             feature_names=None,
              test_size=0.9,
              fileroot='',
              opt=None,
@@ -168,26 +160,24 @@ def classify(out_DF, out_LAB,
     return an array containing new labels in each filter
     """
 
+    if feature_names is None:
+        feature_names = FEAT_NAMES
     if opt is None:
         opt = {'evaluate': True,
                'summary': True,
                'tree': True}
     new_labels = []
     out_file = fileroot + "_labels.pkl"
-
     for i, filt in enumerate(filters):
-        features = out_DF[i][feature_names]
-        labels = out_LAB[i]
-
-        train_F, test_F, train_L, test_L = train_test_split(features, labels,
+        features = out_df[i][feature_names]
+        labels = out_lab[i]
+        train_f, test_f, train_l, test_l = train_test_split(features, labels,
                                                             test_size=test_size)
-        clf.fit(train_F, train_L)
-        pred_L = clf.predict(test_F)
-
+        clf.fit(train_f, train_l)
+        pred_l = clf.predict(test_f)
         if opt['evaluate'] | opt['summary']:
-            print_report(filt, test_L, pred_L, feature_names,
+            print_report(filt, test_l, pred_l, feature_names,
                          opt['summary'])
-
         if opt['tree']:
             dot_data = export_graphviz(clf, out_file=None,
                                        leaves_parallel=True,
@@ -196,7 +186,6 @@ def classify(out_DF, out_LAB,
                                        max_depth=3)
             graph = graphviz.Source(dot_data)
             graph.render(fileroot + filt + '_tree')
-
         new_labels.append(clf.predict(features))
     print(new_labels)
     pickle.dump(new_labels, open(out_file, 'wb'))
@@ -204,12 +193,12 @@ def classify(out_DF, out_LAB,
 
 
 def read_my_data(fileroot, filenameroot, targroot, filt):
-    all = fits.open(fileroot + "Mixed_" + filenameroot + '_' + targroot + '_' + filt + '_observed_SCA01.fits')
-    print("ALL has this many tables: ", len(all))
+    fits_data = fits.open(fileroot + "Mixed_" + filenameroot + '_' + targroot + '_' + filt + '_observed_SCA01.fits')
+    print("ALL has this many tables: ", len(fits_data))
     count = 0
     check = 0
     input_data1 = []
-    for table in all:
+    for table in fits_data:
         hdr = table.header
         print("HEADER: ", hdr)
         if check == 2:
@@ -227,14 +216,14 @@ def read_my_data(fileroot, filenameroot, targroot, filt):
                 input_data1 = vstack([input_data1, new])
         else:
             check += 1
-    all.close()
+    fits_data.close()
     print("INPUTEND: ", len(input_data1))
     # We do not want the first item? If we do,
     # change to: return input_data1
     return input_data1
 
 
-def read_data(filename='10_10_phot.txt', fileroot='', targroot='', filters=filters):
+def read_data(filename='10_10_phot.txt', fileroot='', targroot='', filters=FILTERS):
     """
     Read in the raw fata files:
     - Input: sythetic photometry file for image generation, IPAC format
@@ -244,15 +233,15 @@ def read_data(filename='10_10_phot.txt', fileroot='', targroot='', filters=filte
     ordered by corresponding filternames.
     """
     filenameroot = filename.split('.')[0]
-    input_data = [read_my_data(fileroot, filenameroot, targroot, filt) for filt in filtershort]
+    input_data = [read_my_data(fileroot, filenameroot, targroot, filt) for filt in FILTERSHORT]
     output_data = np.loadtxt(fileroot + filename)
     np.random.shuffle(output_data)
     print(input_data[3])
     return input_data, output_data
 
 
-def prep_data(input_data, output_data, sky_coord=sky_coord,
-              filters=filters, use_radec=False,
+def prep_data(input_data, output_data, sky_coord=SKY_COORD,
+              filters=FILTERS, use_radec=False,
               tol=2., valid_mag=30., ref_fits=0.):
     """
     Prepare the data for classification. The output data is now cleaned
@@ -265,36 +254,30 @@ def prep_data(input_data, output_data, sky_coord=sky_coord,
     - Third array for labels of output data in numpy arrays
     """
     nfilt = filters.size
-    xy = output_data[:, 2:4].T
-    Count = output_data[:, range(13, 13 + 13 * nfilt, 13)].T
-    vega_mags = output_data[:, range(15, 15 + 13 * nfilt, 13)].T
-    mag_errors = output_data[:, range(17, 17 + 13 * nfilt, 13)].T
-    SNR = output_data[:, range(19, 19 + 13 * nfilt, 13)].T
-    Sharp = output_data[:, range(20, 20 + 13 * nfilt, 13)].T
-    Round = output_data[:, range(21, 21 + 13 * nfilt, 13)].T
-    Crowd = output_data[:, range(22, 22 + 13 * nfilt, 13)].T
-
+    _xy = output_data[:, 2:4].T
+    _count = output_data[:, range(13, 13 + 13 * nfilt, 13)].T
+    _vega_mags = output_data[:, range(15, 15 + 13 * nfilt, 13)].T
+    _mag_errors = output_data[:, range(17, 17 + 13 * nfilt, 13)].T
+    _snr = output_data[:, range(19, 19 + 13 * nfilt, 13)].T
+    _sharp = output_data[:, range(20, 20 + 13 * nfilt, 13)].T
+    _round = output_data[:, range(21, 21 + 13 * nfilt, 13)].T
+    _crowd = output_data[:, range(22, 22 + 13 * nfilt, 13)].T
     in_df, out_df, labels = [], [], []
-
     for i in range(nfilt):
         in_df.append(pack_input(input_data[i], valid_mag=valid_mag))
-
-        t = validate_output(mag_errors[i],
-                            Count[i], SNR[i],
-                            Sharp[i], Round[i],
-                            Crowd[i])
-
-        out_df.append(pack_output(xy, vega_mags[i], mag_errors[i],
-                                  Count[i], SNR[i], Sharp[i], Round[i],
-                                  Crowd[i], t))
-
+        t = validate_output(_mag_errors[i],
+                            _count[i], _snr[i],
+                            _sharp[i], _round[i],
+                            _crowd[i])
+        out_df.append(pack_output(_xy, _vega_mags[i], _mag_errors[i],
+                                  _count[i], _snr[i], _sharp[i], _round[i],
+                                  _crowd[i], t))
         labels.append(label_output(in_df[i], out_df[i],
                                    tol=tol,
                                    valid_mag=valid_mag,
                                    radec={'opt': use_radec,
                                           'wcs1': sky_coord[i],
                                           'wcs2': sky_coord[ref_fits]}))
-
     return in_df, out_df, labels
 
 
@@ -342,8 +325,7 @@ def pack_output(xy, mags, errs, count, snr, shr, rnd, crd, t):
     # return _df.reindex(np.random.permutation(_df.index))
 
 
-def label_output(in_df, out_df, tol=2., valid_mag=30.,
-                 radec=None):
+def label_output(in_df, out_df, tol=2., valid_mag=30., radec=None):
     """
     Label output data entries and return the labels as numpy array.
 
@@ -359,18 +341,18 @@ def label_output(in_df, out_df, tol=2., valid_mag=30.,
     """
     if radec is None:
         radec = {'opt': False, 'wcs1': '', 'wcs2': ''}
-    X, Y = in_df['x'].values, in_df['y'].values
+    in_x, in_y = in_df['x'].values, in_df['y'].values
     typ_in = in_df['type'].values
     mags = in_df['m'].values
     t = (mags < valid_mag)
-    X, Y, typ_in = X[t], Y[t], typ_in[t]
-    x, y = out_df['x'].values, out_df['y'].values
-    tmp, typ_out = match_in_out(tol, X, Y, x, y, typ_in, radec=radec)
+    in_x, in_y, typ_in = in_x[t], in_y[t], typ_in[t]
+    out_x, out_y = out_df['x'].values, out_df['y'].values
+    tmp, typ_out = match_in_out(tol, in_x, in_y, out_x, out_y, typ_in, radec=radec)
     typ_out[typ_out == 'sersic'] = 'other'
-    magDiff = np.zeros(len(X))
-    magDiff[tmp != -1] = in_df['m'].values[tmp != -1] - out_df['mag'].values[tmp[tmp != -1]]
-    # print(len(typ_out[tmp[tmp!=-1]][np.fabs(magDiff[tmp!=-1])>0.5]=='point'))
-    typ_out[tmp[tmp != -1]][np.fabs(magDiff[tmp != -1]) > 0.5] = 'other'
+    mag_diff = np.zeros(len(in_x))
+    mag_diff[tmp != -1] = in_df['m'].values[tmp != -1] - out_df['mag'].values[tmp[tmp != -1]]
+    # print(len(typ_out[tmp[tmp!=-1]][np.fabs(mag_diff[tmp!=-1])>0.5]=='point'))
+    typ_out[tmp[tmp != -1]][np.fabs(mag_diff[tmp != -1]) > 0.5] = 'other'
     typ_bin = label_binarize(typ_out, classes=['other', 'point'])
     typ_bin = typ_bin.reshape((typ_bin.shape[0],))
     return typ_bin
@@ -386,27 +368,22 @@ def input_pair(df, i, j, radec=None):
     """
     if radec is None:
         radec = {'opt': False, 'wcs1': '', 'wcs2': ''}
-    m1_in, m2_in, X1, Y1, X2, Y2 = df[i]['m'].values, df[j + 1]['m'].values, \
-                                   df[i]['x'].values, df[i]['y'].values, \
-                                   df[j + 1]['x'].values, df[j + 1]['y'].values
+    m1_in, m2_in, x1, y1, x2, y2 = (df[i]['m'].values, df[j + 1]['m'].values,
+                                    df[i]['x'].values, df[i]['y'].values,
+                                    df[j + 1]['x'].values, df[j + 1]['y'].values)
     typ1_in, typ2_in = df[i]['type'].values, df[j + 1]['type'].values
-
     if radec['opt']:
-        ra1, dec1 = xy_to_wcs(np.array([X1, Y1]).T, radec['wcs1'])
-        ra2, dec2 = xy_to_wcs(np.array([X2, Y2]).T, radec['wcs2'])
-        in12 = matchCats(0.05, ra1, dec1, ra2, dec2)
+        ra1, dec1 = xy_to_wcs(np.array([x1, y1]).T, radec['wcs1'])
+        ra2, dec2 = xy_to_wcs(np.array([x2, y2]).T, radec['wcs2'])
+        in12 = match_cats(0.05, ra1, dec1, ra2, dec2)
     else:
-        in12 = matchLists(0.1, X1, Y1, X2, Y2)
-
-    m1_in, X1, Y1, typ1_in = m1_in[in12 != -1], \
-                             X1[in12 != -1], Y1[in12 != -1], typ1_in[in12 != -1]
+        in12 = match_lists(0.1, x1, y1, x2, y2)
+    m1_in, x1, y1, typ1_in = m1_in[in12 != -1], x1[in12 != -1], y1[in12 != -1], typ1_in[in12 != -1]
     in12 = in12[in12 != -1]
     m2_in, typ2_in = m2_in[in12], typ2_in[in12]
-
     tt = typ1_in == typ2_in
-    m1_in, m2_in, X, Y, typ_in = m1_in[tt], \
-                                 m2_in[tt], X1[tt], Y1[tt], typ1_in[tt]
-    return dict(zip(['m1_in', 'm2_in', 'X', 'Y', 'typ_in'], [m1_in, m2_in, X, Y, typ_in]))
+    m1_in, m2_in, x, y, typ_in = m1_in[tt], m2_in[tt], x1[tt], y1[tt], typ1_in[tt]
+    return dict(zip(['m1_in', 'm2_in', 'X', 'Y', 'typ_in'], [m1_in, m2_in, x, y, typ_in]))
 
 
 # Recovered source photometry and quality params
@@ -421,12 +398,11 @@ def output_pair(df, labels, i, j):
     and labels (lbl). Each dictionary item is has two elements for
     two filters (xy has x and y).
     """
-    X1, Y1, X2, Y2 = df[i]['x'].values, df[i]['y'].values, \
-                     df[j + 1]['x'].values, df[j + 1]['y'].values
-    t2 = matchLists(0.1, X1, Y1, X2, Y2)
+    x1, y1, x2, y2 = df[i]['x'].values, df[i]['y'].values, df[j + 1]['x'].values, df[j + 1]['y'].values
+    t2 = match_lists(0.1, x1, y1, x2, y2)
     t1 = t2 != -1
     t2 = t2[t2 != -1]
-    xy = X1[t1], Y1[t1]
+    xy = x1[t1], y1[t1]
     mags = [df[i]['mag'][t1].values, df[j + 1]['mag'][t2].values]
     errs = [df[i]['err'][t1].values, df[j + 1]['err'][t2].values]
     snrs = [df[i]['SNR'][t1].values, df[j + 1]['SNR'][t2].values]
@@ -435,11 +411,10 @@ def output_pair(df, labels, i, j):
     shrs = [df[i]['Sharpness'][t1].values, df[j + 1]['Sharpness'][t2].values]
     lbls = [labels[i][t1], labels[j + 1][t2]]
     nms = ['xy', 'mag', 'err', 'snr', 'crd', 'rnd', 'shr', 'lbl']
-    K = [xy, mags, errs, snrs, crds, rnds, shrs, lbls]
-    return dict(zip(nms, K))
+    return dict(zip(nms, [xy, mags, errs, snrs, crds, rnds, shrs, lbls]))
 
 
-def clean_pair(inPair, outPair, tol=2., radec=None):
+def clean_pair(in_pair, out_pair, tol=2., radec=None):
     """
     Re-classify sources detected in both bands as stars. Change detected
     source type from 'star' to 'other' if their location do not match to
@@ -450,78 +425,71 @@ def clean_pair(inPair, outPair, tol=2., radec=None):
     """
     if radec is None:
         radec = {'opt': False, 'wcs1': '', 'wcs2': ''}
-    X1, Y1, typ_in = inPair['X'], inPair['Y'], inPair['typ_in']
-    X2, Y2 = outPair['xy'][0], outPair['xy'][1]
-    m1_out, m2_out = outPair['mag'][0], outPair['mag'][1]
-    t1, t2 = outPair['lbl'][0], outPair['lbl'][1]
+    x1, y1, typ_in = in_pair['X'], in_pair['Y'], in_pair['typ_in']
+    x2, y2 = out_pair['xy'][0], out_pair['xy'][1]
+    m1_out, m2_out = out_pair['mag'][0], out_pair['mag'][1]
+    t1, t2 = out_pair['lbl'][0], out_pair['lbl'][1]
     t = (t1 == 1) & (t2 == 1)
-    X2, Y2, m1_out, m2_out = X2[t], Y2[t], m1_out[t], m2_out[t]
-    tmp, typ_out = match_in_out(tol, X1, Y1, X2, Y2, typ_in, radec=radec)
-    clean_pair = dict(zip(['m1', 'm2', 'x', 'y', 'typ_out'],
-                          [m1_out, m2_out, X2, Y2, typ_out]))
-    return clean_pair
+    x2, y2, m1_out, m2_out = x2[t], y2[t], m1_out[t], m2_out[t]
+    tmp, typ_out = match_in_out(tol, x1, y1, x2, y2, typ_in, radec=radec)
+    return dict(zip(['m1', 'm2', 'x', 'y', 'typ_out'], [m1_out, m2_out, x2, y2, typ_out]))
 
 
-def saveCats(inDAT, outDAT, outDF, Labels,
-             sky_coord=sky_coord, fileroot='', nameroot='',
-             filters=filters, tol=2., ref_fits=0.,
-             use_radec=False, valid_mag=30.):
+def save_cats(in_dat, out_dat, out_df, labels,
+              sky_coord=SKY_COORD, fileroot='', nameroot='',
+              filters=FILTERS, tol=2., ref_fits=0.,
+              use_radec=False, valid_mag=30.):
     i = -1
     flags = []
-    _X, _Y = outDAT[:, 2].T, outDAT[:, 3].T
-
-    for data, df, label, filt in zip(inDAT, outDF, Labels, filters):
+    _X, _Y = out_dat[:, 2].T, out_dat[:, 3].T
+    for data, df, label, filt in zip(in_dat, out_df, labels, filters):
         i += 1
         t = data['vegamag'] < valid_mag
         _df1 = pd.DataFrame({'x': data['x'], 'y': data['y'], 'mag': data['vegamag']})
         _df2 = df[label == 1]
 
-        X, Y = _df1['x'].values, _df1['y'].values
-        x, y = _df2['x'].values, _df2['y'].values
+        x1, y1 = _df1['x'].values, _df1['y'].values
+        x2, y2 = _df2['x'].values, _df2['y'].values
         if use_radec:
-            ra1, dec1 = xy_to_wcs(np.array([X, Y]).T, sky_coord[i])
-            ra2, dec2 = xy_to_wcs(np.array([x, y]).T, sky_coord[ref_fits])
-            in1 = matchCats(tol * 0.11, ra1, dec1, ra2, dec2)
-            in2 = matchCats(tol * 0.11, ra2, dec2, ra1[t], dec1[t])
+            ra1, dec1 = xy_to_wcs(np.array([x1, y1]).T, sky_coord[i])
+            ra2, dec2 = xy_to_wcs(np.array([x2, y2]).T, sky_coord[ref_fits])
+            in1 = match_cats(tol * 0.11, ra1, dec1, ra2, dec2)
+            in2 = match_cats(tol * 0.11, ra2, dec2, ra1[t], dec1[t])
         else:
-            in1 = matchLists(tol, X, Y, x, y)
-            in2 = matchLists(tol, x, y, X[t], Y[t])
-
+            in1 = match_lists(tol, x1, y1, x2, y2)
+            in2 = match_lists(tol, x2, y2, x1[t], y1[t])
         # Extend input list with recovered mag
-        remag = np.repeat(99.99, len(X))
-        reX = np.repeat(99.99, len(X))
-        reY = np.repeat(99.99, len(X))
+        re_mag = np.repeat(99.99, len(x1))
+        re_x = np.repeat(99.99, len(x1))
+        re_y = np.repeat(99.99, len(x1))
         _t = (in1 != -1) & t
-        remag[_t] = _df2['mag'].values[in1[_t]]
-        reX[_t] = x[in1[_t]]
-        reY[_t] = y[in1[_t]]
-        data['recovmag'] = remag
-        data['recov_x'] = reX
-        data['recov_y'] = reY
+        re_mag[_t] = _df2['mag'].values[in1[_t]]
+        re_x[_t] = x2[in1[_t]]
+        re_y[_t] = y2[in1[_t]]
+        data['recovmag'] = re_mag
+        data['recov_x'] = re_x
+        data['recov_y'] = re_y
         ascii.write(data, fileroot + nameroot + '_' + str(filt) + '_recov_input.txt', format='ipac')
-
         # Extend output list with input mag
-        inmag = np.repeat(99.99, len(x))
+        inmag = np.repeat(99.99, len(x2))
         _t = in2 != -1
         inmag[_t] = _df1['mag'].values[t][in2[_t]]
         _df2['inputmag'] = inmag
-        _df2[['x', 'y', 'mag', 'err', 'inputmag', 'Count', 'Crowding', 'Roundness', 'SNR',
-              'Sharpness']].to_csv(fileroot + nameroot + '_' + str(filt) + '_clean.csv', index=False)
-
+        _df2[['x', 'y', 'mag', 'err', 'inputmag', 'Count', 'Crowding', 'Roundness', 'SNR', 'Sharpness']]. \
+            to_csv(fileroot + nameroot + '_' + str(filt) + '_clean.csv', index=False)
         # Make shorter recovered phot file keeping sources kept in at least one filter
-        in1 = matchLists(0.1, _X, _Y, x, y)
+        in1 = match_lists(0.1, _X, _Y, x2, y2)
         flag = np.zeros(len(_X))
         flag[in1 != -1] = 1
         flags.append(flag)
-
     flag = np.sum(flags, axis=0)
     idx = np.arange(len(flag))
     idx = idx[flag != 0]
-    newDAT = outDAT[idx, :]
-    return np.savetxt(fileroot + nameroot + '_' + 'Clean_Catalog.phot', newDAT, fmt='%10.7e')
+    new_dat = out_dat[idx, :]
+    return np.savetxt(fileroot + nameroot + '_' + 'Clean_Catalog.phot', new_dat, fmt='%10.7e')
 
 
-def matchLists(tol, x1, y1, x2, y2):
+def match_lists(tol, x1, y1, x2, y2):
     """
     Match X and Y coordinates using cKDTree
     return index of 2nd list at coresponding position in the 1st
@@ -537,7 +505,7 @@ def matchLists(tol, x1, y1, x2, y2):
     return in1
 
 
-def matchCats(tol, ra1, dec1, ra2, dec2):
+def match_cats(tol, ra1, dec1, ra2, dec2):
     """
     Match astronomical coordinates using SkyCoord
     return index of 2nd list at coresponding position in the 1st
@@ -552,8 +520,7 @@ def matchCats(tol, ra1, dec1, ra2, dec2):
     return in1
 
 
-def match_in_out(tol, X, Y, x, y, typ_in,
-                 radec=None):
+def match_in_out(tol, in_x, in_y, out_x, out_y, typ_in, radec=None):
     """
     Match input coordnates to recovered coordinates picking the
     closest matched item.
@@ -567,17 +534,17 @@ def match_in_out(tol, X, Y, x, y, typ_in,
     if radec is None:
         radec = {'opt': False, 'wcs1': '', 'wcs2': ''}
     if radec['opt']:
-        ra1, dec1 = xy_to_wcs(np.array([X, Y]).T, radec['wcs1'])
-        ra2, dec2 = xy_to_wcs(np.array([x, y]).T, radec['wcs2'])
-        in1 = matchCats(tol * 0.11, ra1, dec1, ra2, dec2)
+        ra1, dec1 = xy_to_wcs(np.array([in_x, in_y]).T, radec['wcs1'])
+        ra2, dec2 = xy_to_wcs(np.array([out_x, out_y]).T, radec['wcs2'])
+        in1 = match_cats(tol * 0.11, ra1, dec1, ra2, dec2)
     else:
-        in1 = matchLists(tol, X, Y, x, y)
+        in1 = match_lists(tol, in_x, in_y, out_x, out_y)
 
     in2 = in1 != -1
     in3 = in1[in2]
-    in4 = np.arange(len(x))
+    in4 = np.arange(len(out_x))
     in5 = np.setdiff1d(in4, in3)
-    typ_out = np.empty(len(x), dtype='<U10')
+    typ_out = np.empty(len(out_x), dtype='<U10')
     typ_out[in3] = typ_in[in2]
     typ_out[in5] = 'other'
     return in1, typ_out
@@ -590,9 +557,8 @@ def print_report(filt, test_labels, pred_labels, feat_nms, feat_imp=None, short_
     - Manually calculate Precision, Recall and Specficity
     - Display the values along with feature importances
     """
-
-    if feat_imp is None:
-        feat_imp = []
+    # if feat_imp is None:
+    #     feat_imp = []
     score1 = accuracy_score(test_labels, pred_labels)
     score2 = accuracy_score(test_labels[test_labels == 0], pred_labels[test_labels == 0])
     score3 = accuracy_score(test_labels[test_labels == 1], pred_labels[test_labels == 1])
@@ -615,20 +581,24 @@ def print_report(filt, test_labels, pred_labels, feat_nms, feat_imp=None, short_
     return print('\n')
 
 
-def makePlots(in_DF, out_DF, new_labels,
-              sky_coord=sky_coord, fileroot='', nameroot='',
-              filters=filters,
-              tol=5., ref_fits=0.,
-              use_radec=False,
-              show_plot=False):
+def make_plots(in_df, out_df, new_labels,
+               sky_coord=SKY_COORD, fileroot='', nameroot='',
+               filters=FILTERS,
+               tol=5., ref_fits=0.,
+               use_radec=False,
+               show_plot=False):
     """
     Produce figures and text to qualitatively evaluate practicality
     of the classification model for the intended use case of maximizing
     star identification in realistic catalogs
     """
     print("IN MAKE PLOTS")
-    paired_in = lambda a, b, c: input_pair(in_DF, a, b, c)
-    paired_out = lambda a, b: output_pair(out_DF, new_labels, a, b)
+
+    def paired_in(a, b, c):
+        return input_pair(in_df, a, b, c)
+
+    def paired_out(a, b):
+        return output_pair(out_df, new_labels, a, b)
 
     for i in range(len(filters) - 1):
         for j in range(i, len(filters) - 1):
@@ -636,22 +606,21 @@ def makePlots(in_DF, out_DF, new_labels,
                       'wcs1': sky_coord[i], 'wcs2': sky_coord[j + 1]}
             radec2 = {'opt': use_radec,
                       'wcs1': sky_coord[i], 'wcs2': sky_coord[ref_fits]}
-            inPair, outPair = paired_in(i, j, radec1), paired_out(i, j)
-            clnPair = clean_pair(inPair, outPair, tol=tol, radec=radec2)
-
-            make_plots(inPair, outPair, clnPair,
-                       fileroot=fileroot, tol=tol, filepre=nameroot,
-                       filt1=filters[i], filt2=filters[j + 1],
-                       AB_Vega1=AB_Vega[i], AB_Vega2=AB_Vega[j + 1],
-                       opt=['input', 'output', 'clean', 'diff'],
-                       radec=radec2, show_plot=show_plot)
+            in_pair, out_pair = paired_in(i, j, radec1), paired_out(i, j)
+            cln_pair = clean_pair(in_pair, out_pair, tol=tol, radec=radec2)
+            make_cmd_and_xy(in_pair, out_pair, cln_pair,
+                            fileroot=fileroot, tol=tol, filepre=nameroot,
+                            filt1=filters[i], filt2=filters[j + 1],
+                            ab_vega1=AB_VEGA[i], ab_vega2=AB_VEGA[j + 1],
+                            opt=['input', 'output', 'clean', 'diff'],
+                            radec=radec2, show_plot=show_plot)
     return print('\n')
 
 
-def make_plots(all_in={}, all_out={}, clean_out={},
-               filt1='', filt2='', AB_Vega1=0, AB_Vega2=0,
-               fileroot='', tol=5., filepre='',
-               opt=None, radec=None, show_plot=False):
+def make_cmd_and_xy(all_in={}, all_out={}, clean_out={},
+                    filt1='', filt2='', ab_vega1=0., ab_vega2=0.,
+                    fileroot='', tol=5., filepre='',
+                    opt=None, radec=None, show_plot=False):
     """
     Produce color-magnitude diagrams and systematic offsets
     """
@@ -661,36 +630,29 @@ def make_plots(all_in={}, all_out={}, clean_out={},
         opt = ['input', 'output', 'clean', 'diff']
     print('\nFilters {:s} and {:s}:'.format(filt1, filt2))
     print('\n pre: {:s}'.format(filepre))
-    plot_me = lambda a, b, st, ot, ttl, pre, post: \
-        plot_cmd(a, b, filt1=filt1, filt2=filt2,
-                 stars=st, other=ot, title=ttl,
-                 fileroot=fileroot, outfile=
-                 '_'.join((filepre, 'cmd', filt1, filt2, post)),
-                 show_plot=show_plot)
-    plot_it = lambda a, b, filt: \
-        plot_xy(x=a, y=a - b,
-                ylim1=-1.0, ylim2=1.0, xlim1=18.5, xlim2=28,
-                ylabel='magIn - magOut', xlabel='magOut',
-                title='In-Out Mag Diff {:s}'.format(filt),
-                fileroot=fileroot,
-                outfile='_'.join((filepre, 'mag', 'diff', filt)),
-                show_plot=show_plot)
+
+    def plot_me(a, b, st, ot, ttl, pre, post):
+        return plot_cmd(a, b, filt1=filt1, filt2=filt2, stars=st, other=ot, title=ttl,
+                        fileroot=fileroot, outfile='_'.join((filepre, 'cmd', filt1, filt2, post)), show_plot=show_plot)
+
+    def plot_it(a, b, filt):
+        return plot_xy(x=a, y=a - b, ylim1=-1.0, ylim2=1.0, xlim1=18.5, xlim2=28,
+                       ylabel='magIn - magOut', xlabel='magOut', title='In-Out Mag Diff {:s}'.format(filt),
+                       fileroot=fileroot, outfile='_'.join((filepre, 'mag', 'diff', filt)), show_plot=show_plot)
 
     m1_in, m2_in, typ_in = np.array([])
-
     if ('input' in opt) & (len(all_in) > 0):
         m1_in, m2_in, typ_in = all_in['m1_in'], all_in['m2_in'], all_in['typ_in']
         stars, other = typ_in == 'point', typ_in != 'point'
         print('Stars: {:d}  Others: {:d}'.format(int(np.sum(stars)), int(np.sum(other))))
         plot_me(m1_in, m2_in, stars, other,
                 'Input CMD (Vega)', 'input', 'Vega')
-
     if ('output' in opt) & (len(all_out) > 0):
         m1, m2 = all_out['mag'][0], all_out['mag'][1]
         if 'input' in opt:
-            X, Y, x, y = all_in['X'], all_in['Y'], all_out['xy'][0], all_out['xy'][1]
-            in1, typ_out = match_in_out(tol, X, Y, x, y, typ_in, radec=radec)
-            stars, other = typ_out == 'point', typ_out != 'point'
+            in_x, in_y, out_x, out_y = all_in['X'], all_in['Y'], all_out['xy'][0], all_out['xy'][1]
+            in1, typ_out = match_in_out(tol, in_x, in_y, out_x, out_y, typ_in, radec=radec)
+            # stars, other = typ_out == 'point', typ_out != 'point'
             if ('diff' in opt) | ('diff2' in opt):
                 t1 = (in1 != -1) & (typ_in == 'point')
                 m1in, m2in, m1t, m2t = m1_in[t1], m2_in[t1], m1[in1[t1]], m2[in1[t1]]
@@ -705,7 +667,6 @@ def make_plots(all_in={}, all_out={}, clean_out={},
         stars, other = typ_out == 'point', typ_out != 'point'
         print('Stars: {:d}  Others: {:d}'.format(int(np.sum(stars)), int(np.sum(other))))
         plot_me(m1, m2, stars, other, 'Full CMD', 'output', 'full')
-
     if ('clean' in opt) & (len(clean_out) > 0):
         m1, m2, typ_out = clean_out['m1'], clean_out['m2'], clean_out['typ_out']
         stars, other = typ_out == 'point', typ_out != 'point'
@@ -726,12 +687,12 @@ def plot_cmd(m1, m2, e1=[], e2=[], filt1='', filt2='', stars=[], other=[],
     print("IN PLOT CMD")
     m1m2 = m1 - m2
     plt.rc("font", family='serif', weight='bold')
-    plt.rc("xtick", labelsize=15);
+    plt.rc("xtick", labelsize=15)
     plt.rc("ytick", labelsize=15)
     fig = plt.figure(1, (10, 10))
     fig.suptitle(title, fontsize=5 * n)
     if np.sum(stars) == 0:
-        m1m2t, m2t = plotHess(m1m2, m2)
+        m1m2t, m2t = plot_hess(m1m2, m2)
         plt.plot(m1m2t, m2t, 'k.', markersize=2, alpha=0.75, zorder=3)
     else:
         plt.plot(m1m2[stars], m2[stars], 'b.', markersize=2,
@@ -778,37 +739,37 @@ def plot_xy(x, y, xlabel='', ylabel='', title='', stars=[], other=[],
     plt.ylabel(ylabel, fontsize=20)
     plt.savefig(fileroot + outfile + '.' + str(fmt))
     # print('\t\t\t Writing out: ',fileroot+outfile+'.'+str(fmt))
-    if show_plot: plt.show()
+    if show_plot:
+        plt.show()
     return plt.close()
 
 
-def plotHess(color, mag, binsize=0.1, threshold=25):
+def plot_hess(color, mag, binsize=0.1, threshold=25):
     """
     Overplot hess diagram for densest regions
     of a scatterplot
     """
     if not len(color) > threshold:
         return color, mag
-    mmin, mmax = np.amin(mag), np.amax(mag)
+    # mmin, mmax = np.amin(mag), np.amax(mag)
     cmin, cmax = np.amin(color), np.amax(color)
     nmbins = np.ceil((cmax - cmin) / binsize)
     ncbins = np.ceil((cmax - cmin) / binsize)
-    Z, xedges, yedges = np.histogram2d(color, mag,
-                                       bins=(ncbins, nmbins))
-    X = 0.5 * (xedges[:-1] + xedges[1:])
-    Y = 0.5 * (yedges[:-1] + yedges[1:])
-    y, x = np.meshgrid(Y, X)
-    z = np.ma.array(Z, mask=(Z == 0))
+    hist_value, x_ticks, y_ticks = np.histogram2d(color, mag, bins=(ncbins, nmbins))
+    x_ctrds = 0.5 * (x_ticks[:-1] + x_ticks[1:])
+    y_ctrds = 0.5 * (y_ticks[:-1] + y_ticks[1:])
+    y_grid, x_grid = np.meshgrid(y_ctrds, x_ctrds)
+    masked_hist = np.ma.array(hist_value, mask=(hist_value == 0))
     levels = np.logspace(np.log10(threshold),
-                         np.log10(np.amax(z)), (nmbins / ncbins) * 20)
-    if (np.amax(z) > threshold) & (len(levels) > 1):
-        cntr = plt.contourf(x, y, z, cmap=cm.jet, levels=levels, zorder=0)
+                         np.log10(np.amax(masked_hist)), (nmbins / ncbins) * 20)
+    if (np.amax(masked_hist) > threshold) & (len(levels) > 1):
+        cntr = plt.contourf(x_grid, y_grid, masked_hist, cmap=cm.jet, levels=levels, zorder=0)
         cntr.cmap.set_under(alpha=0)
-        x, y, z = x.flatten(), y.flatten(), Z.flatten()
-        x = x[z > 2.5 * threshold]
-        y = y[z > 2.5 * threshold]
+        x_grid, y_grid, masked_hist = x_grid.flatten(), y_grid.flatten(), hist_value.flatten()
+        x_grid = x_grid[masked_hist > 2.5 * threshold]
+        y_grid = y_grid[masked_hist > 2.5 * threshold]
         mask = np.zeros_like(mag)
-        for col, m in zip(x, y):
+        for col, m in zip(x_grid, y_grid):
             mask[(m - binsize < mag) & (m + binsize > mag) &
                  (col - binsize < color) & (col + binsize > color)] = 1
             mag = np.ma.array(mag, mask=mask)
@@ -851,20 +812,11 @@ def get_fileroot(filename):
 
 
 def parse_all():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--P', '-p', type=int, dest='PID',
-                        help='Pipeline ID')
-    parser.add_argument('--N', '-n', type=str, dest='task_name',
-                        help='Name of Task to be Registered')
-    parser.add_argument('--E', '-e', type=int, dest='event_id',
-                        help='Event ID')
-    parser.add_argument('--J', '-j', type=int, dest='job_id',
-                        help='Job ID')
+    parser = wp.PARSER
     parser.add_argument('--C', '-c', type=int, dest='config_id',
                         help='Configuration ID')
     parser.add_argument('--T', '-t', type=int, dest='target_id',
                         help='Target ID')
-
     return parser.parse_args()
 
 
