@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-import argparse
+import os
 import graphviz
 import pickle
 import warnings
@@ -86,7 +86,8 @@ def clean_all(filename='10_10_phot.txt',
                'plots': True,
                'tree': False,
                'saveClean': True}
-    fileroot, filename = get_fileroot(filename)
+    fileroot, filename = os.path.split(filename)
+    fileroot += '/'
     filepre = filename.split('.')[0]
     if use_radec:
         sky_coord = [wcs.WCS(fits.open(fileroot + imfile)[1].header) for imfile in fits_files]
@@ -144,7 +145,7 @@ def classify(out_df, out_lab,
              test_size=0.9,
              fileroot='',
              opt=None,
-             clf=DecisionTreeClassifier()):
+             clf=None):
     """
     High level wrapper to build and evaluate classification models
     for all bands and return new labels for the entire dataset.
@@ -159,13 +160,14 @@ def classify(out_df, out_lab,
 
     return an array containing new labels in each filter
     """
-
     if feature_names is None:
         feature_names = FEAT_NAMES
     if opt is None:
         opt = {'evaluate': True,
                'summary': True,
                'tree': True}
+    if clf is None:
+        clf = DecisionTreeClassifier()
     new_labels = []
     out_file = fileroot + "_labels.pkl"
     for i, filt in enumerate(filters):
@@ -200,9 +202,9 @@ def read_my_data(fileroot, filenameroot, targroot, filt):
     input_data1 = []
     for table in fits_data:
         hdr = table.header
-        print("HEADER: ", hdr)
+        print("HEADER: ", repr(hdr))
         if check == 2:
-            continue
+            continue  # Why stop after 2 tables without 'DETECTOR'?
         if 'DETECTOR' in hdr:
             count += 1
             if count == 1:
@@ -539,7 +541,6 @@ def match_in_out(tol, in_x, in_y, out_x, out_y, typ_in, radec=None):
         in1 = match_cats(tol * 0.11, ra1, dec1, ra2, dec2)
     else:
         in1 = match_lists(tol, in_x, in_y, out_x, out_y)
-
     in2 = in1 != -1
     in3 = in1[in2]
     in4 = np.arange(len(out_x))
@@ -709,7 +710,8 @@ def plot_cmd(m1, m2, e1=[], e2=[], filt1='', filt2='', stars=[], other=[],
     plt.ylabel(filt2, fontsize=20)
     print('\t\t\t Writing out: ', fileroot + outfile + '.' + str(fmt))
     plt.savefig(fileroot + outfile + '.' + str(fmt))
-    if show_plot: plt.show()
+    if show_plot:
+        plt.show()
     return plt.close()
 
 
@@ -798,19 +800,6 @@ def get_stat(typ_in, typ_out):
     return recovery_rate, false_rate
 
 
-def get_fileroot(filename):
-    """
-    Return path to a file and filename
-    """
-    if '/' in filename:
-        tmp = filename.split('/')[-1]
-        fileroot = filename[:-len(tmp)]
-        filename = tmp
-    else:
-        fileroot = filename.split('.')[0]
-    return fileroot, filename
-
-
 def parse_all():
     parser = wp.PARSER
     parser.add_argument('--C', '-c', type=int, dest='config_id',
@@ -833,10 +822,8 @@ if __name__ == '__main__':
             print(myConfig)
             # cull_photometry(myConfig)
     else:
-        job_id = int(args.job_id)
-        this_job = wp.Job(job_id)
-        this_event = this_job.firing_event
-        event_id = this_event.event_id
+        this_job = wp.ThisJob
+        this_event = wp.ThisEvent
         dp_id = this_event.options['dp_id']
         print(this_job.config_id)
         myConfig = this_job.config
