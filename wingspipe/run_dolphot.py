@@ -15,12 +15,14 @@ def run_dolphot(dp_id):
     my_target = param_dp.target
     my_config = param_dp.config
     targname = my_target.name
-    outfile = targname + '.phot'
-    logfile = outfile + ".log"
     dolphot_path = which('romanmask')
     dolphot_path = dolphot_path[:-9]
     dolphot = dolphot_path + "dolphot"
     parameter_file = param_dp.relativepath + '/' + param_dp.filename
+    parfilename = param_dp.filename
+    detname = parfilename.split('.')[0]
+    outfile = detname + '.phot'
+    logfile = detname + ".log"
     print(my_config.procpath)
     print("dolphot "+outfile+" -p"+parameter_file+" > "+ my_config.logpath + "/" + logfile)
     scr = my_config.logpath + "/" + logfile
@@ -31,9 +33,11 @@ def run_dolphot(dp_id):
     _p=subprocess.run(command,cwd=my_config.procpath,shell=True)
     print(_p)
     _p.check_returncode()
-    #with open(logfile, "w") as f:
-    #   _p=subprocess.Popen([dolphot,outfile,pars,scr], stdout=f, shell=True, cwd=my_config.procpath)
+    _dp = my_config.dataproduct(filename=outfile, relativepath=my_config.procpath, group='proc', subtype='photfile')
+    dpid = _dp.dp_id
+    return dpid
 
+ 
 
 def hyak_dolphot(dp_id):
     param_dp = wp.DataProduct(dp_id)
@@ -87,5 +91,18 @@ if __name__ == '__main__':
     this_event = this_job.firing_event
     this_event_id = this_event.event_id
     this_dp_id = this_event.options['dp_id']
+    
     # hyak_dolphot(this_dp_id)
-    run_dolphot(this_dp_id)
+    #dpid = run_dolphot(this_dp_id)
+     
+    param_dp = wp.DataProduct(this_dp_id)
+    my_config = param_dp.config
+    parfilename = param_dp.filename
+    detname = parfilename.split('.')[0]
+    outfile = detname + '.phot'
+    _dp = my_config.dataproduct(filename=outfile, relativepath=my_config.procpath, group='proc', subtype='photfile')
+    dpid = _dp.dp_id
+    new_event = this_job.child_event('dolphot_done', tag=dpid, options={'dp_id': dpid})#,'submission_type':'pbs'})
+    print("Firing dolphot_done event")
+    this_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  dolphot_done"]))
+    new_event.fire()

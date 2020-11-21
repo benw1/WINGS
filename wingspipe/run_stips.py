@@ -140,20 +140,18 @@ if __name__ == '__main__':
     dec_dither = this_event.options['dec_dither']
     run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither))
     update_option = parent_job.options[compname]
-    update_option = update_option + 1
-    parent_job.options[compname] = update_option
+    wp.si.commit()
+    update_option += 1
     to_run = this_event.options['to_run']
-    #completed = update_option
     catalogID = this_event.options['dp_id']
     catalogDP = wp.DataProduct(catalogID)
     this_conf = catalogDP.config
     this_target = this_conf.target
     image_dps = wp.DataProduct.select(config_id=this_conf.config_id, data_type="stips_image")
-    completed = len(image_dps) 
-    print(''.join(["Completed ", str(completed), " of ", str(to_run)]))
-    this_job.logprint(''.join(["Completed ", str(completed), " of ", str(to_run), "\n"]))
-    if completed >= to_run:
-        this_job.logprint(''.join(["Completed ", str(completed), " and to run is ", str(to_run), " firing event\n"]))
+    print(''.join(["Completed ", str(update_option), " of ", str(to_run)]))
+    this_job.logprint(''.join(["Completed ", str(update_option), " of ", str(to_run), "\n"]))
+    if update_option == to_run:
+        this_job.logprint(''.join(["Completed ", str(update_option), " and to run is ", str(to_run), " firing event\n"]))
         DP = wp.DataProduct(this_dp_id)
         tid = DP.target_id
         path = this_conf.procpath
