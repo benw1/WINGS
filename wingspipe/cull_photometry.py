@@ -195,7 +195,8 @@ def classify(out_df, out_lab,
 
 
 def read_my_data(fileroot, filenameroot, targroot, filt):
-    fits_data = fits.open(fileroot + "Mixed_" + filenameroot + '_' + targroot + '_' + filt + '_observed_SCA01.fits')
+    #fits_data = fits.open(fileroot + "Mixed_" + filenameroot + '_' + targroot + '_' + filt + '_observed_SCA01.fits')
+    fits_data = fits.open(fileroot + "Mixed_" + filenameroot + '_' + filt + '_observed_SCA01.fits')
     print("ALL has this many tables: ", len(fits_data))
     count = 0
     check = 0
@@ -641,7 +642,9 @@ def make_cmd_and_xy(all_in={}, all_out={}, clean_out={},
                        ylabel='magIn - magOut', xlabel='magOut', title='In-Out Mag Diff {:s}'.format(filt),
                        fileroot=fileroot, outfile='_'.join((filepre, 'mag', 'diff', filt)), show_plot=show_plot)
 
-    m1_in, m2_in, typ_in = np.array([])
+    #BFW commenting out this line
+    #m1_in, m2_in, typ_in = np.array([])
+
     if ('input' in opt) & (len(all_in) > 0):
         m1_in, m2_in, typ_in = all_in['m1_in'], all_in['m2_in'], all_in['typ_in']
         stars, other = typ_in == 'point', typ_in != 'point'
