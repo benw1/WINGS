@@ -67,7 +67,7 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
     imgpath = config.procpath + '/' + new_image_name
     outims = outimages(imgpath)
     if len(outims) > 0:
-        return
+        return 0
     try:
         dp.filename = new_image_name
     except:
@@ -96,6 +96,7 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
         skyname = front + '.sky.fits'
         _dp2 = config.dataproduct(filename=skyname, relativepath=config.procpath, group='proc',
                                   subtype='dolphot_sky', filtername=filtname)
+    return 1
 
 
 def fixwcs(imgpath):
@@ -153,7 +154,7 @@ if __name__ == '__main__':
         this_dp = wp.DataProduct(this_dp_id)
         filtername = this_dp.filtername
         imagepath = this_dp.relativepath + '/' + this_dp.filename
-        prep_image(imagepath, filtername, this_config, this_job, this_dp_id)
+        needcheck = prep_image(imagepath, filtername, this_config, this_job, this_dp_id)
         parent_job_id = this_event.parent_job_id
         parent_job = this_event.parent_job
         compname = this_event.options['name']
@@ -166,7 +167,8 @@ if __name__ == '__main__':
         ######
         update_option = parent_job.options[compname]
         wp.si.commit()
-        update_option += 1
+        if (needcheck == 1):
+            update_option += 1
         ######
         to_run = this_event.options['to_run']
         completed = int(update_option)
@@ -175,19 +177,25 @@ if __name__ == '__main__':
         this_conf = catalogDP.config
         this_job.logprint(''.join(["Completed ", str(completed), " of ", str(to_run), "\n"]))
         if completed == to_run:
-            detnames1 = this_config.parameters['detnames']
+            try:
+                detnames1 = this_config.parameters['detnames']
+            except:
+                detnames1 = this_target.name
             this_job.logprint(''.join(["Detnames =",detnames1,"\n"]))
             for i in range(numdet):
-       
-                detparname = "det"+str(i+1)+"name"
-                detname = this_config.parameters[detparname]
-                print(detparname)
+                try: 
+                    detparname = "det"+str(i+1)+"name"
+                    detname = this_config.parameters[detparname]
+                    print(detparname)
+                except:
+                    detname = this_target.name
                 print(detname)
          
-                new_event = this_job.child_event('images_prepped', tag=detname, options={'target_id': tid,'detname': detname})
+                new_event = this_job.child_event('images_prepped', tag=detname, options={'target_id': tid,'detname': detname,'submission_type': 'pbs'})
                 this_job.logprint('about to fire')
                 new_event.fire()
                 this_job.logprint('fired')
                 this_job.logprint('images_prepped\n')
                 this_job.logprint(''.join(["Event= ", str(new_event.event_id),"\n",detname,"\n","images_prepped\n"]))
                 time.sleep(1)
+
