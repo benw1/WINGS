@@ -281,6 +281,7 @@ def prep_data(input_data, output_data, sky_coord=SKY_COORD,
                                    radec={'opt': use_radec,
                                           'wcs1': sky_coord[i],
                                           'wcs2': sky_coord[ref_fits]}))
+    print("IN_DF ",in_df,len(in_df),in_df[0])
     return in_df, out_df, labels
 
 
@@ -609,6 +610,7 @@ def make_plots(in_df, out_df, new_labels,
             radec2 = {'opt': use_radec,
                       'wcs1': sky_coord[i], 'wcs2': sky_coord[ref_fits]}
             in_pair, out_pair = paired_in(i, j, radec1), paired_out(i, j)
+            print("PAIRED IN",in_pair,"LENGTH ",len(in_pair))
             cln_pair = clean_pair(in_pair, out_pair, tol=tol, radec=radec2)
             make_cmd_and_xy(in_pair, out_pair, cln_pair,
                             fileroot=fileroot, tol=tol, filepre=nameroot,
@@ -644,6 +646,9 @@ def make_cmd_and_xy(all_in={}, all_out={}, clean_out={},
 
     #BFW commenting out this line
     #m1_in, m2_in, typ_in = np.array([])
+    m1_in = np.array([])
+    m2_in = np.array([])
+    typ_in = np.array([])
 
     if ('input' in opt) & (len(all_in) > 0):
         m1_in, m2_in, typ_in = all_in['m1_in'], all_in['m2_in'], all_in['typ_in']
