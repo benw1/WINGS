@@ -47,7 +47,7 @@ else:
     ENGINE_URL = 'mysql://wings:wings2025@10.150.27.94:8020/server'
     # ENGINE_URL = 'mysql+mysqlconnector://root:password@localhost:8000/server'
 
-POOL_RECYLE = 60  # 3600
+POOL_RECYLE = 3600
 
 engine = sa.create_engine(ENGINE_URL, echo=verbose, pool_recycle=POOL_RECYLE)
 """
