@@ -47,7 +47,9 @@ else:
     ENGINE_URL = 'mysql://wings:wings2025@10.150.27.94:8020/server'
     # ENGINE_URL = 'mysql+mysqlconnector://root:password@localhost:8000/server'
 
-engine = sa.create_engine(ENGINE_URL, echo=verbose, pool_recycle=3600)
+POOL_RECYLE = 60  # 3600
+
+engine = sa.create_engine(ENGINE_URL, echo=verbose, pool_recycle=POOL_RECYLE)
 """
 sqlalchemy.engine.base.Engine object: handles the connection to the database.
 """
@@ -59,6 +61,9 @@ sqlalchemy.engine.base.Engine object: handles the connection to the database.
 if not sqlite:
     engine.execute("CREATE DATABASE IF NOT EXISTS wpipe")
     engine.execute("USE wpipe")
+    ENGINE_URL = ENGINE_URL.replace('server', 'wpipe')
+    engine.dispose()
+    engine = sa.create_engine(ENGINE_URL, echo=verbose, pool_recycle=POOL_RECYLE)
 
 Base = declarative_base()
 """
