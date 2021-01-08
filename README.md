@@ -56,29 +56,52 @@ python setup.py install
 The package `wpipe` requires a working and running MySQL server to function. You may use either a local MySQL installation or prepare a MySQL database Docker container via the scripts provided in the [scripts](https://github.com/benw1/WINGS/tree/develop/scripts) directory. In both cases, `wpipe` is linked to the server via an engine URL that it needs before importing. If using a local MySQL installation, that engine URL must be set as an environment variable `WPIPE_ENGINEURL` in the following format:
 
 ```
-mysql://<username>:<password>@localhost/server
+mysql+pymysql://<username>:<password>@localhost/server
+```
+For example, in bash:
+```
+export WPIPE_ENGINEURL="mysql+pymysql://<username>:<password>@localhost/server"
 ```
 
 If you want to have the MySQL server placed into its own Docker container, the following instructions will help you getting it set up.
 
 ##### Launching MySql 5.7.29 Docker Container
-Make sure [Docker](https://www.docker.com/get-started) is setup on your computer.  Then run the bash script [`run_mysql_container.sh`](https://github.com/benw1/WINGS/blob/develop/scripts/run_mysql_container.sh) in the scripts directory.  This will pull the MySQL image, if needed, and will store the database in `"${HOME}/docker/storage/wings_mysql/"` when the container runs.  This will launch a database on port 8000 with root password of *password*.  To bring up the command line for the server run this command (make sure you have the MySQL client installed to be able to run the mysql commmand):
+
+Install MySQL client if not already on your maching, for example
+https://formulae.brew.sh/formula/mysql-client
+or
+sudo apt-get install mysql-client
+or
+https://dev.mysql.com/doc/mysql-shell/8.0/en/mysql-shell-install.html
+
+Make sure [Docker](https://www.docker.com/get-started) is setup on your computer, and that it is running.  On a mac, it can be started with:
+```
+open -a Docker
+```
+
+Then run the bash script in the script/ subdirectory
+```
+scripts/run_mysql_container.sh
+```
+This will pull the MySQL image, if needed, and will store the database in `"${HOME}/docker/storage/wings_mysql/"` when the container runs.  This will launch a database on port 8000 with root password of *password*.  To bring up the command line for the server run this command (make sure you have the MySQL client installed to be able to run the mysql commmand):
 
 ```
 mysql --host localhost -P 8000 --protocol=tcp -u root -p
 ```
 
-You will be prompted with the set password.  The rest of the server setup should be handled by running the pipeline (ie running create database if needed).
+You will be prompted for a password, which is "password" by default.  The rest of the server setup should be handled by running the pipeline (ie running create database if needed).
 
-We will want to set that environment variable for the engine url:
+Now set the environment variable for the engine url using your newly-installed docker database:
 
 ```
 export WPIPE_ENGINEURL="mysql+pymysql://root:password@localhost:8000/server"
 ```
 
-This uses `pymysql` as the connector to MySQL only because there was trouble using other connectors for SQLAlchemy.  You can try other connectors, but ensure you have `pymysql` installed if you do use it.  Note that the repo install doesn't install `pymysql` since we don't use it in deployment.
+In this case, wpipe uses `pymysql` as the connector to MySQL only because there was trouble using other connectors for SQLAlchemy.  You can try other connectors, but ensure you have `pymysql` installed if you do use it.  Note that the repo install doesn't install `pymysql` since we don't use it in deployment. To install pymysql:
 
-For stopping the container use the normal Docker command line tools and look for the container named *wingsmyql*.
+```
+pip install PyMySQL
+```
 
 #### Setting useful environment variables
 
@@ -123,6 +146,16 @@ If you want to remove a pipeline, you may do so by using
 wingspipe delete
 ```
 
+
+###Stopping docker database
+
+
+For stopping the docker container use the normal Docker command line tools and look for the container named *wingsmysql*.
+```
+docker container stop wingsmysql
+```
+
+
 ## Contributing
 
 <!-- Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details. -->
@@ -136,4 +169,3 @@ See the list of [contributors](https://github.com/benw1/WINGS/graphs/contributor
 <!-- This project is licensed under the  - see the [LICENSE.md](LICENSE.md) file for details -->
 
 ## Acknowledgments
-
