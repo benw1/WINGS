@@ -9,7 +9,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-You need to have MySQL installed and a working Python3 installation. If your machine can connect to the Python Package Index (PyPI), the installation process will handle the necessary dependencies. Otherwise, you will need to have the following packages installed:
+You need to have MySQL installed and a working Python3 installation. If your machine can connect to the Python Package Index (PyPI), the installation `wpipe` process will handle the package necessary dependencies. Otherwise, you will need to have the following packages installed:
 
 ```
 numpy
@@ -20,7 +20,7 @@ sqlalchemy
 mysql-connector-python
 mysqlclient
 astropy
-jinja2'
+jinja2
 ```
 
 ### Installing `wpipe`
@@ -53,14 +53,16 @@ python setup.py install
 
 #### Preparing the MySQL server
 
-The package `wpipe` requires a working and running MySQL server to function. You may use either a local MySQL installation or prepare a MySQL database docker container via the scripts provided in the [scripts](https://github.com/benw1/WINGS/tree/develop/scripts) directory. In both cases, `wpipe` is linked to the server via an engine URL that it needs before importing. For the former case, that engine URL must be set as an environment variable `WPIPE_ENGINEURL` in the following format:
+The package `wpipe` requires a working and running MySQL server to function. You may use either a local MySQL installation or prepare a MySQL database Docker container via the scripts provided in the [scripts](https://github.com/benw1/WINGS/tree/develop/scripts) directory. In both cases, `wpipe` is linked to the server via an engine URL that it needs before importing. If using a local MySQL installation, that engine URL must be set as an environment variable `WPIPE_ENGINEURL` in the following format:
 
 ```
 mysql://<username>:<password>@localhost/server
 ```
 
-#### Launching MySql 5.7.29 Docker Container
-Mak sure Docker is setup on your computer.  Then run the bash script `run_mysql_container.sh` in the scripts repo directory.  This will pull the MySql image, if needed, and will store the DB in `"${HOME}/docker/storage/wings_mysql/"` when the container runs.  This will launch a DB on port 8000 with root password of *password*.  To bring up the command line for the server run this command (make sure you have the MySql client installed to be able to run the mysql commmand):
+If you want to have the MySQL server placed into its own Docker container, the following instructions will help you getting it set up.
+
+##### Launching MySql 5.7.29 Docker Container
+Make sure [Docker](https://www.docker.com/get-started) is setup on your computer.  Then run the bash script [`run_mysql_container.sh`](https://github.com/benw1/WINGS/blob/develop/scripts/run_mysql_container.sh) in the scripts directory.  This will pull the MySQL image, if needed, and will store the database in `"${HOME}/docker/storage/wings_mysql/"` when the container runs.  This will launch a database on port 8000 with root password of *password*.  To bring up the command line for the server run this command (make sure you have the MySQL client installed to be able to run the mysql commmand):
 
 ```
 mysql --host localhost -P 8000 --protocol=tcp -u root -p
@@ -74,7 +76,7 @@ We will want to set that environment variable for the engine url:
 export WPIPE_ENGINEURL="mysql+pymysql://root:password@localhost:8000/server"
 ```
 
-This uses `pymysql` as the connector to MySql only because there was trouble using other connectors for SqlAlchemy.  You can try other connectors, but ensure you have `pymysql` installed if you do use it.  Note that the repo install doesn't install `pymysql` since we don't use it in deployment.
+This uses `pymysql` as the connector to MySQL only because there was trouble using other connectors for SQLAlchemy.  You can try other connectors, but ensure you have `pymysql` installed if you do use it.  Note that the repo install doesn't install `pymysql` since we don't use it in deployment.
 
 For stopping the container use the normal Docker command line tools and look for the container named *wingsmyql*.
 
