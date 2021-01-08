@@ -59,6 +59,25 @@ The package `wpipe` requires a working and running MySQL server to function. You
 mysql://<username>:<password>@localhost/server
 ```
 
+#### Launching MySql 5.7.29 Docker Container
+Mak sure Docker is setup on your computer.  Then run the bash script `run_mysql_container.sh` in the scripts repo directory.  This will pull the MySql image, if needed, and will store the DB in `"${HOME}/docker/storage/wings_mysql/"` when the container runs.  This will launch a DB on port 8000 with root password of *password*.  To bring up the command line for the server run this command (make sure you have the MySql client installed to be able to run the mysql commmand):
+
+```
+mysql --host localhost -P 8000 --protocol=tcp -u root -p
+```
+
+You will be prompted with the set password.  The rest of the server setup should be handled by running the pipeline (ie running create database if needed).
+
+We will want to set that environment variable for the engine url:
+
+```
+export WPIPE_ENGINEURL="mysql+pymysql://root:password@localhost:8000/server"
+```
+
+This uses `pymysql` as the connector to MySql only because there was trouble using other connectors for SqlAlchemy.  You can try other connectors, but ensure you have `pymysql` installed if you do use it.  Note that the repo install doesn't install `pymysql` since we don't use it in deployment.
+
+For stopping the container use the normal Docker command line tools and look for the container named *wingsmyql*.
+
 #### Setting useful environment variables
 
 ##### `PBS Scheduler`
