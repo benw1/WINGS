@@ -3,6 +3,7 @@ import subprocess
 from shutil import which
 
 import wpipe as wp
+import importlib
 
 
 def register(task):
@@ -33,6 +34,7 @@ def run_dolphot(dp_id):
     _p=subprocess.run(command,cwd=my_config.procpath,shell=True)
     print(_p)
     _p.check_returncode()
+    importlib.reload(wp)
     _dp = my_config.dataproduct(filename=outfile, relativepath=my_config.procpath, group='proc', subtype='photfile')
     dpid = _dp.dp_id
     return dpid
