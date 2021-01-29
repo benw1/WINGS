@@ -49,7 +49,7 @@ else:
 
 POOL_RECYLE = 3600
 
-engine = sa.create_engine(ENGINE_URL, echo=verbose, pool_recycle=POOL_RECYLE)
+engine = sa.create_engine(ENGINE_URL, echo=verbose, pool_recycle=POOL_RECYLE, pool_pre_ping=True)
 """
 sqlalchemy.engine.base.Engine object: handles the connection to the database.
 """
@@ -63,7 +63,7 @@ if not sqlite:
     engine.execute("USE wpipe")
     ENGINE_URL = ENGINE_URL.replace('server', 'wpipe')
     engine.dispose()
-    engine = sa.create_engine(ENGINE_URL, echo=verbose, pool_recycle=POOL_RECYLE)
+    engine = sa.create_engine(ENGINE_URL, echo=verbose, pool_recycle=POOL_RECYLE,pool_pre_ping=True)
 
 Base = declarative_base()
 """
