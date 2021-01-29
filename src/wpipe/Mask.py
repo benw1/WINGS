@@ -74,7 +74,8 @@ class Mask:
         if not isinstance(cls._mask, si.Mask):
             keyid = kwargs.get('id', cls._mask)
             if isinstance(keyid, int):
-                cls._mask = si.query(si.Mask).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._mask = session.query(si.Mask).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=3)
@@ -87,7 +88,7 @@ class Mask:
                     with retry:
                         this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._mask = si.query(si.Mask).with_for_update(). \
+                            cls._mask = this_nested.session.query(si.Mask).with_for_update(). \
                                 filter_by(task_id=task.task_id). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
@@ -103,8 +104,9 @@ class Mask:
         return cls._inst
 
     def __init__(self, *args, **kwargs):
-        self._mask.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._mask.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -121,8 +123,9 @@ class Mask:
         out : list of Mask object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.query(si.Mask).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Mask).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -142,9 +145,10 @@ class Mask:
 
     @name.setter
     def name(self, name):
-        self._mask.name = name
-        self._mask.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._mask.name = name
+            self._mask.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def mask_id(self):

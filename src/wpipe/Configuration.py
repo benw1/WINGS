@@ -157,7 +157,8 @@ class Configuration(DPOwner):
         if not isinstance(cls._configuration, si.Configuration):
             keyid = kwargs.get('id', cls._configuration)
             if isinstance(keyid, int):
-                cls._configuration = si.query(si.Configuration).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._configuration = session.query(si.Configuration).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)
@@ -172,7 +173,7 @@ class Configuration(DPOwner):
                     with retry:
                         this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._configuration = si.query(si.Configuration).with_for_update(). \
+                            cls._configuration = this_nested.session.query(si.Configuration).with_for_update(). \
                                 filter_by(target_id=target.target_id). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
@@ -229,8 +230,9 @@ class Configuration(DPOwner):
         out : list of Configuration object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.query(si.Configuration).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Configuration).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -250,9 +252,10 @@ class Configuration(DPOwner):
 
     @name.setter
     def name(self, name):
-        self._configuration.name = name
-        self._configuration.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._configuration.name = name
+            self._configuration.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def config_id(self):
@@ -309,9 +312,10 @@ class Configuration(DPOwner):
 
     @description.setter
     def description(self, description):
-        self._configuration.description = description
-        self._configuration.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._configuration.description = description
+            self._configuration.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def target_id(self):

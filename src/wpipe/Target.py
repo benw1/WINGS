@@ -112,7 +112,8 @@ class Target(OptOwner):
         if not isinstance(cls._target, si.Target):
             keyid = kwargs.get('id', cls._target)
             if isinstance(keyid, int):
-                cls._target = si.query(si.Target).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._target = session.query(si.Target).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
@@ -123,7 +124,7 @@ class Target(OptOwner):
                     with retry:
                         this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._target = si.query(si.Target).with_for_update(). \
+                            cls._target = this_nested.session.query(si.Target).with_for_update(). \
                                 filter_by(input_id=input.input_id). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
@@ -167,8 +168,9 @@ class Target(OptOwner):
         out : list of Target object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.query(si.Target).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Target).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -188,9 +190,10 @@ class Target(OptOwner):
 
     @name.setter
     def name(self, name):
-        self._target.name = name
-        self._target.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._target.name = name
+            self._target.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def target_id(self):

@@ -180,7 +180,8 @@ class Job(OptOwner):
         if not isinstance(cls._job, si.Job):
             keyid = kwargs.get('id', cls._job)
             if isinstance(keyid, int):
-                cls._job = si.query(si.Job).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._job = session.query(si.Job).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
@@ -200,7 +201,7 @@ class Job(OptOwner):
                     with retry:
                         this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._job = si.query(si.Job).with_for_update(). \
+                            cls._job = this_nested.session.query(si.Job).with_for_update(). \
                                 filter_by(task_id=task.task_id)
                             if config is not None:
                                 cls._job = cls._job. \
@@ -258,8 +259,9 @@ class Job(OptOwner):
         out : list of Job object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.query(si.Job).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Job).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -288,9 +290,10 @@ class Job(OptOwner):
 
     @state.setter
     def state(self, state):
-        self._job.state = state
-        self._job.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._job.state = state
+            self._job.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def job_id(self):
@@ -401,8 +404,9 @@ class Job(OptOwner):
         if self.has_a_node:
             raise AttributeError("can't set attribute")
         else:
-            node._node.jobs.append(self._job)
-            si.commit()
+            with si.begin_session() as session:
+                node._node.jobs.append(self._job)
+                session.commit()
 
     @property
     def config_id(self):
@@ -520,19 +524,21 @@ class Job(OptOwner):
             logprint = self.logprint()
             sys.stdout = sys.stderr = logprint.open("a")
             logging.basicConfig(filename=logprint.path, format="%(asctime)s %(levelname)s %(name)s %(message)s")
-        self.state = JOBSUBMSTATE
-        self._job.starttime = datetime.datetime.utcnow()
-        self._job.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self.state = JOBSUBMSTATE
+            self._job.starttime = datetime.datetime.utcnow()
+            self._job.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     def _ending_todo(self):
-        if hasattr(sys, "last_value"):
-            self.state = repr(sys.last_value)
-        else:
-            self.state = JOBCOMPSTATE
-            self._job.endtime = datetime.datetime.utcnow()
-        self._job.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            if hasattr(sys, "last_value"):
+                self.state = repr(sys.last_value)
+            else:
+                self.state = JOBCOMPSTATE
+                self._job.endtime = datetime.datetime.utcnow()
+            self._job.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     def reset(self):
         """

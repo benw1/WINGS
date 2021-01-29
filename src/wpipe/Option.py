@@ -72,7 +72,8 @@ class Option:
         if not isinstance(cls._option, si.Option):
             keyid = kwargs.get('id', cls._option)
             if isinstance(keyid, int):
-                cls._option = si.query(si.Option).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._option = session.query(si.Option).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)
@@ -86,7 +87,7 @@ class Option:
                     with retry:
                         this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._option = si.query(si.Option).with_for_update(). \
+                            cls._option = this_nested.session.query(si.Option).with_for_update(). \
                                 filter_by(optowner_id=optowner.optowner_id). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
@@ -101,8 +102,9 @@ class Option:
         return cls._inst
 
     def __init__(self, *args, **kwargs):
-        self._option.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._option.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -119,8 +121,9 @@ class Option:
         out : list of Option object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.query(si.Option).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Option).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -141,9 +144,10 @@ class Option:
 
     @name.setter
     def name(self, name):
-        self._option.name = name
-        self._option.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._option.name = name
+            self._option.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def option_id(self):
@@ -172,9 +176,10 @@ class Option:
 
     @value.setter
     def value(self, value):
-        self._option.value = value
-        self._option.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._option.value = value
+            self._option.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def optowner(self):

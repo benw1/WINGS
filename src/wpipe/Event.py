@@ -127,7 +127,8 @@ class Event(OptOwner):
         if not isinstance(cls._event, si.Event):
             keyid = kwargs.get('id', cls._event)
             if isinstance(keyid, int):
-                cls._event = si.query(si.Event).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._event = session.query(si.Event).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=4)
@@ -141,7 +142,7 @@ class Event(OptOwner):
                     with retry:
                         this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._event = si.query(si.Event).with_for_update(). \
+                            cls._event = this_nested.session.query(si.Event).with_for_update(). \
                                 filter_by(parent_job_id=job.job_id). \
                                 filter_by(name=name). \
                                 filter_by(tag=tag).one()
@@ -181,8 +182,9 @@ class Event(OptOwner):
         out : list of Event object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.query(si.Event).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Event).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -202,9 +204,10 @@ class Event(OptOwner):
 
     @name.setter
     def name(self, name):
-        self._event.name = name
-        self._event.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._event.name = name
+            self._event.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def tag(self):
@@ -218,9 +221,10 @@ class Event(OptOwner):
 
     @tag.setter
     def tag(self, tag):
-        self._event.tag = tag
-        self._event.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._event.tag = tag
+            self._event.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def event_id(self):
@@ -247,9 +251,10 @@ class Event(OptOwner):
 
     @value.setter
     def value(self, value):
-        self._event.value = value
-        self._event.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._event.value = value
+            self._event.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def parent_job_id(self):

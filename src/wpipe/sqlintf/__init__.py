@@ -51,12 +51,12 @@ __all__ = ['sa', 'orm', 'exc', 'argparse', 'PARSER', 'Session', 'SESSION',
            'User', 'Node', 'Pipeline', 'DPOwner', 'Input', 'Option',
            'OptOwner', 'Target', 'Configuration', 'Parameter', 'DataProduct',
            'Task', 'Mask', 'Job', 'Event',
-           'COMMIT_FLAG', 'hold_commit', 'begin_session', 'commit',  # 'refresh', 'begin_nested', 'rollback',
-           'retrying_nested', 'query', 'add', 'delete']
+           'COMMIT_FLAG', 'hold_commit', 'begin_session', 'retrying_nested',
+           'delete']
 
 Base.metadata.create_all(Engine)
 
-SESSION = Session()
+SESSION = None  # Session()
 """
 sqlalchemy.orm.session.Session object: placeholder (manages database operations via the engine).
 """
@@ -80,7 +80,6 @@ def activate_commit():
 class HoldCommit:
     def __init__(self):
         self.existing_flag = COMMIT_FLAG
-        pass
 
     def __enter__(self):
         if self.existing_flag:
@@ -108,7 +107,7 @@ class BeginSession:
         return super(BeginSession, self).__dir__() + self.SESSION.__dir__()
 
     def __enter__(self):
-        if not self.EXISTING_SESSION and not self.SESSION.autocommit:
+        if not self.EXISTING_SESSION and self.SESSION.autocommit:
             self.begin()
         return self
 
@@ -125,29 +124,13 @@ class BeginSession:
         else:
             raise AttributeError("'%s' object has no attribute '%s'" % (self.__class__.__name__, item))
 
+    def commit(self):
+        if COMMIT_FLAG:
+            self.SESSION.commit()
+
 
 def begin_session(**local_kw):
     return BeginSession(**local_kw)
-
-
-def commit():
-    """
-    Flush and commit pending changes if COMMIT_FLAG is True.
-    """
-    if COMMIT_FLAG:
-        SESSION.commit()
-
-
-# def refresh(*args, **kwargs):
-#     SESSION.refresh(*args, **kwargs)
-
-
-# def begin_nested():
-#     return SESSION.begin_nested()
-
-
-# def rollback():
-#     SESSION.rollback()
 
 
 def retrying_nested():
@@ -157,6 +140,7 @@ def retrying_nested():
         if not hasattr(retry_state, 'session'):
             retry_state.session = begin_session().__enter__()
             retry_state.begin_nested = retry_state.session.begin_nested
+            retry_state.query = retry_state.session.query
             retry_state.TRANSACTION = retry_state.begin_nested()
 
             def _commit():
@@ -190,39 +174,6 @@ def retrying_nested():
                        after=after)
 
 
-def query(*entities, **kwargs):
-    """
-    ###
-
-    Parameters
-    ----------
-    entities
-        ###
-
-    kwargs
-        ###
-
-    Returns
-    -------
-    query : :class:`sqlalchemy.orm.query.Query`
-        Job corresponding to given kwargs.
-    """
-    return SESSION.query(*entities, **kwargs)
-
-
-def add(entry):
-    """
-    Add entry to the database.
-
-    Parameters
-    ----------
-    entry : sqlintf object
-        Proxy of entry to add.
-    """
-    SESSION.add(entry)
-    # commit()
-
-
 def delete(entry):
     """
     Delete entry from the database.
@@ -232,12 +183,14 @@ def delete(entry):
     entry : sqlintf object
         Proxy of entry to delete.
     """
-    SESSION.delete(entry)
-    commit()
+    with begin_session() as session:
+        session.delete(entry)
+        session.commit()
 
 
 def show_engine_status():
-    a = SESSION.execute("SHOW ENGINE INNODB STATUS;").fetchall()
+    with begin_session() as session:
+        a = session.execute("SHOW ENGINE INNODB STATUS;").fetchall()
     return a[0][2]
 
 

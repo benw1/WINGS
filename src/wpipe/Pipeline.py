@@ -175,11 +175,12 @@ class Pipeline(DPOwner):
                         cls._pipeline = int(json.load(jsonfile)[0]['id'])
             keyid = kwargs.get('id', cls._pipeline)
             if isinstance(keyid, int):
-                try:
-                    cls._pipeline = si.query(si.Pipeline).filter_by(id=keyid).one()
-                except si.orm.exc.NoResultFound:
-                    raise (si.orm.exc.NoResultFound(
-                        "No row was found for one(): make sure the .wpipe/ directory was removed"))
+                with si.begin_session() as session:
+                    try:
+                        cls._pipeline = session.query(si.Pipeline).filter_by(id=keyid).one()
+                    except si.orm.exc.NoResultFound:
+                        raise (si.orm.exc.NoResultFound(
+                            "No row was found for one(): make sure the .wpipe/ directory was removed"))
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=8)
@@ -208,7 +209,7 @@ class Pipeline(DPOwner):
                     with retry:
                         this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._pipeline = si.query(si.Pipeline).with_for_update(). \
+                            cls._pipeline = this_nested.session.query(si.Pipeline).with_for_update(). \
                                 filter_by(user_id=user.user_id). \
                                 filter_by(pipe_root=pipe_root).one()
                             this_nested.rollback()
@@ -276,8 +277,9 @@ class Pipeline(DPOwner):
         out : list of Pipeline object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.query(si.Pipeline).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Pipeline).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -297,9 +299,10 @@ class Pipeline(DPOwner):
 
     @name.setter
     def name(self, name):
-        self._pipeline.name = name
-        self._pipeline.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._pipeline.name = name
+            self._pipeline.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def pipeline_id(self):
@@ -367,9 +370,10 @@ class Pipeline(DPOwner):
 
     @description.setter
     def description(self, description):
-        self._pipeline.description = description
-        self._pipeline.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._pipeline.description = description
+            self._pipeline.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def user_id(self):

@@ -125,7 +125,9 @@ if __name__ == "__main__":
         # TODO: Make this more sophisticated
         # Set to turn off after two days.
         logging.info('Running loop forever ...')
-        SESSION.close()
+        if SESSION is not None:
+            SESSION.close()
+            # SESSION = None
         loop.call_later(172800, lambda: sendJobToPbs("poisonpill"))  # This kills the server after some time
         loop.call_later(60 * 30, lambda: periodicLog())
         loop.run_forever()

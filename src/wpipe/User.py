@@ -76,7 +76,8 @@ class User:
         if not isinstance(cls._user, si.User):
             keyid = kwargs.get('id', cls._user)
             if isinstance(keyid, int):
-                cls._user = si.query(si.User).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._user = session.query(si.User).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
@@ -86,12 +87,12 @@ class User:
                     with retry:
                         this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._user = si.query(si.User).with_for_update(). \
+                            cls._user = this_nested.session.query(si.User).with_for_update(). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
                         except si.orm.exc.NoResultFound:
                             cls._user = si.User(name=name)
-                            si.add(cls._user)
+                            this_nested.session.add(cls._user)
                             this_nested.commit()
                         retry.retry_state.commit()
         # verifying if instance already exists and return
@@ -101,8 +102,9 @@ class User:
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_pipelines_proxy'):
             self._pipelines_proxy = ChildrenProxy(self._user, 'pipelines', 'Pipeline', child_attr='pipe_root')
-        self._user.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._user.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -119,8 +121,9 @@ class User:
         out : list of User object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.query(si.User).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.User).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -140,9 +143,10 @@ class User:
 
     @name.setter
     def name(self, name):
-        self._user.name = name
-        self._user.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._user.name = name
+            self._user.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def user_id(self):

@@ -27,8 +27,9 @@ class DPOwner:
         if not hasattr(self, '_dataproducts_proxy'):
             self._dataproducts_proxy = ChildrenProxy(self._dpowner, 'dataproducts', 'DataProduct',
                                                      child_attr='filename')
-        self._dpowner.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._dpowner.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def dpowner_id(self):

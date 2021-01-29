@@ -113,7 +113,8 @@ class Task:
         if not isinstance(cls._task, si.Task):
             keyid = kwargs.get('id', cls._task)
             if isinstance(keyid, int):
-                cls._task = si.query(si.Task).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._task = session.query(si.Task).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=4)
@@ -127,7 +128,7 @@ class Task:
                     with retry:
                         this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._task = si.query(si.Task).with_for_update(). \
+                            cls._task = this_nested.session.query(si.Task).with_for_update(). \
                                 filter_by(pipeline_id=pipeline.pipeline_id). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
@@ -151,8 +152,9 @@ class Task:
         if not hasattr(self, '_jobs_proxy'):
             self._jobs_proxy = ChildrenProxy(self._task, 'jobs', 'Job',
                                              child_attr='id')
-        self._task.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._task.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -169,8 +171,9 @@ class Task:
         out : list of Task object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.query(si.Task).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Task).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -190,9 +193,10 @@ class Task:
 
     @name.setter
     def name(self, name):
-        self._task.name = name
-        self._task.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._task.name = name
+            self._task.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def task_id(self):

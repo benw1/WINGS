@@ -128,7 +128,8 @@ class Input(DPOwner):
         if not isinstance(cls._input, si.Input):
             keyid = kwargs.get('id', cls._input)
             if isinstance(keyid, int):
-                cls._input = si.query(si.Input).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._input = session.query(si.Input).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
@@ -139,7 +140,7 @@ class Input(DPOwner):
                     with retry:
                         this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._input = si.query(si.Input).with_for_update(). \
+                            cls._input = this_nested.session.query(si.Input).with_for_update(). \
                                 filter_by(pipeline_id=pipeline.pipeline_id). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
@@ -182,8 +183,9 @@ class Input(DPOwner):
         out : list of Input object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.query(si.Input).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Input).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @classmethod
     def _copy_data(cls, path):
@@ -222,9 +224,10 @@ class Input(DPOwner):
 
     @name.setter
     def name(self, name):
-        self._input.name = name
-        self._input.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._input.name = name
+            self._input.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def input_id(self):

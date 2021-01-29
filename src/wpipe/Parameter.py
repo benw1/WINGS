@@ -71,7 +71,8 @@ class Parameter:
         if not isinstance(cls._parameter, si.Parameter):
             keyid = kwargs.get('id', cls._parameter)
             if isinstance(keyid, int):
-                cls._parameter = si.query(si.Parameter).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._parameter = session.query(si.Parameter).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)
@@ -83,7 +84,7 @@ class Parameter:
                     with retry:
                         this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._parameter = si.query(si.Parameter).with_for_update(). \
+                            cls._parameter = this_nested.session.query(si.Parameter).with_for_update(). \
                                 filter_by(config_id=config.config_id). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
@@ -98,8 +99,9 @@ class Parameter:
         return cls._inst
 
     def __init__(self, *args, **kwargs):
-        self._parameter.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._parameter.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -116,8 +118,9 @@ class Parameter:
         out : list of Parameter object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.query(si.Parameter).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Parameter).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -135,9 +138,10 @@ class Parameter:
 
     @name.setter
     def name(self, name):
-        self._parameter.name = name
-        self._parameter.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._parameter.name = name
+            self._parameter.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def parameter_id(self):
@@ -166,9 +170,10 @@ class Parameter:
 
     @value.setter
     def value(self, value):
-        self._parameter.value = value
-        self._parameter.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._parameter.value = value
+            self._parameter.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def config(self):

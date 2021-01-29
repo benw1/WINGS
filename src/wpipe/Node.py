@@ -82,7 +82,8 @@ class Node:
         if not isinstance(cls._node, si.Node):
             keyid = kwargs.get('id', cls._node)
             if isinstance(keyid, int):
-                cls._node = si.query(si.Node).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._node = session.query(si.Node).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=3)
@@ -94,14 +95,14 @@ class Node:
                     with retry:
                         this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._node = si.query(si.Node).with_for_update(). \
+                            cls._node = this_nested.session.query(si.Node).with_for_update(). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
                         except si.orm.exc.NoResultFound:
                             cls._node = si.Node(name=name,
                                                 int_ip=int_ip,
                                                 ext_ip=ext_ip)
-                            si.add(cls._node)
+                            this_nested.session.add(cls._node)
                             this_nested.commit()
                         retry.retry_state.commit()
         # verifying if instance already exists and return
@@ -112,8 +113,9 @@ class Node:
         if not hasattr(self, '_jobs_proxy'):
             self._jobs_proxy = ChildrenProxy(self._node, 'jobs', 'Job',
                                              child_attr='id')
-        self._node.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._node.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -130,8 +132,9 @@ class Node:
         out : list of Node object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.query(si.Node).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Node).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -151,9 +154,10 @@ class Node:
 
     @name.setter
     def name(self, name):
-        self._node.name = name
-        self._node.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._node.name = name
+            self._node.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def node_id(self):

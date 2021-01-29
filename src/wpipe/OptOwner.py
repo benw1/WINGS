@@ -27,9 +27,10 @@ class OptOwner:
             self._optowner = si.OptOwner()
         if not hasattr(self, '_options_proxy'):
             self._options_proxy = DictLikeChildrenProxy(self._optowner, 'options', 'Option')
-        self.options = options
-        self._optowner.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self.options = options
+            self._optowner.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def optowner_id(self):
@@ -60,7 +61,6 @@ class OptOwner:
     def options(self, options):
         for key, value in options.items():
             self.option(name=key, value=value)
-        si.commit()
 
     def option(self, *args, **kwargs):
         """

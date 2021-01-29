@@ -165,7 +165,8 @@ class DataProduct(OptOwner):
         if not isinstance(cls._dataproduct, si.DataProduct):
             keyid = kwargs.get('id', cls._dataproduct)
             if isinstance(keyid, int):
-                cls._dataproduct = si.query(si.DataProduct).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._dataproduct = session.query(si.DataProduct).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=9)
@@ -186,7 +187,7 @@ class DataProduct(OptOwner):
                     with retry:
                         this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._dataproduct = si.query(si.DataProduct).with_for_update(). \
+                            cls._dataproduct = this_nested.session.query(si.DataProduct).with_for_update(). \
                                 filter_by(dpowner_id=dpowner.dpowner_id). \
                                 filter_by(group=group). \
                                 filter_by(filename=filename).one()
@@ -237,8 +238,9 @@ class DataProduct(OptOwner):
         out : list of DataProduct object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.query(si.DataProduct).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.DataProduct).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -260,9 +262,10 @@ class DataProduct(OptOwner):
     @filename.setter
     def filename(self, filename):
         os.rename(self.relativepath + '/' + self._dataproduct.filename, self.relativepath + '/' + filename)
-        self._dataproduct.name = filename
-        self._dataproduct.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        with si.begin_session() as session:
+            self._dataproduct.name = filename
+            self._dataproduct.timestamp = datetime.datetime.utcnow()
+            session.commit()
 
     @property
     def dp_id(self):
