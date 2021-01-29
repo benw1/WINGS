@@ -165,7 +165,7 @@ class DataProduct(OptOwner):
         if not isinstance(cls._dataproduct, si.DataProduct):
             keyid = kwargs.get('id', cls._dataproduct)
             if isinstance(keyid, int):
-                cls._dataproduct = si.session.query(si.DataProduct).filter_by(id=keyid).one()
+                cls._dataproduct = si.query(si.DataProduct).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=9)
@@ -184,9 +184,9 @@ class DataProduct(OptOwner):
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        this_nested = si.begin_nested()
+                        this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._dataproduct = si.session.query(si.DataProduct).with_for_update(). \
+                            cls._dataproduct = si.query(si.DataProduct).with_for_update(). \
                                 filter_by(dpowner_id=dpowner.dpowner_id). \
                                 filter_by(group=group). \
                                 filter_by(filename=filename).one()
@@ -237,7 +237,7 @@ class DataProduct(OptOwner):
         out : list of DataProduct object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.DataProduct).filter_by(**kwargs)
+        cls._temp = si.query(si.DataProduct).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
@@ -253,7 +253,8 @@ class DataProduct(OptOwner):
         """
         str: Name of the file the dataproduct points to.
         """
-        si.refresh(self._dataproduct)
+        with si.begin_session() as session:
+            session.refresh(self._dataproduct)
         return self._dataproduct.filename
 
     @filename.setter

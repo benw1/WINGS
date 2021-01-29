@@ -127,7 +127,7 @@ class Event(OptOwner):
         if not isinstance(cls._event, si.Event):
             keyid = kwargs.get('id', cls._event)
             if isinstance(keyid, int):
-                cls._event = si.session.query(si.Event).filter_by(id=keyid).one()
+                cls._event = si.query(si.Event).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=4)
@@ -139,9 +139,9 @@ class Event(OptOwner):
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        this_nested = si.begin_nested()
+                        this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._event = si.session.query(si.Event).with_for_update(). \
+                            cls._event = si.query(si.Event).with_for_update(). \
                                 filter_by(parent_job_id=job.job_id). \
                                 filter_by(name=name). \
                                 filter_by(tag=tag).one()
@@ -181,7 +181,7 @@ class Event(OptOwner):
         out : list of Event object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Event).filter_by(**kwargs)
+        cls._temp = si.query(si.Event).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
@@ -196,7 +196,8 @@ class Event(OptOwner):
         """
         str: Name of the mask which task is meant to be the fired job task.
         """
-        si.refresh(self._event)
+        with si.begin_session() as session:
+            session.refresh(self._event)
         return self._event.name
 
     @name.setter
@@ -211,7 +212,8 @@ class Event(OptOwner):
         str: Unique tag to identify the event if multiple event instance fire
         the same task.
         """
-        si.refresh(self._event)
+        with si.begin_session() as session:
+            session.refresh(self._event)
         return self._event.tag
 
     @tag.setter
@@ -239,7 +241,8 @@ class Event(OptOwner):
         """
         str: Value of the mask which task is meant to be the fired job task.
         """
-        si.refresh(self._event)
+        with si.begin_session() as session:
+            session.refresh(self._event)
         return self._event.value
 
     @value.setter

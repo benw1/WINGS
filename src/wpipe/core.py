@@ -245,7 +245,8 @@ def return_dict_of_attrs(obj):
     attrs : dict
         Dictionary of attributes of obj.
     """
-    si.commit()
+    with si.begin_session() as session:
+        session.refresh(obj)
     return dict((attr, getattr(obj, attr))
                 for attr in dir(obj) if attr[0] != '_'
                 and getattr(obj, attr) is not None
@@ -333,7 +334,7 @@ class NumberProxy(BaseProxy):
     def __iadd__(self, other):
         for retry in si.retrying_nested():
             with retry:
-                _temp = si.session.query(self.parent.__class__).with_for_update().filter_by(id=self.parent_id).one()
+                _temp = si.query(self.parent.__class__).with_for_update().filter_by(id=self.parent_id).one()
                 setattr(_temp, self.attr_name,
                         [lambda x:x, try_scalar][self._try_scalar](getattr(_temp, self.attr_name)) + other)
                 _temp = BaseProxy(parent=self.parent,
@@ -449,9 +450,10 @@ class ChildrenProxy:
 
     def _refresh(self, **kwargs):
         if self._work_with_sqlintf == 0:
-            si.refresh(self._parent, **kwargs)
-            for child in self.children:
-                si.refresh(child, **kwargs)
+            with si.begin_session() as session:
+                session.refresh(self._parent, **kwargs)
+                for child in self.children:
+                    session.refresh(child, **kwargs)
 
 
 class DictLikeChildrenProxy(ChildrenProxy):

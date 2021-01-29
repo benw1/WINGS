@@ -176,7 +176,7 @@ class Pipeline(DPOwner):
             keyid = kwargs.get('id', cls._pipeline)
             if isinstance(keyid, int):
                 try:
-                    cls._pipeline = si.session.query(si.Pipeline).filter_by(id=keyid).one()
+                    cls._pipeline = si.query(si.Pipeline).filter_by(id=keyid).one()
                 except si.orm.exc.NoResultFound:
                     raise (si.orm.exc.NoResultFound(
                         "No row was found for one(): make sure the .wpipe/ directory was removed"))
@@ -206,9 +206,9 @@ class Pipeline(DPOwner):
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        this_nested = si.begin_nested()
+                        this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._pipeline = si.session.query(si.Pipeline).with_for_update(). \
+                            cls._pipeline = si.query(si.Pipeline).with_for_update(). \
                                 filter_by(user_id=user.user_id). \
                                 filter_by(pipe_root=pipe_root).one()
                             this_nested.rollback()
@@ -276,7 +276,7 @@ class Pipeline(DPOwner):
         out : list of Pipeline object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Pipeline).filter_by(**kwargs)
+        cls._temp = si.query(si.Pipeline).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
@@ -291,7 +291,8 @@ class Pipeline(DPOwner):
         """
         str: Name of the pipeline.
         """
-        si.refresh(self._pipeline)
+        with si.begin_session() as session:
+            session.refresh(self._pipeline)
         return self._pipeline.name
 
     @name.setter
@@ -312,7 +313,8 @@ class Pipeline(DPOwner):
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.refresh(self._pipeline)
+        with si.begin_session() as session:
+            session.refresh(self._pipeline)
         return self._pipeline.timestamp
 
     @property
@@ -359,7 +361,8 @@ class Pipeline(DPOwner):
         """
         str: Description of the pipeline.
         """
-        si.refresh(self._pipeline)
+        with si.begin_session() as session:
+            session.refresh(self._pipeline)
         return self._pipeline.description
 
     @description.setter

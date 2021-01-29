@@ -21,7 +21,7 @@ Utilities
 PARSER
     pre-instantiated parser powered by the module `argparse`
 
-session
+SESSION
     session which SQLAlchemy uses to communicate with the database
 
 COMMIT_FLAG
@@ -30,7 +30,7 @@ COMMIT_FLAG
 commit
     Flush and commit pending changes if COMMIT_FLAG is True
 """
-from .core import argparse, tn, sa, orm, exc, PARSER, session, Base
+from .core import argparse, tn, sa, orm, exc, PARSER, Engine, Base, Session
 from .User import User
 from .Node import Node
 from .Pipeline import Pipeline
@@ -47,13 +47,19 @@ from .Mask import Mask
 from .Job import Job
 from .Event import Event
 
-__all__ = ['sa', 'orm', 'exc', 'argparse', 'PARSER', 'session', 'Base',
+__all__ = ['sa', 'orm', 'exc', 'argparse', 'PARSER', 'Session', 'SESSION',
            'User', 'Node', 'Pipeline', 'DPOwner', 'Input', 'Option',
            'OptOwner', 'Target', 'Configuration', 'Parameter', 'DataProduct',
            'Task', 'Mask', 'Job', 'Event',
-           'COMMIT_FLAG', 'commit', 'rollback', 'begin_nested']
+           'COMMIT_FLAG', 'hold_commit', 'begin_session', 'commit',  # 'refresh', 'begin_nested', 'rollback',
+           'retrying_nested', 'query', 'add', 'delete']
 
-Base.metadata.create_all(session.bind)
+Base.metadata.create_all(Engine)
+
+SESSION = Session()
+"""
+sqlalchemy.orm.session.Session object: placeholder (manages database operations via the engine).
+"""
 
 COMMIT_FLAG = True
 """
@@ -73,25 +79,55 @@ def activate_commit():
 
 class HoldCommit:
     def __init__(self):
+        self.existing_flag = COMMIT_FLAG
         pass
 
     def __enter__(self):
-        deactivate_commit()
+        if self.existing_flag:
+            deactivate_commit()
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        activate_commit()
+        if self.existing_flag:
+            activate_commit()
 
 
 def hold_commit():
     return HoldCommit()
 
-# @contextlib.contextmanager
-# def hold_commit():
-#     activate_commit()
-#     try:
-#         yield
-#     finally:
-#         deactivate_commit()
+
+class BeginSession:
+    def __init__(self, **local_kw):
+        global SESSION
+        self.EXISTING_SESSION = SESSION is not None
+        if self.EXISTING_SESSION:
+            self.SESSION = SESSION
+        else:
+            SESSION = self.SESSION = Session(**local_kw)
+
+    def __dir__(self):
+        return super(BeginSession, self).__dir__() + self.SESSION.__dir__()
+
+    def __enter__(self):
+        if not self.EXISTING_SESSION and not self.SESSION.autocommit:
+            self.begin()
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        global SESSION
+        if not self.EXISTING_SESSION:
+            self.close()
+            SESSION = None
+            del self.SESSION
+
+    def __getattr__(self, item):
+        if item in self.SESSION.__dir__():
+            return getattr(self.SESSION, item)
+        else:
+            raise AttributeError("'%s' object has no attribute '%s'" % (self.__class__.__name__, item))
+
+
+def begin_session(**local_kw):
+    return BeginSession(**local_kw)
 
 
 def commit():
@@ -99,39 +135,54 @@ def commit():
     Flush and commit pending changes if COMMIT_FLAG is True.
     """
     if COMMIT_FLAG:
-        session.commit()
+        SESSION.commit()
 
 
-refresh = session.refresh
+# def refresh(*args, **kwargs):
+#     SESSION.refresh(*args, **kwargs)
 
-rollback = session.rollback
 
-begin_nested = session.begin_nested
+# def begin_nested():
+#     return SESSION.begin_nested()
+
+
+# def rollback():
+#     SESSION.rollback()
 
 
 def retrying_nested():
+
     def before(retry_state):
-        retry_state.TRANSACTION = begin_nested()
+        # TODO: Note for myself: retry_state attrs carry over subsequent attempts!
+        if not hasattr(retry_state, 'session'):
+            retry_state.session = begin_session().__enter__()
+            retry_state.begin_nested = retry_state.session.begin_nested
+            retry_state.TRANSACTION = retry_state.begin_nested()
 
-        def _commit():
-            try:
-                retry_state.TRANSACTION.commit()
-            except exc.ResourceClosedError:
-                pass
-            commit()
+            def _commit():
+                try:
+                    retry_state.TRANSACTION.commit()
+                except exc.ResourceClosedError:
+                    pass
+                if COMMIT_FLAG:
+                    retry_state.session.commit()
 
-        retry_state.commit = _commit
+            retry_state.commit = _commit
 
     def after(retry_state):
+        error = None
         try:
             retry_state.outcome.result()
         except exc.OperationalError as Err:
+            error = Err
             print("Encountered %s\n%s\n\nAttempting rollback\n" % (Err.orig, Err.statement))
         try:
             retry_state.TRANSACTION.rollback()
             print("Rollback successful\n")
         except exc.OperationalError as Err:
             print("Rollback unsuccessful %s\n%s\n\nProceeding anyway\n" % (Err.orig, Err.statement))
+        if error is None and not retry_state.EXISTING_SESSION:
+            retry_state.session.__exit__()
 
     return tn.Retrying(retry=tn.retry_if_exception_type(exc.OperationalError),
                        wait=tn.wait_random_exponential(multiplier=0.1),
@@ -139,8 +190,54 @@ def retrying_nested():
                        after=after)
 
 
+def query(*entities, **kwargs):
+    """
+    ###
+
+    Parameters
+    ----------
+    entities
+        ###
+
+    kwargs
+        ###
+
+    Returns
+    -------
+    query : :class:`sqlalchemy.orm.query.Query`
+        Job corresponding to given kwargs.
+    """
+    return SESSION.query(*entities, **kwargs)
+
+
+def add(entry):
+    """
+    Add entry to the database.
+
+    Parameters
+    ----------
+    entry : sqlintf object
+        Proxy of entry to add.
+    """
+    SESSION.add(entry)
+    # commit()
+
+
+def delete(entry):
+    """
+    Delete entry from the database.
+
+    Parameters
+    ----------
+    entry : sqlintf object
+        Proxy of entry to delete.
+    """
+    SESSION.delete(entry)
+    commit()
+
+
 def show_engine_status():
-    a = session.execute("SHOW ENGINE INNODB STATUS;").fetchall()
+    a = SESSION.execute("SHOW ENGINE INNODB STATUS;").fetchall()
     return a[0][2]
 
 

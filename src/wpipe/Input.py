@@ -128,7 +128,7 @@ class Input(DPOwner):
         if not isinstance(cls._input, si.Input):
             keyid = kwargs.get('id', cls._input)
             if isinstance(keyid, int):
-                cls._input = si.session.query(si.Input).filter_by(id=keyid).one()
+                cls._input = si.query(si.Input).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
@@ -137,9 +137,9 @@ class Input(DPOwner):
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        this_nested = si.begin_nested()
+                        this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._input = si.session.query(si.Input).with_for_update(). \
+                            cls._input = si.query(si.Input).with_for_update(). \
                                 filter_by(pipeline_id=pipeline.pipeline_id). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
@@ -182,7 +182,7 @@ class Input(DPOwner):
         out : list of Input object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Input).filter_by(**kwargs)
+        cls._temp = si.query(si.Input).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @classmethod
@@ -216,7 +216,8 @@ class Input(DPOwner):
         """
         str: Name of the input.
         """
-        si.refresh(self._input)
+        with si.begin_session() as session:
+            session.refresh(self._input)
         return self._input.name
 
     @name.setter

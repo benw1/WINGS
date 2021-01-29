@@ -44,7 +44,8 @@ class OptOwner:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.refresh(self._optowner)
+        with si.begin_session() as session:
+            session.refresh(self._optowner)
         return self._optowner.timestamp
 
     @property
@@ -83,5 +84,4 @@ class OptOwner:
         """
         for item in self.options:
             item.delete()
-        si.session.delete(self._optowner)
-        si.commit()
+        si.delete(self._optowner)

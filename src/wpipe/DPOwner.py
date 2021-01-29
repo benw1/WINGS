@@ -43,7 +43,8 @@ class DPOwner:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.refresh(self._dpowner)
+        with si.begin_session() as session:
+            session.refresh(self._dpowner)
         return self._dpowner.timestamp
 
     @property
@@ -124,5 +125,4 @@ class DPOwner:
         """
         for item in self.dataproducts:
             item.delete()
-        si.session.delete(self._dpowner)
-        si.commit()
+        si.delete(self._dpowner)

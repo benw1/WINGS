@@ -71,7 +71,7 @@ class Parameter:
         if not isinstance(cls._parameter, si.Parameter):
             keyid = kwargs.get('id', cls._parameter)
             if isinstance(keyid, int):
-                cls._parameter = si.session.query(si.Parameter).filter_by(id=keyid).one()
+                cls._parameter = si.query(si.Parameter).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)
@@ -81,9 +81,9 @@ class Parameter:
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        this_nested = si.begin_nested()
+                        this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._parameter = si.session.query(si.Parameter).with_for_update(). \
+                            cls._parameter = si.query(si.Parameter).with_for_update(). \
                                 filter_by(config_id=config.config_id). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
@@ -116,7 +116,7 @@ class Parameter:
         out : list of Parameter object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Parameter).filter_by(**kwargs)
+        cls._temp = si.query(si.Parameter).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
@@ -151,7 +151,8 @@ class Parameter:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.refresh(self._parameter)
+        with si.begin_session() as session:
+            session.refresh(self._parameter)
         return self._parameter.timestamp
 
     @property
@@ -159,7 +160,8 @@ class Parameter:
         """
         str: Value of the parameter.
         """
-        si.refresh(self._parameter)
+        with si.begin_session() as session:
+            session.refresh(self._parameter)
         return self._parameter.value
 
     @value.setter
@@ -191,5 +193,4 @@ class Parameter:
         """
         Delete corresponding row from the database.
         """
-        si.session.delete(self._parameter)
-        si.commit()
+        si.delete(self._parameter)

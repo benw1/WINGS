@@ -82,7 +82,7 @@ class Node:
         if not isinstance(cls._node, si.Node):
             keyid = kwargs.get('id', cls._node)
             if isinstance(keyid, int):
-                cls._node = si.session.query(si.Node).filter_by(id=keyid).one()
+                cls._node = si.query(si.Node).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=3)
@@ -92,16 +92,16 @@ class Node:
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        this_nested = si.begin_nested()
+                        this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._node = si.session.query(si.Node).with_for_update(). \
+                            cls._node = si.query(si.Node).with_for_update(). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
                         except si.orm.exc.NoResultFound:
                             cls._node = si.Node(name=name,
                                                 int_ip=int_ip,
                                                 ext_ip=ext_ip)
-                            si.session.add(cls._node)
+                            si.add(cls._node)
                             this_nested.commit()
                         retry.retry_state.commit()
         # verifying if instance already exists and return
@@ -130,7 +130,7 @@ class Node:
         out : list of Node object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Node).filter_by(**kwargs)
+        cls._temp = si.query(si.Node).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
@@ -145,7 +145,8 @@ class Node:
         """
         str: Name of node.
         """
-        si.refresh(self._node)
+        with si.begin_session() as session:
+            session.refresh(self._node)
         return self._node.name
 
     @name.setter
@@ -166,7 +167,8 @@ class Node:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.refresh(self._node)
+        with si.begin_session() as session:
+            session.refresh(self._node)
         return self._node.timestamp
 
     @property
@@ -211,5 +213,4 @@ class Node:
         """
         Delete corresponding row from the database.
         """
-        si.session.delete(self._node)
-        si.commit()
+        si.delete(self._node)

@@ -112,7 +112,7 @@ class Target(OptOwner):
         if not isinstance(cls._target, si.Target):
             keyid = kwargs.get('id', cls._target)
             if isinstance(keyid, int):
-                cls._target = si.session.query(si.Target).filter_by(id=keyid).one()
+                cls._target = si.query(si.Target).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
@@ -121,9 +121,9 @@ class Target(OptOwner):
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        this_nested = si.begin_nested()
+                        this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._target = si.session.query(si.Target).with_for_update(). \
+                            cls._target = si.query(si.Target).with_for_update(). \
                                 filter_by(input_id=input.input_id). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
@@ -167,7 +167,7 @@ class Target(OptOwner):
         out : list of Target object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Target).filter_by(**kwargs)
+        cls._temp = si.query(si.Target).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
@@ -182,7 +182,8 @@ class Target(OptOwner):
         """
         str: Name of the target.
         """
-        si.refresh(self._target)
+        with si.begin_session() as session:
+            session.refresh(self._target)
         return self._target.name
 
     @name.setter

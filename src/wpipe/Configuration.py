@@ -157,7 +157,7 @@ class Configuration(DPOwner):
         if not isinstance(cls._configuration, si.Configuration):
             keyid = kwargs.get('id', cls._configuration)
             if isinstance(keyid, int):
-                cls._configuration = si.session.query(si.Configuration).filter_by(id=keyid).one()
+                cls._configuration = si.query(si.Configuration).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)
@@ -170,9 +170,9 @@ class Configuration(DPOwner):
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        this_nested = si.begin_nested()
+                        this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._configuration = si.session.query(si.Configuration).with_for_update(). \
+                            cls._configuration = si.query(si.Configuration).with_for_update(). \
                                 filter_by(target_id=target.target_id). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
@@ -229,7 +229,7 @@ class Configuration(DPOwner):
         out : list of Configuration object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Configuration).filter_by(**kwargs)
+        cls._temp = si.query(si.Configuration).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
@@ -244,7 +244,8 @@ class Configuration(DPOwner):
         """
         str: Name of the configuration.
         """
-        si.refresh(self._configuration)
+        with si.begin_session() as session:
+            session.refresh(self._configuration)
         return self._configuration.name
 
     @name.setter
@@ -302,7 +303,8 @@ class Configuration(DPOwner):
         """
         str: Description of the configuration
         """
-        si.refresh(self._configuration)
+        with si.begin_session() as session:
+            session.refresh(self._configuration)
         return self._configuration.description
 
     @description.setter

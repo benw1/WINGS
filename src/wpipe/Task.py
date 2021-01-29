@@ -113,7 +113,7 @@ class Task:
         if not isinstance(cls._task, si.Task):
             keyid = kwargs.get('id', cls._task)
             if isinstance(keyid, int):
-                cls._task = si.session.query(si.Task).filter_by(id=keyid).one()
+                cls._task = si.query(si.Task).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=4)
@@ -125,9 +125,9 @@ class Task:
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        this_nested = si.begin_nested()
+                        this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._task = si.session.query(si.Task).with_for_update(). \
+                            cls._task = si.query(si.Task).with_for_update(). \
                                 filter_by(pipeline_id=pipeline.pipeline_id). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
@@ -169,7 +169,7 @@ class Task:
         out : list of Task object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Task).filter_by(**kwargs)
+        cls._temp = si.query(si.Task).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
@@ -184,7 +184,8 @@ class Task:
         """
         str: Name of the task.
         """
-        si.refresh(self._task)
+        with si.begin_session() as session:
+            session.refresh(self._task)
         return self._task.name
 
     @name.setter
@@ -205,7 +206,8 @@ class Task:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.refresh(self._task)
+        with si.begin_session() as session:
+            session.refresh(self._task)
         return self._task.timestamp
 
     @property
@@ -213,7 +215,8 @@ class Task:
         """
         int: ###BEN###
         """
-        si.refresh(self._task)
+        with si.begin_session() as session:
+            session.refresh(self._task)
         return self._task.nruns
 
     @property
@@ -221,7 +224,8 @@ class Task:
         """
         int: ###BEN###
         """
-        si.refresh(self._task)
+        with si.begin_session() as session:
+            session.refresh(self._task)
         return self._task.run_time
 
     @property
@@ -229,7 +233,8 @@ class Task:
         """
         int: ###BEN###
         """
-        si.refresh(self._task)
+        with si.begin_session() as session:
+            session.refresh(self._task)
         return self._task.is_exclusive
 
     @property
@@ -344,5 +349,4 @@ class Task:
         for item in self.jobs:
             item.delete()
         remove_path(self.executable)
-        si.session.delete(self._task)
-        si.commit()
+        si.delete(self._task)

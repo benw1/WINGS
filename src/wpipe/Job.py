@@ -180,7 +180,7 @@ class Job(OptOwner):
         if not isinstance(cls._job, si.Job):
             keyid = kwargs.get('id', cls._job)
             if isinstance(keyid, int):
-                cls._job = si.session.query(si.Job).filter_by(id=keyid).one()
+                cls._job = si.query(si.Job).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
@@ -198,9 +198,9 @@ class Job(OptOwner):
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        this_nested = si.begin_nested()
+                        this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._job = si.session.query(si.Job).with_for_update(). \
+                            cls._job = si.query(si.Job).with_for_update(). \
                                 filter_by(task_id=task.task_id)
                             if config is not None:
                                 cls._job = cls._job. \
@@ -258,7 +258,7 @@ class Job(OptOwner):
         out : list of Job object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Job).filter_by(**kwargs)
+        cls._temp = si.query(si.Job).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
@@ -282,7 +282,8 @@ class Job(OptOwner):
         """
         str: State of this job.
         """
-        si.refresh(self._job)
+        with si.begin_session() as session:
+            session.refresh(self._job)
         return self._job.state
 
     @state.setter
@@ -303,7 +304,8 @@ class Job(OptOwner):
         """
         :obj:`datetime.datetime`: Timestamp of job starting time.
         """
-        si.refresh(self._job)
+        with si.begin_session() as session:
+            session.refresh(self._job)
         return self._job.starttime
 
     @property
@@ -311,7 +313,8 @@ class Job(OptOwner):
         """
         :obj:`datetime.datetime`: Timestamp of job ending time.
         """
-        si.refresh(self._job)
+        with si.begin_session() as session:
+            session.refresh(self._job)
         return self._job.endtime
 
     @property
@@ -368,7 +371,8 @@ class Job(OptOwner):
         """
         int: Primary key id of the table row of parent node.
         """
-        si.refresh(self._job)
+        with si.begin_session() as session:
+            session.refresh(self._job)
         return self._job.node_id
 
     @property
@@ -376,7 +380,8 @@ class Job(OptOwner):
         """
         bool: True if Job object is associated to a Node object, False if not.
         """
-        si.refresh(self._job)
+        with si.begin_session() as session:
+            session.refresh(self._job)
         return self._job.node is not None
 
     @property
@@ -452,7 +457,8 @@ class Job(OptOwner):
         """
         int: Primary key id of the table row of parent event.
         """
-        si.refresh(self._job)
+        with si.begin_session() as session:
+            session.refresh(self._job)
         return self._job.firing_event_id
 
     @property

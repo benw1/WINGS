@@ -74,7 +74,7 @@ class Mask:
         if not isinstance(cls._mask, si.Mask):
             keyid = kwargs.get('id', cls._mask)
             if isinstance(keyid, int):
-                cls._mask = si.session.query(si.Mask).filter_by(id=keyid).one()
+                cls._mask = si.query(si.Mask).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=3)
@@ -85,9 +85,9 @@ class Mask:
                 # querying the database for existing row or create
                 for retry in si.retrying_nested():
                     with retry:
-                        this_nested = si.begin_nested()
+                        this_nested = retry.retry_state.begin_nested()
                         try:
-                            cls._mask = si.session.query(si.Mask).with_for_update(). \
+                            cls._mask = si.query(si.Mask).with_for_update(). \
                                 filter_by(task_id=task.task_id). \
                                 filter_by(name=name).one()
                             this_nested.rollback()
@@ -121,7 +121,7 @@ class Mask:
         out : list of Mask object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Mask).filter_by(**kwargs)
+        cls._temp = si.query(si.Mask).filter_by(**kwargs)
         return list(map(cls, cls._temp.all()))
 
     @property
@@ -136,7 +136,8 @@ class Mask:
         """
         str: Name of the mask.
         """
-        si.refresh(self._mask)
+        with si.begin_session() as session:
+            session.refresh(self._mask)
         return self._mask.name
 
     @name.setter
@@ -157,7 +158,8 @@ class Mask:
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.refresh(self._mask)
+        with si.begin_session() as session:
+            session.refresh(self._mask)
         return self._mask.timestamp
 
     @property
@@ -196,5 +198,4 @@ class Mask:
         """
         Delete corresponding row from the database.
         """
-        si.session.delete(self._mask)
-        si.commit()
+        si.delete(self._mask)
