@@ -169,37 +169,40 @@ class Configuration(DPOwner):
                 confdp = target.input.dataproduct(filename=name + '.conf', group='conf')
                 rawdps = [rawdp for rawdp in target.input.rawdataproducts]
                 # querying the database for existing row or create
-                for retry in si.retrying_nested():
-                    with retry:
-                        this_nested = retry.retry_state.begin_nested()
-                        try:
-                            cls._configuration = this_nested.session.query(si.Configuration).with_for_update(). \
-                                filter_by(target_id=target.target_id). \
-                                filter_by(name=name).one()
-                            this_nested.rollback()
-                        except si.orm.exc.NoResultFound:
-                            cls._configuration = si.Configuration(name=name,
-                                                                  datapath=target.datapath,
-                                                                  confpath=target.datapath + '/conf_' + name,
-                                                                  rawpath=target.datapath + '/raw_' + name,
-                                                                  logpath=target.datapath + '/log_' + name,
-                                                                  procpath=target.datapath + '/proc_' + name,
-                                                                  description=description)
-                            target._target.configurations.append(cls._configuration)
-                            this_nested.commit()
-                            if not os.path.isdir(cls._configuration.confpath):
-                                os.mkdir(cls._configuration.confpath)
-                            if not os.path.isdir(cls._configuration.rawpath):
-                                os.mkdir(cls._configuration.rawpath)
-                            if not os.path.isdir(cls._configuration.logpath):
-                                os.mkdir(cls._configuration.logpath)
-                            if not os.path.isdir(cls._configuration.procpath):
-                                os.mkdir(cls._configuration.procpath)
-                            with si.hold_commit():
-                                confdp.symlink(cls._configuration.confpath, dpowner=cls._configuration, group='conf')
-                                for rawdp in rawdps:
-                                    rawdp.symlink(cls._configuration.rawpath, dpowner=cls._configuration, group='raw')
-                        retry.retry_state.commit()
+                with si.begin_session() as session:
+                    for retry in session.retrying_nested():
+                        with retry:
+                            this_nested = retry.retry_state.begin_nested()
+                            try:
+                                cls._configuration = this_nested.session.query(si.Configuration).with_for_update(). \
+                                    filter_by(target_id=target.target_id). \
+                                    filter_by(name=name).one()
+                                this_nested.rollback()
+                            except si.orm.exc.NoResultFound:
+                                cls._configuration = si.Configuration(name=name,
+                                                                      datapath=target.datapath,
+                                                                      confpath=target.datapath + '/conf_' + name,
+                                                                      rawpath=target.datapath + '/raw_' + name,
+                                                                      logpath=target.datapath + '/log_' + name,
+                                                                      procpath=target.datapath + '/proc_' + name,
+                                                                      description=description)
+                                target._target.configurations.append(cls._configuration)
+                                this_nested.commit()
+                                if not os.path.isdir(cls._configuration.confpath):
+                                    os.mkdir(cls._configuration.confpath)
+                                if not os.path.isdir(cls._configuration.rawpath):
+                                    os.mkdir(cls._configuration.rawpath)
+                                if not os.path.isdir(cls._configuration.logpath):
+                                    os.mkdir(cls._configuration.logpath)
+                                if not os.path.isdir(cls._configuration.procpath):
+                                    os.mkdir(cls._configuration.procpath)
+                                with si.hold_commit():
+                                    confdp.symlink(cls._configuration.confpath,
+                                                   dpowner=cls._configuration, group='conf')
+                                    for rawdp in rawdps:
+                                        rawdp.symlink(cls._configuration.rawpath,
+                                                      dpowner=cls._configuration, group='raw')
+                            retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Configuration')
         return cls._inst

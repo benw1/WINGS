@@ -80,20 +80,21 @@ class Parameter:
                 name = kwargs.get('name', args[0])
                 value = kwargs.get('value', args[1])
                 # querying the database for existing row or create
-                for retry in si.retrying_nested():
-                    with retry:
-                        this_nested = retry.retry_state.begin_nested()
-                        try:
-                            cls._parameter = this_nested.session.query(si.Parameter).with_for_update(). \
-                                filter_by(config_id=config.config_id). \
-                                filter_by(name=name).one()
-                            this_nested.rollback()
-                        except si.orm.exc.NoResultFound:
-                            cls._parameter = si.Parameter(name=name,
-                                                          value=str(value))
-                            config._configuration.parameters.append(cls._parameter)
-                            this_nested.commit()
-                        retry.retry_state.commit()
+                with si.begin_session() as session:
+                    for retry in session.retrying_nested():
+                        with retry:
+                            this_nested = retry.retry_state.begin_nested()
+                            try:
+                                cls._parameter = this_nested.session.query(si.Parameter).with_for_update(). \
+                                    filter_by(config_id=config.config_id). \
+                                    filter_by(name=name).one()
+                                this_nested.rollback()
+                            except si.orm.exc.NoResultFound:
+                                cls._parameter = si.Parameter(name=name,
+                                                              value=str(value))
+                                config._configuration.parameters.append(cls._parameter)
+                                this_nested.commit()
+                            retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Parameter')
         return cls._inst

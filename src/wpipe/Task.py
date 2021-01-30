@@ -124,24 +124,25 @@ class Task:
                 run_time = kwargs.get('run_time', 0 if args[2] is None else args[2])
                 is_exclusive = kwargs.get('is_exclusive', 0 if args[3] is None else args[3])
                 # querying the database for existing row or create
-                for retry in si.retrying_nested():
-                    with retry:
-                        this_nested = retry.retry_state.begin_nested()
-                        try:
-                            cls._task = this_nested.session.query(si.Task).with_for_update(). \
-                                filter_by(pipeline_id=pipeline.pipeline_id). \
-                                filter_by(name=name).one()
-                            this_nested.rollback()
-                        except si.orm.exc.NoResultFound:
-                            cls._task = si.Task(name=name,
-                                                nruns=nruns,
-                                                run_time=run_time,
-                                                is_exclusive=is_exclusive)
-                            pipeline._pipeline.tasks.append(cls._task)
-                            this_nested.commit()
-                            if base != pipeline.software_root:
-                                shutil.copy2(base + '/' + name, pipeline.software_root + '/')
-                        retry.retry_state.commit()
+                with si.begin_session() as session:
+                    for retry in session.retrying_nested():
+                        with retry:
+                            this_nested = retry.retry_state.begin_nested()
+                            try:
+                                cls._task = this_nested.session.query(si.Task).with_for_update(). \
+                                    filter_by(pipeline_id=pipeline.pipeline_id). \
+                                    filter_by(name=name).one()
+                                this_nested.rollback()
+                            except si.orm.exc.NoResultFound:
+                                cls._task = si.Task(name=name,
+                                                    nruns=nruns,
+                                                    run_time=run_time,
+                                                    is_exclusive=is_exclusive)
+                                pipeline._pipeline.tasks.append(cls._task)
+                                this_nested.commit()
+                                if base != pipeline.software_root:
+                                    shutil.copy2(base + '/' + name, pipeline.software_root + '/')
+                            retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Task')
         return cls._inst

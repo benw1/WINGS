@@ -83,20 +83,21 @@ class Option:
                 name = kwargs.get('name', args[0])
                 value = kwargs.get('value', args[1])
                 # querying the database for existing row or create
-                for retry in si.retrying_nested():
-                    with retry:
-                        this_nested = retry.retry_state.begin_nested()
-                        try:
-                            cls._option = this_nested.session.query(si.Option).with_for_update(). \
-                                filter_by(optowner_id=optowner.optowner_id). \
-                                filter_by(name=name).one()
-                            this_nested.rollback()
-                        except si.orm.exc.NoResultFound:
-                            cls._option = si.Option(name=name,
-                                                    value=str(value))
-                            optowner._optowner.options.append(cls._option)
-                            this_nested.commit()
-                        retry.retry_state.commit()
+                with si.begin_session() as session:
+                    for retry in session.retrying_nested():
+                        with retry:
+                            this_nested = retry.retry_state.begin_nested()
+                            try:
+                                cls._option = this_nested.session.query(si.Option).with_for_update(). \
+                                    filter_by(optowner_id=optowner.optowner_id). \
+                                    filter_by(name=name).one()
+                                this_nested.rollback()
+                            except si.orm.exc.NoResultFound:
+                                cls._option = si.Option(name=name,
+                                                        value=str(value))
+                                optowner._optowner.options.append(cls._option)
+                                this_nested.commit()
+                            retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Option')
         return cls._inst

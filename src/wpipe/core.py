@@ -332,16 +332,17 @@ class NumberProxy(BaseProxy):
         super().__init__(self, *args, **kwargs)
 
     def __iadd__(self, other):
-        for retry in si.retrying_nested():
-            with retry:
-                _temp = retry.retry_state.query(self.parent.__class__).with_for_update(). \
-                    filter_by(id=self.parent_id).one()
-                setattr(_temp, self.attr_name,
-                        [lambda x:x, try_scalar][self._try_scalar](getattr(_temp, self.attr_name)) + other)
-                _temp = BaseProxy(parent=self.parent,
-                                  attr_name=self.attr_name,
-                                  try_scalar=self.try_scalar)
-                retry.retry_state.commit()
+        with si.begin_session() as session:
+            for retry in session.retrying_nested():
+                with retry:
+                    _temp = retry.retry_state.query(self.parent.__class__).with_for_update(). \
+                        filter_by(id=self.parent_id).one()
+                    setattr(_temp, self.attr_name,
+                            [lambda x:x, try_scalar][self._try_scalar](getattr(_temp, self.attr_name)) + other)
+                    _temp = BaseProxy(parent=self.parent,
+                                      attr_name=self.attr_name,
+                                      try_scalar=self.try_scalar)
+                    retry.retry_state.commit()
         return _temp
 
 

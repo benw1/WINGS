@@ -197,33 +197,34 @@ class Job(OptOwner):
                                   wpargs.get('Node', None))
                 attempt = kwargs.get('attempt', 1 if args[0] is None else args[0])
                 # querying the database for existing row or create
-                for retry in si.retrying_nested():
-                    with retry:
-                        this_nested = retry.retry_state.begin_nested()
-                        try:
-                            cls._job = this_nested.session.query(si.Job).with_for_update(). \
-                                filter_by(task_id=task.task_id)
-                            if config is not None:
+                with si.begin_session() as session:
+                    for retry in session.retrying_nested():
+                        with retry:
+                            this_nested = retry.retry_state.begin_nested()
+                            try:
+                                cls._job = this_nested.session.query(si.Job).with_for_update(). \
+                                    filter_by(task_id=task.task_id)
+                                if config is not None:
+                                    cls._job = cls._job. \
+                                        filter_by(config_id=config.config_id)
+                                if event is not None:
+                                    cls._job = cls._job. \
+                                        filter_by(firing_event_id=event.event_id)
                                 cls._job = cls._job. \
-                                    filter_by(config_id=config.config_id)
-                            if event is not None:
-                                cls._job = cls._job. \
-                                    filter_by(firing_event_id=event.event_id)
-                            cls._job = cls._job. \
-                                filter_by(attempt=attempt).one()
-                            this_nested.rollback()
-                        except si.orm.exc.NoResultFound:
-                            cls._job = si.Job(attempt=attempt,
-                                              state=JOBINITSTATE)
-                            task._task.jobs.append(cls._job)
-                            if config is not None:
-                                config._configuration.jobs.append(cls._job)
-                            if event is not None:
-                                event._event.fired_jobs.append(cls._job)
-                            if node is not None:
-                                node._node.jobs.append(cls._job)
-                            this_nested.commit()
-                        retry.retry_state.commit()
+                                    filter_by(attempt=attempt).one()
+                                this_nested.rollback()
+                            except si.orm.exc.NoResultFound:
+                                cls._job = si.Job(attempt=attempt,
+                                                  state=JOBINITSTATE)
+                                task._task.jobs.append(cls._job)
+                                if config is not None:
+                                    config._configuration.jobs.append(cls._job)
+                                if event is not None:
+                                    event._event.fired_jobs.append(cls._job)
+                                if node is not None:
+                                    node._node.jobs.append(cls._job)
+                                this_nested.commit()
+                            retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Job')
         return cls._inst

@@ -91,20 +91,21 @@ class Node:
                 int_ip = kwargs.get('int_ip', '' if args[1] is None else args[1])
                 ext_ip = kwargs.get('ext_ip', '' if args[2] is None else args[2])
                 # querying the database for existing row or create
-                for retry in si.retrying_nested():
-                    with retry:
-                        this_nested = retry.retry_state.begin_nested()
-                        try:
-                            cls._node = this_nested.session.query(si.Node).with_for_update(). \
-                                filter_by(name=name).one()
-                            this_nested.rollback()
-                        except si.orm.exc.NoResultFound:
-                            cls._node = si.Node(name=name,
-                                                int_ip=int_ip,
-                                                ext_ip=ext_ip)
-                            this_nested.session.add(cls._node)
-                            this_nested.commit()
-                        retry.retry_state.commit()
+                with si.begin_session() as session:
+                    for retry in session.retrying_nested():
+                        with retry:
+                            this_nested = retry.retry_state.begin_nested()
+                            try:
+                                cls._node = this_nested.session.query(si.Node).with_for_update(). \
+                                    filter_by(name=name).one()
+                                this_nested.rollback()
+                            except si.orm.exc.NoResultFound:
+                                cls._node = si.Node(name=name,
+                                                    int_ip=int_ip,
+                                                    ext_ip=ext_ip)
+                                this_nested.session.add(cls._node)
+                                this_nested.commit()
+                            retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Node')
         return cls._inst

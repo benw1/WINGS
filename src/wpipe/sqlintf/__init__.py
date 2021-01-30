@@ -51,8 +51,7 @@ __all__ = ['sa', 'orm', 'exc', 'argparse', 'PARSER', 'Session', 'SESSION',
            'User', 'Node', 'Pipeline', 'DPOwner', 'Input', 'Option',
            'OptOwner', 'Target', 'Configuration', 'Parameter', 'DataProduct',
            'Task', 'Mask', 'Job', 'Event',
-           'COMMIT_FLAG', 'hold_commit', 'begin_session', 'retrying_nested',
-           'delete']
+           'COMMIT_FLAG', 'hold_commit', 'begin_session', 'delete']
 
 Base.metadata.create_all(Engine)
 
@@ -128,50 +127,45 @@ class BeginSession:
         if COMMIT_FLAG:
             self.SESSION.commit()
 
+    def retrying_nested(self):
+
+        def before(retry_state):
+            # TODO: Note for myself: retry_state attrs carry over subsequent attempts!
+            if not hasattr(retry_state, 'session'):
+                retry_state.session = self
+                retry_state.begin_nested = retry_state.session.begin_nested
+                retry_state.query = retry_state.session.query
+                retry_state.TRANSACTION = retry_state.begin_nested()
+
+                def _commit():
+                    try:
+                        retry_state.TRANSACTION.commit()
+                    except exc.ResourceClosedError:
+                        pass
+                    if COMMIT_FLAG:
+                        retry_state.session.commit()
+
+                retry_state.commit = _commit
+
+        def after(retry_state):
+            try:
+                retry_state.outcome.result()
+            except exc.OperationalError as Err:
+                print("Encountered %s\n%s\n\nAttempting rollback\n" % (Err.orig, Err.statement))
+            try:
+                retry_state.TRANSACTION.rollback()
+                print("Rollback successful\n")
+            except exc.OperationalError as Err:
+                print("Rollback unsuccessful %s\n%s\n\nProceeding anyway\n" % (Err.orig, Err.statement))
+
+        return tn.Retrying(retry=tn.retry_if_exception_type(exc.OperationalError),
+                           wait=tn.wait_random_exponential(multiplier=0.1),
+                           before=before,
+                           after=after)
+
 
 def begin_session(**local_kw):
     return BeginSession(**local_kw)
-
-
-def retrying_nested():
-
-    def before(retry_state):
-        # TODO: Note for myself: retry_state attrs carry over subsequent attempts!
-        if not hasattr(retry_state, 'session'):
-            retry_state.session = begin_session().__enter__()
-            retry_state.begin_nested = retry_state.session.begin_nested
-            retry_state.query = retry_state.session.query
-            retry_state.TRANSACTION = retry_state.begin_nested()
-
-            def _commit():
-                try:
-                    retry_state.TRANSACTION.commit()
-                except exc.ResourceClosedError:
-                    pass
-                if COMMIT_FLAG:
-                    retry_state.session.commit()
-
-            retry_state.commit = _commit
-
-    def after(retry_state):
-        error = None
-        try:
-            retry_state.outcome.result()
-        except exc.OperationalError as Err:
-            error = Err
-            print("Encountered %s\n%s\n\nAttempting rollback\n" % (Err.orig, Err.statement))
-        try:
-            retry_state.TRANSACTION.rollback()
-            print("Rollback successful\n")
-        except exc.OperationalError as Err:
-            print("Rollback unsuccessful %s\n%s\n\nProceeding anyway\n" % (Err.orig, Err.statement))
-        if error is None and not retry_state.EXISTING_SESSION:
-            retry_state.session.__exit__()
-
-    return tn.Retrying(retry=tn.retry_if_exception_type(exc.OperationalError),
-                       wait=tn.wait_random_exponential(multiplier=0.1),
-                       before=before,
-                       after=after)
 
 
 def delete(entry):

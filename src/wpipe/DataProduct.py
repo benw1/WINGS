@@ -183,37 +183,38 @@ class DataProduct(OptOwner):
                 dec = kwargs.get('dec', 0 if args[7] is None else args[7])
                 pointing_angle = kwargs.get('pointing_angle', 0 if args[8] is None else args[8])
                 # querying the database for existing row or create
-                for retry in si.retrying_nested():
-                    with retry:
-                        this_nested = retry.retry_state.begin_nested()
-                        try:
-                            cls._dataproduct = this_nested.session.query(si.DataProduct).with_for_update(). \
-                                filter_by(dpowner_id=dpowner.dpowner_id). \
-                                filter_by(group=group). \
-                                filter_by(filename=filename).one()
-                            this_nested.rollback()
-                        except si.orm.exc.NoResultFound:
-                            if '.' in filename:
-                                _suffix = filename.split('.')[-1]
-                            else:
-                                _suffix = ' '
-                            if _suffix not in ['fits', 'txt', 'head', 'cl',
-                                               'py', 'pyc', 'pl', 'phot', 'png', 'jpg', 'ps',
-                                               'gz', 'dat', 'lst', 'sh']:
-                                _suffix = 'other'
-                            cls._dataproduct = si.DataProduct(filename=filename,
-                                                              relativepath=relativepath,
-                                                              suffix=_suffix,
-                                                              data_type=data_type,
-                                                              subtype=subtype,
-                                                              group=group,
-                                                              filtername=filtername,
-                                                              ra=ra,
-                                                              dec=dec,
-                                                              pointing_angle=pointing_angle)
-                            dpowner._dpowner.dataproducts.append(cls._dataproduct)
-                            this_nested.commit()
-                        retry.retry_state.commit()
+                with si.begin_session() as session:
+                    for retry in session.retrying_nested():
+                        with retry:
+                            this_nested = retry.retry_state.begin_nested()
+                            try:
+                                cls._dataproduct = this_nested.session.query(si.DataProduct).with_for_update(). \
+                                    filter_by(dpowner_id=dpowner.dpowner_id). \
+                                    filter_by(group=group). \
+                                    filter_by(filename=filename).one()
+                                this_nested.rollback()
+                            except si.orm.exc.NoResultFound:
+                                if '.' in filename:
+                                    _suffix = filename.split('.')[-1]
+                                else:
+                                    _suffix = ' '
+                                if _suffix not in ['fits', 'txt', 'head', 'cl',
+                                                   'py', 'pyc', 'pl', 'phot', 'png', 'jpg', 'ps',
+                                                   'gz', 'dat', 'lst', 'sh']:
+                                    _suffix = 'other'
+                                cls._dataproduct = si.DataProduct(filename=filename,
+                                                                  relativepath=relativepath,
+                                                                  suffix=_suffix,
+                                                                  data_type=data_type,
+                                                                  subtype=subtype,
+                                                                  group=group,
+                                                                  filtername=filtername,
+                                                                  ra=ra,
+                                                                  dec=dec,
+                                                                  pointing_angle=pointing_angle)
+                                dpowner._dpowner.dataproducts.append(cls._dataproduct)
+                                this_nested.commit()
+                            retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'DataProduct')
         return cls._inst
