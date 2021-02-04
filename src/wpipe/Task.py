@@ -7,9 +7,14 @@ available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, sys, shutil, warnings, datetime, si
 from .core import ChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path, remove_path
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import clean_path, remove_path, split_path
 
 __all__ = ['Task']
+
+
+def _in_session(**local_kw):
+    return in_session(split_path(__file__)[1].lower(), **local_kw)
 
 
 class Task:
@@ -128,12 +133,10 @@ class Task:
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
-                            try:
-                                cls._task = this_nested.session.query(si.Task).with_for_update(). \
-                                    filter_by(pipeline_id=pipeline.pipeline_id). \
-                                    filter_by(name=name).one()
-                                this_nested.rollback()
-                            except si.orm.exc.NoResultFound:
+                            cls._task = this_nested.session.query(si.Task).with_for_update(). \
+                                filter_by(pipeline_id=pipeline.pipeline_id). \
+                                filter_by(name=name).one_or_none()
+                            if cls._task is None:
                                 cls._task = si.Task(name=name,
                                                     nruns=nruns,
                                                     run_time=run_time,
@@ -142,20 +145,22 @@ class Task:
                                 this_nested.commit()
                                 if base != pipeline.software_root:
                                     shutil.copy2(base + '/' + name, pipeline.software_root + '/')
+                            else:
+                                this_nested.rollback()
                             retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Task')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_masks_proxy'):
             self._masks_proxy = ChildrenProxy(self._task, 'masks', 'Mask')
         if not hasattr(self, '_jobs_proxy'):
             self._jobs_proxy = ChildrenProxy(self._task, 'jobs', 'Job',
                                              child_attr='id')
-        with si.begin_session() as session:
-            self._task.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self._task.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -184,22 +189,23 @@ class Task:
         return self.pipeline
 
     @property
+    @_in_session()
     def name(self):
         """
         str: Name of the task.
         """
-        with si.begin_session() as session:
-            session.refresh(self._task)
+        self._session.refresh(self._task)
         return self._task.name
 
     @name.setter
+    @_in_session()
     def name(self, name):
-        with si.begin_session() as session:
-            self._task.name = name
-            self._task.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self._task.name = name
+        self._task.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @property
+    @_in_session()
     def task_id(self):
         """
         int: Primary key id of the table row.
@@ -207,39 +213,39 @@ class Task:
         return self._task.id
 
     @property
+    @_in_session()
     def timestamp(self):
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        with si.begin_session() as session:
-            session.refresh(self._task)
+        self._session.refresh(self._task)
         return self._task.timestamp
 
     @property
+    @_in_session()
     def nruns(self):
         """
         int: ###BEN###
         """
-        with si.begin_session() as session:
-            session.refresh(self._task)
+        self._session.refresh(self._task)
         return self._task.nruns
 
     @property
+    @_in_session()
     def run_time(self):
         """
         int: ###BEN###
         """
-        with si.begin_session() as session:
-            session.refresh(self._task)
+        self._session.refresh(self._task)
         return self._task.run_time
 
     @property
+    @_in_session()
     def is_exclusive(self):
         """
         int: ###BEN###
         """
-        with si.begin_session() as session:
-            session.refresh(self._task)
+        self._session.refresh(self._task)
         return self._task.is_exclusive
 
     @property
@@ -258,6 +264,7 @@ class Task:
         return datetime.datetime.utcfromtimestamp(os.path.getmtime(self.executable))
 
     @property
+    @_in_session()
     def pipeline_id(self):
         """
         int: Primary key id of the table row of parent pipeline.
@@ -265,6 +272,7 @@ class Task:
         return self._task.pipeline_id
 
     @property
+    @_in_session()
     def pipeline(self):
         """
         :obj:`Pipeline`: Pipeline object corresponding to parent pipeline.
@@ -345,13 +353,17 @@ class Task:
                           " cannot be registered: no 'register' function")
         del sys.modules[pkg + '.' + sub], sys.modules[pkg]
 
+    def remove_data(self):
+        """
+        Remove task's file.
+        """
+        remove_path(self.executable)
+
     def delete(self):
         """
         Delete corresponding row from the database.
         """
-        for item in self.masks:
-            item.delete()
-        for item in self.jobs:
-            item.delete()
-        remove_path(self.executable)
+        self.masks.delete()
+        self.remove_data()
+        self.jobs.delete()
         si.delete(self._task)

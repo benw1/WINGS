@@ -7,11 +7,16 @@ available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import datetime, subprocess, si
 from .core import ChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection, as_int
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import as_int, split_path
 from .core import PARSER
 from .OptOwner import OptOwner
 
 __all__ = ['Event']
+
+
+def _in_session(**local_kw):
+    return in_session(split_path(__file__)[1].lower(), **local_kw)
 
 
 class Event(OptOwner):
@@ -142,24 +147,25 @@ class Event(OptOwner):
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
-                            try:
-                                cls._event = this_nested.session.query(si.Event).with_for_update(). \
-                                    filter_by(parent_job_id=job.job_id). \
-                                    filter_by(name=name). \
-                                    filter_by(tag=tag).one()
-                                this_nested.rollback()
-                            except si.orm.exc.NoResultFound:
+                            cls._event = this_nested.session.query(si.Event).with_for_update(). \
+                                filter_by(parent_job_id=job.job_id). \
+                                filter_by(name=name). \
+                                filter_by(tag=tag).one_or_none()
+                            if cls._event is None:
                                 cls._event = si.Event(name=name,
                                                       tag=tag,
                                                       jargs=jargs,
                                                       value=value)
                                 job._job.child_events.append(cls._event)
                                 this_nested.commit()
+                            else:
+                                this_nested.rollback()
                             retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Event')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_fired_jobs_proxy'):
             self._fired_jobs_proxy = ChildrenProxy(self._event, 'fired_jobs', 'Job',
@@ -195,39 +201,40 @@ class Event(OptOwner):
         return self.parent_job
 
     @property
+    @_in_session()
     def name(self):
         """
         str: Name of the mask which task is meant to be the fired job task.
         """
-        with si.begin_session() as session:
-            session.refresh(self._event)
+        self._session.refresh(self._event)
         return self._event.name
 
     @name.setter
+    @_in_session()
     def name(self, name):
-        with si.begin_session() as session:
-            self._event.name = name
-            self._event.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self._event.name = name
+        self._event.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @property
+    @_in_session()
     def tag(self):
         """
         str: Unique tag to identify the event if multiple event instance fire
         the same task.
         """
-        with si.begin_session() as session:
-            session.refresh(self._event)
+        self._session.refresh(self._event)
         return self._event.tag
 
     @tag.setter
+    @_in_session()
     def tag(self, tag):
-        with si.begin_session() as session:
-            self._event.tag = tag
-            self._event.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self._event.tag = tag
+        self._event.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @property
+    @_in_session()
     def event_id(self):
         """
         int: Primary key id of the table row.
@@ -235,6 +242,7 @@ class Event(OptOwner):
         return self._event.id
 
     @property
+    @_in_session()
     def jargs(self):
         """
         str: ###BEN###
@@ -242,22 +250,23 @@ class Event(OptOwner):
         return self._event.jargs
 
     @property
+    @_in_session()
     def value(self):
         """
         str: Value of the mask which task is meant to be the fired job task.
         """
-        with si.begin_session() as session:
-            session.refresh(self._event)
+        self._session.refresh(self._event)
         return self._event.value
 
     @value.setter
+    @_in_session()
     def value(self, value):
-        with si.begin_session() as session:
-            self._event.value = value
-            self._event.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self._event.value = value
+        self._event.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @property
+    @_in_session()
     def parent_job_id(self):
         """
         int: Primary key id of the table row of parent job.
@@ -265,6 +274,7 @@ class Event(OptOwner):
         return self._event.parent_job_id
 
     @property
+    @_in_session()
     def parent_job(self):
         """
         :obj:`Job`: Job object corresponding to parent job.
@@ -394,6 +404,5 @@ class Event(OptOwner):
         """
         Delete corresponding row from the database.
         """
-        for item in self.fired_jobs:
-            item.delete()
+        self.fired_jobs.delete()
         super(Event, self).delete()

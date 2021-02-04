@@ -8,9 +8,15 @@ DataProduct.
 """
 from .core import datetime, si
 from .core import DictLikeChildrenProxy
+from .core import in_session
+from .core import split_path
 from .Option import Option
 
 __all__ = ['OptOwner']
+
+
+def _in_session(**local_kw):
+    return in_session(split_path(__file__)[1].lower(), **local_kw)
 
 
 class OptOwner:
@@ -22,17 +28,18 @@ class OptOwner:
         capability to parent options. Please refer to their respective
         documentation for specific instructions.
     """
+    @_in_session()
     def __init__(self, options):
         if not hasattr(self, '_optowner'):
             self._optowner = si.OptOwner()
         if not hasattr(self, '_options_proxy'):
             self._options_proxy = DictLikeChildrenProxy(self._optowner, 'options', 'Option')
-        with si.begin_session() as session:
-            self.options = options
-            self._optowner.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self.options = options
+        self._optowner.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @property
+    @_in_session()
     def optowner_id(self):
         """
         int: Points to attribute target_id/dp_id/job_id/event_id depending on
@@ -41,12 +48,12 @@ class OptOwner:
         return self._optowner.id
 
     @property
+    @_in_session()
     def timestamp(self):
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        with si.begin_session() as session:
-            session.refresh(self._optowner)
+        self._session.refresh(self._optowner)
         return self._optowner.timestamp
 
     @property
@@ -82,6 +89,5 @@ class OptOwner:
         """
         Delete corresponding row from the database.
         """
-        for item in self.options:
-            item.delete()
+        self.options.delete()
         si.delete(self._optowner)

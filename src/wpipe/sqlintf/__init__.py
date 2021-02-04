@@ -138,11 +138,9 @@ class BeginSession:
                 retry_state.TRANSACTION = retry_state.begin_nested()
 
                 def _commit():
-                    try:
+                    if retry_state.TRANSACTION.is_active:
                         retry_state.TRANSACTION.commit()
-                    except exc.ResourceClosedError:
-                        pass
-                    if COMMIT_FLAG:
+                    if COMMIT_FLAG and not retry_state.session.EXISTING_SESSION:
                         retry_state.session.commit()
 
                 retry_state.commit = _commit

@@ -7,10 +7,15 @@ available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import datetime, si
 from .core import ChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import split_path
 from .core import PARSER
 
 __all__ = ['User']
+
+
+def _in_session(**local_kw):
+    return in_session(split_path(__file__)[1].lower(), **local_kw)
 
 
 class User:
@@ -70,6 +75,8 @@ class User:
         - either, evidently, via a parse argument -u/--user
         - or via a pre-defined environment variable WPIPE_USER (recommended)
     """
+    __cache__ = {}
+
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id
         cls._user = args[0] if len(args) else None
@@ -87,25 +94,25 @@ class User:
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
-                            try:
-                                cls._user = this_nested.session.query(si.User).with_for_update(). \
-                                    filter_by(name=name).one()
-                                this_nested.rollback()
-                            except si.orm.exc.NoResultFound:
+                            cls._user = this_nested.session.query(si.User).with_for_update(). \
+                                filter_by(name=name).one_or_none()
+                            if cls._user is None:
                                 cls._user = si.User(name=name)
                                 this_nested.session.add(cls._user)
                                 this_nested.commit()
+                            else:
+                                this_nested.rollback()
                             retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'User')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_pipelines_proxy'):
             self._pipelines_proxy = ChildrenProxy(self._user, 'pipelines', 'Pipeline', child_attr='pipe_root')
-        with si.begin_session() as session:
-            self._user.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self._user.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -134,22 +141,28 @@ class User:
         return
 
     @property
+    @_in_session()
     def name(self):
         """
         str: Name of user.
         """
-        with si.begin_session() as session:
-            session.refresh(self._user)
+        self._session.refresh(self._user)
         return self._user.name
 
     @name.setter
+    @_in_session()
     def name(self, name):
-        with si.begin_session() as session:
-            self._user.name = name
-            self._user.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        # with si.begin_session() as session:
+        #     # session.add(self._user)
+        #     self._user.name = name
+        #     self._user.timestamp = datetime.datetime.utcnow()
+        #     session.commit()
+        self._user.name = name
+        self._user.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @property
+    @_in_session()
     def user_id(self):
         """
         int: Primary key id of the table row.
@@ -157,12 +170,12 @@ class User:
         return self._user.id
 
     @property
+    @_in_session()
     def timestamp(self):
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        with si.begin_session() as session:
-            session.refresh(self._user)
+        self._session.refresh(self._user)
         return self._user.timestamp
 
     @property
@@ -193,6 +206,5 @@ class User:
         """
         Delete corresponding row from the database.
         """
-        for item in self.pipelines:
-            item.delete()
+        self.pipelines.delete()
         si.delete(self._user)

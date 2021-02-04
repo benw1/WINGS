@@ -6,9 +6,14 @@ Please note that this module is private. The Mask class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import datetime, si
-from .core import initialize_args, wpipe_to_sqlintf_connection
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import split_path
 
 __all__ = ['Mask']
+
+
+def _in_session(**local_kw):
+    return in_session(split_path(__file__)[1].lower(), **local_kw)
 
 
 class Mask:
@@ -88,26 +93,26 @@ class Mask:
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
-                            try:
-                                cls._mask = this_nested.session.query(si.Mask).with_for_update(). \
-                                    filter_by(task_id=task.task_id). \
-                                    filter_by(name=name).one()
-                                this_nested.rollback()
-                            except si.orm.exc.NoResultFound:
+                            cls._mask = this_nested.session.query(si.Mask).with_for_update(). \
+                                filter_by(task_id=task.task_id). \
+                                filter_by(name=name).one_or_none()
+                            if cls._mask is None:
                                 cls._mask = si.Mask(name=name,
                                                     source=source,
                                                     value=value)
                                 task._task.masks.append(cls._mask)
                                 this_nested.commit()
+                            else:
+                                this_nested.rollback()
                             retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Mask')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
-        with si.begin_session() as session:
-            self._mask.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self._mask.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -136,22 +141,23 @@ class Mask:
         return self.task
 
     @property
+    @_in_session()
     def name(self):
         """
         str: Name of the mask.
         """
-        with si.begin_session() as session:
-            session.refresh(self._mask)
+        self._session.refresh(self._mask)
         return self._mask.name
 
     @name.setter
+    @_in_session()
     def name(self, name):
-        with si.begin_session() as session:
-            self._mask.name = name
-            self._mask.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self._mask.name = name
+        self._mask.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @property
+    @_in_session()
     def mask_id(self):
         """
         int: Primary key id of the table row.
@@ -159,15 +165,16 @@ class Mask:
         return self._mask.id
 
     @property
+    @_in_session()
     def timestamp(self):
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        with si.begin_session() as session:
-            session.refresh(self._mask)
+        self._session.refresh(self._mask)
         return self._mask.timestamp
 
     @property
+    @_in_session()
     def source(self):
         """
         str: Source of the mask.
@@ -175,6 +182,7 @@ class Mask:
         return self._mask.source
 
     @property
+    @_in_session()
     def value(self):
         """
         str: Value of the mask.
@@ -182,6 +190,7 @@ class Mask:
         return self._mask.value
 
     @property
+    @_in_session()
     def task(self):
         """
         :obj:`Task`: Task object corresponding to parent task.
@@ -193,6 +202,7 @@ class Mask:
             return Task(self._mask.task)
 
     @property
+    @_in_session()
     def task_id(self):
         """
         int: Primary key id of the table row of parent task.

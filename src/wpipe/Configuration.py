@@ -7,10 +7,15 @@ is available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, datetime, si
 from .core import ChildrenProxy, DictLikeChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection, remove_path
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import remove_path, split_path
 from .DPOwner import DPOwner
 
 __all__ = ['Configuration']
+
+
+def _in_session(**local_kw):
+    return in_session(split_path(__file__)[1].lower(), **local_kw)
 
 
 class Configuration(DPOwner):
@@ -173,12 +178,10 @@ class Configuration(DPOwner):
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
-                            try:
-                                cls._configuration = this_nested.session.query(si.Configuration).with_for_update(). \
-                                    filter_by(target_id=target.target_id). \
-                                    filter_by(name=name).one()
-                                this_nested.rollback()
-                            except si.orm.exc.NoResultFound:
+                            cls._configuration = this_nested.session.query(si.Configuration).with_for_update(). \
+                                filter_by(target_id=target.target_id). \
+                                filter_by(name=name).one_or_none()
+                            if cls._configuration is None:
                                 cls._configuration = si.Configuration(name=name,
                                                                       datapath=target.datapath,
                                                                       confpath=target.datapath + '/conf_' + name,
@@ -202,11 +205,14 @@ class Configuration(DPOwner):
                                     for rawdp in rawdps:
                                         rawdp.symlink(cls._configuration.rawpath,
                                                       dpowner=cls._configuration, group='raw')
+                            else:
+                                this_nested.rollback()
                             retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Configuration')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_parameters_proxy'):
             self._parameters_proxy = DictLikeChildrenProxy(self._configuration, 'parameters', 'Parameter')
@@ -245,22 +251,23 @@ class Configuration(DPOwner):
         return self.target
 
     @property
+    @_in_session()
     def name(self):
         """
         str: Name of the configuration.
         """
-        with si.begin_session() as session:
-            session.refresh(self._configuration)
+        self._session.refresh(self._configuration)
         return self._configuration.name
 
     @name.setter
+    @_in_session()
     def name(self, name):
-        with si.begin_session() as session:
-            self._configuration.name = name
-            self._configuration.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self._configuration.name = name
+        self._configuration.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @property
+    @_in_session()
     def config_id(self):
         """
         int: Primary key id of the table row.
@@ -268,6 +275,7 @@ class Configuration(DPOwner):
         return self._configuration.id
 
     @property
+    @_in_session()
     def datapath(self):
         """
         str: Path to the parent target data sub-directory.
@@ -275,6 +283,7 @@ class Configuration(DPOwner):
         return self._configuration.datapath
 
     @property
+    @_in_session()
     def confpath(self):
         """
         str: Path to the configuration directory specific to configuration
@@ -283,6 +292,7 @@ class Configuration(DPOwner):
         return self._configuration.confpath
 
     @property
+    @_in_session()
     def rawpath(self):
         """
         str: Path to the configuration directory specific to raw data files.
@@ -290,6 +300,7 @@ class Configuration(DPOwner):
         return self._configuration.rawpath
 
     @property
+    @_in_session()
     def logpath(self):
         """
         str: Path to the configuration directory specific to logging files.
@@ -297,6 +308,7 @@ class Configuration(DPOwner):
         return self._configuration.logpath
 
     @property
+    @_in_session()
     def procpath(self):
         """
         str: Path to the configuration directory specific to processed data
@@ -305,22 +317,23 @@ class Configuration(DPOwner):
         return self._configuration.procpath
 
     @property
+    @_in_session()
     def description(self):
         """
         str: Description of the configuration
         """
-        with si.begin_session() as session:
-            session.refresh(self._configuration)
+        self._session.refresh(self._configuration)
         return self._configuration.description
 
     @description.setter
+    @_in_session()
     def description(self, description):
-        with si.begin_session() as session:
-            self._configuration.description = description
-            self._configuration.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self._configuration.description = description
+        self._configuration.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @property
+    @_in_session()
     def target_id(self):
         """
         int: Primary key id of the table row of parent target.
@@ -328,6 +341,7 @@ class Configuration(DPOwner):
         return self._configuration.target_id
 
     @property
+    @_in_session()
     def target(self):
         """
         :obj:`Target`: Target object corresponding to parent target.
@@ -429,16 +443,16 @@ class Configuration(DPOwner):
         from .Job import Job
         return Job(self, *args, **kwargs)
 
+    def remove_data(self):
+        """
+        Remove pipeline's directories.
+        """
+        remove_path(self.confpath, self.rawpath, self.logpath, self.procpath)
+
     def delete(self):
         """
         Delete corresponding row from the database.
         """
-        for item in self.parameters:
-            item.delete()
-        for item in self.jobs:
-            item.delete()
-        super(Configuration, self).delete()
-        remove_path(self.confpath)
-        remove_path(self.rawpath)
-        remove_path(self.logpath)
-        remove_path(self.procpath)
+        self.parameters.delete()
+        self.jobs.delete()
+        super(Configuration, self).delete(self.remove_data)

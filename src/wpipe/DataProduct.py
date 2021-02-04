@@ -6,10 +6,15 @@ Please note that this module is private. The DataProduct class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, shutil, datetime, si
-from .core import return_dict_of_attrs, initialize_args, wpipe_to_sqlintf_connection, clean_path, remove_path
+from .core import return_dict_of_attrs, initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import clean_path, remove_path, split_path
 from .OptOwner import OptOwner
 
 __all__ = ['DataProduct']
+
+
+def _in_session(**local_kw):
+    return in_session(split_path(__file__)[1].lower(), **local_kw)
 
 
 class DataProduct(OptOwner):
@@ -187,13 +192,11 @@ class DataProduct(OptOwner):
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
-                            try:
-                                cls._dataproduct = this_nested.session.query(si.DataProduct).with_for_update(). \
-                                    filter_by(dpowner_id=dpowner.dpowner_id). \
-                                    filter_by(group=group). \
-                                    filter_by(filename=filename).one()
-                                this_nested.rollback()
-                            except si.orm.exc.NoResultFound:
+                            cls._dataproduct = this_nested.session.query(si.DataProduct).with_for_update(). \
+                                filter_by(dpowner_id=dpowner.dpowner_id). \
+                                filter_by(group=group). \
+                                filter_by(filename=filename).one_or_none()
+                            if cls._dataproduct is None:
                                 if '.' in filename:
                                     _suffix = filename.split('.')[-1]
                                 else:
@@ -214,11 +217,14 @@ class DataProduct(OptOwner):
                                                                   pointing_angle=pointing_angle)
                                 dpowner._dpowner.dataproducts.append(cls._dataproduct)
                                 this_nested.commit()
+                            else:
+                                this_nested.rollback()
                             retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'DataProduct')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_optowner'):
             self._optowner = self._dataproduct
@@ -252,23 +258,24 @@ class DataProduct(OptOwner):
         return self.dpowner
 
     @property
+    @_in_session()
     def filename(self):
         """
         str: Name of the file the dataproduct points to.
         """
-        with si.begin_session() as session:
-            session.refresh(self._dataproduct)
+        self._session.refresh(self._dataproduct)
         return self._dataproduct.filename
 
     @filename.setter
+    @_in_session()
     def filename(self, filename):
         os.rename(self.relativepath + '/' + self._dataproduct.filename, self.relativepath + '/' + filename)
-        with si.begin_session() as session:
-            self._dataproduct.name = filename
-            self._dataproduct.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self._dataproduct.name = filename
+        self._dataproduct.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @property
+    @_in_session()
     def dp_id(self):
         """
         int: Primary key id of the table row.
@@ -276,6 +283,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.id
 
     @property
+    @_in_session()
     def relativepath(self):
         """
         str: Path of the directory in which the file the dataproduct points to
@@ -291,6 +299,7 @@ class DataProduct(OptOwner):
         return self.relativepath + '/' + self.filename
 
     @property
+    @_in_session()
     def suffix(self):
         """
         str: Extension of the file the dataproduct points to.
@@ -298,6 +307,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.suffix
 
     @property
+    @_in_session()
     def data_type(self):
         """
         str: Type of the data.
@@ -305,6 +315,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.data_type
 
     @property
+    @_in_session()
     def subtype(self):
         """
         str: Subtype of the data.
@@ -312,6 +323,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.subtype
 
     @property
+    @_in_session()
     def group(self):
         """
         str: Group of the dataproduct ('raw', 'conf', 'log' or 'proc').
@@ -319,6 +331,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.group
 
     @property
+    @_in_session()
     def filtername(self):
         """
         str: Name of the filter of the data.
@@ -326,6 +339,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.filtername
 
     @property
+    @_in_session()
     def ra(self):
         """
         int: Right ascension coordinate of the data.
@@ -333,6 +347,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.ra
 
     @property
+    @_in_session()
     def dec(self):
         """
         int: Declination coordinate of the data.
@@ -340,6 +355,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.dec
 
     @property
+    @_in_session()
     def pointing_angle(self):
         """
         int: Pointing angle coordinate of the data.
@@ -347,6 +363,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.pointing_angle
 
     @property
+    @_in_session()
     def dpowner_id(self):
         """
         int: Primary key id of the table row of parent pipeline, input or
@@ -355,6 +372,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.dpowner_id
 
     @property
+    @_in_session()
     def config_id(self):
         """
         int: Primary key id of the table row of parent configuration - raise
@@ -366,6 +384,7 @@ class DataProduct(OptOwner):
             raise AttributeError
 
     @property
+    @_in_session()
     def input_id(self):
         """
         int: Primary key id of the table row of parent input - raise an
@@ -377,6 +396,7 @@ class DataProduct(OptOwner):
             raise AttributeError
 
     @property
+    @_in_session()
     def pipeline_id(self):
         """
         int: Primary key id of the table row of parent pipeline.
@@ -387,6 +407,7 @@ class DataProduct(OptOwner):
             return self.dpowner.pipeline_id
 
     @property
+    @_in_session()
     def dpowner(self):
         """
         :obj:`Input` or :obj:`Configuration`: Input or Configuration object
@@ -406,6 +427,7 @@ class DataProduct(OptOwner):
                 return Pipeline(self._dataproduct.dpowner)
 
     @property
+    @_in_session()
     def config(self):
         """
         :obj:`Configuration`: Configuration object corresponding to parent
@@ -418,6 +440,7 @@ class DataProduct(OptOwner):
             raise AttributeError
 
     @property
+    @_in_session()
     def input(self):
         """
         :obj:`Input`: Input object corresponding to parent input - raise an
@@ -429,6 +452,7 @@ class DataProduct(OptOwner):
             raise AttributeError
 
     @property
+    @_in_session()
     def pipeline(self):
         """
         :obj:`Pipeline`: Pipeline object corresponding to parent pipeline.
@@ -555,7 +579,7 @@ class DataProduct(OptOwner):
         """
         return open(self.path, *args, **kwargs)
 
-    def remove(self):
+    def remove_data(self):
         """
         Remove dataproduct's file.
         """
@@ -565,5 +589,5 @@ class DataProduct(OptOwner):
         """
         Delete corresponding row from the database.
         """
-        self.remove()
+        self.remove_data()
         super(DataProduct, self).delete()

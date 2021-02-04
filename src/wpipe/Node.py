@@ -5,12 +5,17 @@ Contains the Node class definition
 Please note that this module is private. The Node class is
 available in the main ``wpipe`` namespace - use that instead.
 """
+import socket
 from .core import datetime, si
 from .core import ChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection
-import socket
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import split_path
 
 __all__ = ['Node']
+
+
+def _in_session(**local_kw):
+    return in_session(split_path(__file__)[1].lower(), **local_kw)
 
 
 class Node:
@@ -95,28 +100,28 @@ class Node:
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
-                            try:
-                                cls._node = this_nested.session.query(si.Node).with_for_update(). \
-                                    filter_by(name=name).one()
-                                this_nested.rollback()
-                            except si.orm.exc.NoResultFound:
+                            cls._node = this_nested.session.query(si.Node).with_for_update(). \
+                                filter_by(name=name).one_or_none()
+                            if cls._node is None:
                                 cls._node = si.Node(name=name,
                                                     int_ip=int_ip,
                                                     ext_ip=ext_ip)
                                 this_nested.session.add(cls._node)
                                 this_nested.commit()
+                            else:
+                                this_nested.rollback()
                             retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Node')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_jobs_proxy'):
             self._jobs_proxy = ChildrenProxy(self._node, 'jobs', 'Job',
                                              child_attr='id')
-        with si.begin_session() as session:
-            self._node.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self._node.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -145,22 +150,23 @@ class Node:
         return
 
     @property
+    @_in_session()
     def name(self):
         """
         str: Name of node.
         """
-        with si.begin_session() as session:
-            session.refresh(self._node)
+        self._session.refresh(self._node)
         return self._node.name
 
     @name.setter
+    @_in_session()
     def name(self, name):
-        with si.begin_session() as session:
-            self._node.name = name
-            self._node.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self._node.name = name
+        self._node.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @property
+    @_in_session()
     def node_id(self):
         """
         int: Primary key id of the table row.
@@ -168,15 +174,16 @@ class Node:
         return self._node.id
 
     @property
+    @_in_session()
     def timestamp(self):
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        with si.begin_session() as session:
-            session.refresh(self._node)
+        self._session.refresh(self._node)
         return self._node.timestamp
 
     @property
+    @_in_session()
     def int_ip(self):
         """
         str: Internal IP address of node.
@@ -184,6 +191,7 @@ class Node:
         return self._node.int_ip
 
     @property
+    @_in_session()
     def ext_ip(self):
         """
         str: External IP address of node.

@@ -7,10 +7,15 @@ available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, datetime, json, si
 from .core import ChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection, remove_path
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import remove_path, split_path
 from .OptOwner import OptOwner
 
 __all__ = ['Target']
+
+
+def _in_session(**local_kw):
+    return in_session(split_path(__file__)[1].lower(), **local_kw)
 
 
 class Target(OptOwner):
@@ -119,31 +124,38 @@ class Target(OptOwner):
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
                 input = kwargs.get('input', wpargs.get('Input', None))
                 name = kwargs.get('name', input.name if args[0] is None else args[0])
+                data_root = input.pipeline.data_root  # TODO
                 # querying the database for existing row or create
                 with si.begin_session() as session:
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
-                            try:
-                                cls._target = this_nested.session.query(si.Target).with_for_update(). \
-                                    filter_by(input_id=input.input_id). \
-                                    filter_by(name=name).one()
-                                this_nested.rollback()
-                            except si.orm.exc.NoResultFound:
-                                cls._target = si.Target(name=name,
-                                                        datapath=input.pipeline.data_root+'/'+name,
-                                                        dataraws=input.rawspath)
-                                input._input.targets.append(cls._target)
-                                this_nested.commit()
+                            cls._target = this_nested.session.query(si.Target).with_for_update(). \
+                                filter_by(input_id=input.input_id). \
+                                filter_by(name=name).one_or_none()
+                            if cls._target is None:
+                                # _temp = si.SESSION
+                                # si.SESSION = None
+                                with si.hold_commit():
+                                    cls._target = si.Target(name=name,
+                                                            # datapath=data_root+'/'+name,
+                                                            datapath=input.pipeline.data_root+'/'+name,
+                                                            dataraws=input.rawspath)
+                                    # si.SESSION = _temp
+                                    input._input.targets.append(cls._target)
+                                    this_nested.commit()
                                 if not os.path.isdir(cls._target.datapath):
                                     os.mkdir(cls._target.datapath)
                                 if not os.path.isdir(cls._target.dataraws):
                                     os.mkdir(cls._target.dataraws)
+                            else:
+                                this_nested.rollback()
                             retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Target')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_configurations_proxy'):
             self._configurations_proxy = ChildrenProxy(self._target, 'configurations', 'Configuration')
@@ -181,22 +193,23 @@ class Target(OptOwner):
         return self.input
 
     @property
+    @_in_session()
     def name(self):
         """
         str: Name of the target.
         """
-        with si.begin_session() as session:
-            session.refresh(self._target)
+        self._session.refresh(self._target)
         return self._target.name
 
     @name.setter
+    @_in_session()
     def name(self, name):
-        with si.begin_session() as session:
-            self._target.name = name
-            self._target.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self._target.name = name
+        self._target.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @property
+    @_in_session()
     def target_id(self):
         """
         int: Primary key id of the table row.
@@ -204,6 +217,7 @@ class Target(OptOwner):
         return self._target.id
 
     @property
+    @_in_session()
     def datapath(self):
         """
         str: Path to the target data sub-directory.
@@ -211,6 +225,7 @@ class Target(OptOwner):
         return self._target.datapath
 
     @property
+    @_in_session()
     def dataraws(self):
         """
         str: Path to the target parent input directory specific to raw data
@@ -219,6 +234,7 @@ class Target(OptOwner):
         return self._target.dataraws
 
     @property
+    @_in_session()
     def input_id(self):
         """
         int: Primary key id of the table row of parent input.
@@ -226,6 +242,7 @@ class Target(OptOwner):
         return self._target.input_id
 
     @property
+    @_in_session()
     def input(self):
         """
         :obj:`Input`: Input object corresponding to parent input.
@@ -292,11 +309,16 @@ class Target(OptOwner):
             self.configuration(os.path.splitext(confdp.filename)[0],
                                parameters=json.load(open(confdp.relativepath+'/'+confdp.filename))[0])
 
+    def remove_data(self):
+        """
+        Remove target's directories.
+        """
+        remove_path(self.datapath)
+
     def delete(self):
         """
         Delete corresponding row from the database.
         """
-        for item in self.configurations:
-            item.delete()
+        self.configurations.delete()
+        self.remove_data()
         super(Target, self).delete()
-        remove_path(self.datapath)

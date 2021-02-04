@@ -32,7 +32,7 @@ __all__ = ['importlib', 'os', 'sys', 'types', 'datetime', 'time', 'subprocess',
            'logging', 'glob', 'shutil', 'warnings', 'json', 'ast', 'atexit',
            'np', 'pd', 'si', 'PARSER', 'as_int', 'try_scalar', 'clean_path',
            'split_path', 'remove_path', 'key_wpipe_separator',
-           'initialize_args', 'wpipe_to_sqlintf_connection',
+           'initialize_args', 'wpipe_to_sqlintf_connection', 'in_session',
            'return_dict_of_attrs', 'to_json',
            'BaseProxy', 'ChildrenProxy', 'DictLikeChildrenProxy']
 
@@ -138,28 +138,34 @@ def split_path(path):
     return base, name, ext
 
 
-def remove_path(path, hard=False):
+def remove_path(*paths, hard=False):
     """
     Remove file or directory located at path.
 
     Parameters
     ----------
-    path : string
-        Path where file or directory is located
+    paths : string or array_like of strings
+        Paths where file or directories are located
     hard : boolean
         Flag to proceed to a hard tree removal of a directory - defaults to
         False.
     """
-    if os.path.isfile(path):
-        os.remove(path)
-    elif os.path.isdir(path):
-        if hard:
-            shutil.rmtree(path)
-        else:
-            try:
-                os.rmdir(path)
-            except OSError:
-                warnings.warn("Cannot remove directory %s : directory is not empty." % path)
+    if len(paths):
+        if len(paths) == 1 and hasattr(paths[0], '__len__') and not isinstance(paths[0], str):
+            paths = paths[0]
+        for path in paths:
+            if os.path.isfile(path):
+                os.remove(path)
+            elif os.path.isdir(path):
+                if hard:
+                    shutil.rmtree(path)
+                else:
+                    try:
+                        os.rmdir(path)
+                    except OSError:
+                        warnings.warn("Cannot remove directory %s : directory is not empty." % path)
+    else:
+        raise TypeError('remove_path expected at least 1 arguments, get 0')
 
 
 def key_wpipe_separator(obj):
@@ -228,6 +234,23 @@ def wpipe_to_sqlintf_connection(cls, cls_name):
         cls._inst = super(getattr(sys.modules['wpipe'], cls_name), cls).__new__(cls)
         getattr(cls, cls_attr)._wpipe_object = cls._inst
         setattr(cls._inst, cls_attr, getattr(cls, cls_attr))
+        setattr(cls._inst, '_session', None)
+
+
+def in_session(si_attr, **local_kw):
+    def decor(func):
+        def wrapper(self_cls, *args, **kwargs):
+            with si.begin_session(**local_kw) as session:
+                _temp = self_cls._session
+                self_cls._session = session
+                session.add(getattr(self_cls, '_' + si_attr))
+                output = func(self_cls, *args, **kwargs)
+                self_cls._session = _temp
+                return output
+
+        return wrapper
+
+    return decor
 
 
 def return_dict_of_attrs(obj):
@@ -246,12 +269,13 @@ def return_dict_of_attrs(obj):
         Dictionary of attributes of obj.
     """
     with si.begin_session() as session:
+        session.add(obj)
         session.refresh(obj)
-    return dict((attr, getattr(obj, attr))
-                for attr in dir(obj) if attr[0] != '_'
-                and getattr(obj, attr) is not None
-                and type(getattr(obj, attr)).__module__.split('.')[0]
-                not in ['sqlalchemy', 'wpipe'])
+        return dict((attr, getattr(obj, attr))
+                    for attr in dir(obj) if attr[0] != '_'
+                    and getattr(obj, attr) is not None
+                    and type(getattr(obj, attr)).__module__.split('.')[0]
+                    not in ['sqlalchemy', 'wpipe'])
 
 
 def to_json(obj, *args, **kwargs):
@@ -338,7 +362,7 @@ class NumberProxy(BaseProxy):
                     _temp = retry.retry_state.query(self.parent.__class__).with_for_update(). \
                         filter_by(id=self.parent_id).one()
                     setattr(_temp, self.attr_name,
-                            [lambda x:x, try_scalar][self._try_scalar](getattr(_temp, self.attr_name)) + other)
+                            [lambda x: x, try_scalar][self._try_scalar](getattr(_temp, self.attr_name)) + other)
                     _temp = BaseProxy(parent=self.parent,
                                       attr_name=self.attr_name,
                                       try_scalar=self.try_scalar)
@@ -392,6 +416,7 @@ class ChildrenProxy:
         self._cls_name = cls_name
         self._child_attr = child_attr
         self._work_with_sqlintf = 0
+        self._session = None
 
     def __repr__(self):
         self._refresh()
@@ -399,6 +424,7 @@ class ChildrenProxy:
             map(lambda child: self._cls_name + '(' + repr(getattr(child, self._child_attr)) + ')',
                 self.children)) + ')'
 
+    @in_session('parent')
     def __len__(self):
         self._refresh()
         return len(self.children)
@@ -419,6 +445,7 @@ class ChildrenProxy:
             del self.n, self.len
             raise StopIteration
 
+    @in_session('parent')
     def __getitem__(self, item):
         if np.ndim(item) == 0:
             if self._work_with_sqlintf == 0:
@@ -432,11 +459,21 @@ class ChildrenProxy:
         else:
             return [self[i] for i in np.arange(len(self))[item]]
 
+    @in_session('parent')
     def __getattr__(self, item):
         if hasattr(getattr(sys.modules['wpipe'], self._cls_name), item):
             self._refresh()
             with self._with_sqlintf():
                 return np.array([getattr(self[i], item) for i in range(len(self))])
+
+    @property
+    def children(self):
+        return getattr(self._parent, self._children_attr)
+
+    @in_session('parent')
+    def delete(self):
+        while len(self):
+            self[0].delete()
 
     @contextlib.contextmanager
     def _with_sqlintf(self):
@@ -446,16 +483,12 @@ class ChildrenProxy:
         finally:
             self._work_with_sqlintf -= 1
 
-    @property
-    def children(self):
-        return getattr(self._parent, self._children_attr)
-
+    @in_session('parent')
     def _refresh(self, **kwargs):
         if self._work_with_sqlintf == 0:
-            with si.begin_session() as session:
-                session.refresh(self._parent, **kwargs)
-                for child in self.children:
-                    session.refresh(child, **kwargs)
+            self._session.refresh(self._parent, **kwargs)
+            for child in self.children:
+                self._session.refresh(child, **kwargs)
 
 
 class DictLikeChildrenProxy(ChildrenProxy):

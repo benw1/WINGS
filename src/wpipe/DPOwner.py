@@ -8,8 +8,14 @@ Configuration.
 """
 from .core import datetime, si
 from .core import ChildrenProxy
+from .core import in_session
+from .core import split_path
 
 __all__ = ['DPOwner']
+
+
+def _in_session(**local_kw):
+    return in_session(split_path(__file__)[1].lower(), **local_kw)
 
 
 class DPOwner:
@@ -21,17 +27,18 @@ class DPOwner:
         capability to parent dataproducts. Please refer to their respective
         documentation for specific instructions.
     """
+    @_in_session()
     def __init__(self):
         if not hasattr(self, '_dpowner'):
             self._dpowner = si.DPOwner()
         if not hasattr(self, '_dataproducts_proxy'):
             self._dataproducts_proxy = ChildrenProxy(self._dpowner, 'dataproducts', 'DataProduct',
                                                      child_attr='filename')
-        with si.begin_session() as session:
-            self._dpowner.timestamp = datetime.datetime.utcnow()
-            session.commit()
+        self._dpowner.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     @property
+    @_in_session()
     def dpowner_id(self):
         """
         int: Points to attribute pipeline_id/input_id/config_id depending on
@@ -40,12 +47,12 @@ class DPOwner:
         return self._dpowner.id
 
     @property
+    @_in_session()
     def timestamp(self):
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        with si.begin_session() as session:
-            session.refresh(self._dpowner)
+        self._session.refresh(self._dpowner)
         return self._dpowner.timestamp
 
     @property
@@ -120,10 +127,12 @@ class DPOwner:
         from .DataProduct import DataProduct
         return DataProduct(self, *args, **kwargs)
 
-    def delete(self):
+    def delete(self, *predeletes):
         """
         Delete corresponding row from the database.
         """
-        for item in self.dataproducts:
-            item.delete()
+        self.dataproducts.delete()
+        if predeletes:
+            for predel in predeletes:
+                predel()
         si.delete(self._dpowner)
