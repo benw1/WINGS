@@ -11,7 +11,6 @@ import os
 import sys
 import types
 import itertools
-import regex
 import numbers
 import datetime
 import time
