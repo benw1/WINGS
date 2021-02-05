@@ -20,7 +20,7 @@ JOBCOMPSTATE = "Completed"
 
 
 def _in_session(**local_kw):
-    return in_session(split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
 
 
 class Job(OptOwner):

@@ -11,6 +11,7 @@ import os
 import sys
 import types
 import itertools
+import regex
 import numbers
 import datetime
 import time
@@ -243,7 +244,7 @@ def in_session(si_attr, **local_kw):
             with si.begin_session(**local_kw) as session:
                 _temp = self_cls._session
                 self_cls._session = session
-                session.add(getattr(self_cls, '_' + si_attr))
+                session.add(getattr(self_cls, si_attr))
                 output = func(self_cls, *args, **kwargs)
                 self_cls._session = _temp
                 return output
@@ -317,6 +318,7 @@ class BaseProxy:
         self._parent_id = int(self.parent.id)
         self._attr_name = kwargs.pop('attr_name', '')
         self._try_scalar = kwargs.pop('try_scalar', False)
+        self._session = None
 
     @property
     def parent(self):
@@ -356,22 +358,60 @@ class NumberProxy(BaseProxy):
         super().__init__(self, *args, **kwargs)
 
     def __iadd__(self, other):
-        with si.begin_session() as session:
-            for retry in session.retrying_nested():
-                with retry:
-                    _temp = retry.retry_state.query(self.parent.__class__).with_for_update(). \
-                        filter_by(id=self.parent_id).one()
-                    setattr(_temp, self.attr_name,
-                            [lambda x: x, try_scalar][self._try_scalar](getattr(_temp, self.attr_name)) + other)
-                    _temp = BaseProxy(parent=self.parent,
-                                      attr_name=self.attr_name,
-                                      try_scalar=self.try_scalar)
-                    retry.retry_state.commit()
+        return self._augmented_assign('__add__', other)
+
+    def __isub__(self, other):
+        return self._augmented_assign('__sub__', other)
+
+    def __imul__(self, other):
+        return self._augmented_assign('__mul__', other)
+
+    def __ifloordiv__(self, other):
+        return self._augmented_assign('__floordiv__', other)
+
+    def __idiv__(self, other):
+        return self._augmented_assign('__div__', other)
+
+    def __itruediv__(self, other):
+        return self._augmented_assign('__truediv__', other)
+
+    def __imod__(self, other):
+        return self._augmented_assign('__mod__', other)
+
+    def __ipow__(self, other):
+        return self._augmented_assign('__pow__', other)
+
+    def __iand__(self, other):
+        return self._augmented_assign('__and__', other)
+
+    def __ior__(self, other):
+        return self._augmented_assign('__or__', other)
+
+    def __ixor__(self, other):
+        return self._augmented_assign('__xor__', other)
+
+    @in_session('parent')
+    def _augmented_assign(self, operator, other):
+        for retry in self._session.retrying_nested():
+            with retry:
+                _temp = retry.retry_state.query(self.parent.__class__).with_for_update(). \
+                    filter_by(id=self.parent_id).one()
+                setattr(_temp, self.attr_name, getattr(
+                    [lambda x: x, try_scalar][self._try_scalar](getattr(_temp, self.attr_name)),
+                    operator)(other))
+                _temp = BaseProxy(parent=self.parent,
+                                  attr_name=self.attr_name,
+                                  try_scalar=self.try_scalar)
+                retry.retry_state.commit()
         return _temp
 
 
 class IntProxy(NumberProxy, int):
-    pass
+    def __ilshift__(self, other):
+        return self._augmented_assign('__lshift__', other)
+
+    def __irshift__(self, other):
+        return self._augmented_assign('__lrhift__', other)
 
 
 class FloatProxy(NumberProxy, float):
@@ -424,7 +464,7 @@ class ChildrenProxy:
             map(lambda child: self._cls_name + '(' + repr(getattr(child, self._child_attr)) + ')',
                 self.children)) + ')'
 
-    @in_session('parent')
+    @in_session('_parent')
     def __len__(self):
         self._refresh()
         return len(self.children)
@@ -445,12 +485,12 @@ class ChildrenProxy:
             del self.n, self.len
             raise StopIteration
 
-    @in_session('parent')
+    @in_session('_parent')
     def __getitem__(self, item):
         if np.ndim(item) == 0:
             if self._work_with_sqlintf == 0:
                 self._refresh()
-                if hasattr(self.children[item], '_wpipe_object'):
+                if hasattr(self.children[item], '_wpipe_object'):  # TODO: Unnecessary
                     return self.children[item]._wpipe_object
                 else:
                     return getattr(sys.modules['wpipe'], self._cls_name)(self.children[item])
@@ -459,7 +499,7 @@ class ChildrenProxy:
         else:
             return [self[i] for i in np.arange(len(self))[item]]
 
-    @in_session('parent')
+    @in_session('_parent')
     def __getattr__(self, item):
         if hasattr(getattr(sys.modules['wpipe'], self._cls_name), item):
             self._refresh()
@@ -470,7 +510,7 @@ class ChildrenProxy:
     def children(self):
         return getattr(self._parent, self._children_attr)
 
-    @in_session('parent')
+    @in_session('_parent')
     def delete(self):
         while len(self):
             self[0].delete()
@@ -483,7 +523,7 @@ class ChildrenProxy:
         finally:
             self._work_with_sqlintf -= 1
 
-    @in_session('parent')
+    @in_session('_parent')
     def _refresh(self, **kwargs):
         if self._work_with_sqlintf == 0:
             self._session.refresh(self._parent, **kwargs)
@@ -545,7 +585,10 @@ class DictLikeChildrenProxy(ChildrenProxy):
                 child = self.children[count]
                 setattr(child, self._child_value, value)
             except StopIteration:
-                raise KeyError(item)
+                _temp = getattr(sys.modules['wpipe'], self._cls_name)(
+                    getattr(sys.modules['wpipe'], self._parent.__class__.__name__)(self._parent),
+                    **{self._child_attr: item, self._child_value: value}
+                )
 
     @property
     def _keys_children(self):

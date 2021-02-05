@@ -15,7 +15,7 @@ __all__ = ['Target']
 
 
 def _in_session(**local_kw):
-    return in_session(split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
 
 
 class Target(OptOwner):
@@ -124,7 +124,6 @@ class Target(OptOwner):
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
                 input = kwargs.get('input', wpargs.get('Input', None))
                 name = kwargs.get('name', input.name if args[0] is None else args[0])
-                data_root = input.pipeline.data_root  # TODO
                 # querying the database for existing row or create
                 with si.begin_session() as session:
                     for retry in session.retrying_nested():
@@ -134,14 +133,10 @@ class Target(OptOwner):
                                 filter_by(input_id=input.input_id). \
                                 filter_by(name=name).one_or_none()
                             if cls._target is None:
-                                # _temp = si.SESSION
-                                # si.SESSION = None
                                 with si.hold_commit():
                                     cls._target = si.Target(name=name,
-                                                            # datapath=data_root+'/'+name,
                                                             datapath=input.pipeline.data_root+'/'+name,
                                                             dataraws=input.rawspath)
-                                    # si.SESSION = _temp
                                     input._input.targets.append(cls._target)
                                     this_nested.commit()
                                 if not os.path.isdir(cls._target.datapath):
