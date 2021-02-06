@@ -55,7 +55,7 @@ __all__ = ['sa', 'orm', 'exc', 'argparse', 'PARSER', 'Session', 'SESSION',
 
 Base.metadata.create_all(Engine)
 
-SESSION = None  # Session()
+SESSION = None  # Session()  # TODO: SessionPooling
 """
 sqlalchemy.orm.session.Session object: placeholder (manages database operations via the engine).
 """

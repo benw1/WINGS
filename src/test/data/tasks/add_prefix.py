@@ -1,6 +1,9 @@
 #! /usr/bin/env python
+import time
 import wpipe as wp
 import fileinput as fi
+
+WAITING_TIME = 0  # 3600*24
 
 
 def register(task):
@@ -16,6 +19,9 @@ if __name__ == '__main__':
     filename = my_conf.target.name
     my_dp = my_conf.dataproduct(filename, group='raw').make_copy(my_conf.procpath, group='proc')
     my_job.logprint("Copy of raw dataproduct made")
+    my_job.logprint("NOW STARTING TO WAIT %f hours" % (WAITING_TIME/3600))
+    time.sleep(WAITING_TIME)
+    my_job.logprint("NOW ENDING WAIT")
     with fi.input(my_dp.path, inplace=True) as file:
         for line in file:
             print(my_conf.parameters['suffix'] + line, end='')

@@ -335,6 +335,26 @@ class BaseProxy:
     def try_scalar(self):
         return self._try_scalar
 
+    @in_session('parent')
+    def _augmented_assign(self, operator, other):
+        for retry in self._session.retrying_nested():
+            with retry:
+                _temp = retry.retry_state.query(self.parent.__class__).with_for_update(). \
+                    filter_by(id=self.parent_id).one()
+                _result = getattr(
+                    [lambda x: x, try_scalar][self._try_scalar](getattr(_temp, self.attr_name)),
+                    operator)(other)
+                if _result is not NotImplemented:
+                    setattr(_temp, self.attr_name, _result)
+                    _temp = BaseProxy(parent=self.parent,
+                                      attr_name=self.attr_name,
+                                      try_scalar=self.try_scalar)
+                retry.retry_state.commit()
+        if _result is NotImplemented:
+            raise TypeError("unsupported operand type(s) for augmented assignment")
+        else:
+            return _temp
+
 
 class StringProxy(BaseProxy, str):
     pass
@@ -389,21 +409,6 @@ class NumberProxy(BaseProxy):
     def __ixor__(self, other):
         return self._augmented_assign('__xor__', other)
 
-    @in_session('parent')
-    def _augmented_assign(self, operator, other):
-        for retry in self._session.retrying_nested():
-            with retry:
-                _temp = retry.retry_state.query(self.parent.__class__).with_for_update(). \
-                    filter_by(id=self.parent_id).one()
-                setattr(_temp, self.attr_name, getattr(
-                    [lambda x: x, try_scalar][self._try_scalar](getattr(_temp, self.attr_name)),
-                    operator)(other))
-                _temp = BaseProxy(parent=self.parent,
-                                  attr_name=self.attr_name,
-                                  try_scalar=self.try_scalar)
-                retry.retry_state.commit()
-        return _temp
-
 
 class IntProxy(NumberProxy, int):
     def __ilshift__(self, other):
@@ -417,7 +422,7 @@ class FloatProxy(NumberProxy, float):
     pass
 
 
-class DatetimeProxy(BaseProxy, datetime.datetime):
+class DatetimeProxy(BaseProxy, datetime.datetime):  # TODO: __add__ and __sub__ with timedelta objects
     def __new__(cls, *args, **kwargs):
         if cls is DatetimeProxy:
             args = [
@@ -569,6 +574,8 @@ class DictLikeChildrenProxy(ChildrenProxy):
                              attr_name=self._child_value,
                              try_scalar=True)
         except StopIteration:
+            raiseerror = True
+        if raiseerror:
             raise KeyError(item)
 
     def __setitem__(self, item, value):
