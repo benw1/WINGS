@@ -300,10 +300,8 @@ class BaseProxy:
                             kwargs.pop('attr_name', ''))
             if kwargs.pop('try_scalar', False):
                 proxy = try_scalar(proxy)
-            if isinstance(proxy, str):
-                cls = StringProxy
-            elif isinstance(proxy, numbers.Number):
-                cls = NumberProxy
+            if isinstance(proxy, str) or isinstance(proxy, numbers.Number):
+                cls = StrNumProxy
             elif isinstance(proxy, datetime.datetime):
                 cls = DatetimeProxy
             else:
@@ -356,11 +354,37 @@ class BaseProxy:
             return _temp
 
 
-class StringProxy(BaseProxy, str):
+class StrNumProxy(BaseProxy):
+    def __new__(cls, *args, **kwargs):
+        if cls is StrNumProxy:
+            proxy = args[0]
+            if isinstance(proxy, str):
+                cls = StringProxy
+            elif isinstance(proxy, numbers.Number):
+                cls = NumberProxy
+            else:
+                raise ValueError("Invalid proxy type %s" % type(proxy))
+            return cls.__new__(cls, *args, *kwargs)
+        return super().__new__(cls, *args, *kwargs)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)
+
+    def __iadd__(self, other):  #
+        return self._augmented_assign('__add__', other)
+
+    def __imul__(self, other):  #
+        return self._augmented_assign('__mul__', other)
+
+    def __imod__(self, other):
+        return self._augmented_assign('__mod__', other)
+
+
+class StringProxy(StrNumProxy, str):
     pass
 
 
-class NumberProxy(BaseProxy):
+class NumberProxy(StrNumProxy):
     def __new__(cls, *args, **kwargs):
         if cls is NumberProxy:
             proxy = args[0]
@@ -376,14 +400,8 @@ class NumberProxy(BaseProxy):
     def __init__(self, *args, **kwargs):
         super().__init__(self, *args, **kwargs)
 
-    def __iadd__(self, other):
-        return self._augmented_assign('__add__', other)
-
     def __isub__(self, other):
         return self._augmented_assign('__sub__', other)
-
-    def __imul__(self, other):
-        return self._augmented_assign('__mul__', other)
 
     def __ifloordiv__(self, other):
         return self._augmented_assign('__floordiv__', other)
@@ -393,9 +411,6 @@ class NumberProxy(BaseProxy):
 
     def __itruediv__(self, other):
         return self._augmented_assign('__truediv__', other)
-
-    def __imod__(self, other):
-        return self._augmented_assign('__mod__', other)
 
     def __ipow__(self, other):
         return self._augmented_assign('__pow__', other)
@@ -561,6 +576,7 @@ class DictLikeChildrenProxy(ChildrenProxy):
         self._refresh()
         return repr(dict(self._items))
 
+    @in_session('_parent')
     def __getitem__(self, item):
         if isinstance(item, int):
             return super(DictLikeChildrenProxy, self).__getitem__(item)
@@ -578,6 +594,7 @@ class DictLikeChildrenProxy(ChildrenProxy):
         if raiseerror:
             raise KeyError(item)
 
+    @in_session('_parent')
     def __setitem__(self, item, value):
         if not isinstance(value, BaseProxy):
             self._refresh()
@@ -590,6 +607,7 @@ class DictLikeChildrenProxy(ChildrenProxy):
                     count += 1
                 child = self.children[count]
                 setattr(child, self._child_value, value)
+                self._session.commit()
             except StopIteration:
                 _temp = getattr(sys.modules['wpipe'], self._cls_name)(
                     getattr(sys.modules['wpipe'], self._parent.__class__.__name__)(self._parent),
