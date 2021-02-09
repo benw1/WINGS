@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+"""
+Contains the StreamToLogger class definition.
+
+Please note that this module is private and should only be used internally to
+the schedulers subpackage.
+"""
 import logging
 
 # Lets us log stdout and stderr

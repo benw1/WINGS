@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+"""
+Contains the PbsConsumer utilities including the scheduler.checkPbsConnection
+and scheduler.sendJobToPbs function definitions
+
+Please note that this module is private. These functions are available in the
+main ``wpipe.scheduler`` namespace - use that instead.
+"""
 import asyncio
 import pickle
 import socket
@@ -8,6 +16,8 @@ from .StreamToLogger import StreamToLogger
 from .JobData import JobData
 from .PbsScheduler import PbsScheduler
 from wpipe.sqlintf import SESSION
+
+__all__ = ['checkPbsConnection', 'sendJobToPbs']
 
 # TODO: Make this not hardcoded
 HOST_MACHINE = '10.150.27.94'

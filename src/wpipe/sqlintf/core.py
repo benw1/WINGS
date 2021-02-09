@@ -3,7 +3,7 @@
 Contains the core import statements and developing tools of sqlintf
 
 Please note that this module is private. All functions and objects
-are available in the main ``sqlintf`` namespace - use that instead.
+are available in the main ``wpipe.sqlintf`` namespace - use that instead.
 """
 import os
 import argparse

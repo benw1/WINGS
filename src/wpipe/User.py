@@ -75,7 +75,7 @@ class User:
         - either, evidently, via a parse argument -u/--user
         - or via a pre-defined environment variable WPIPE_USER (recommended)
     """
-    __cache__ = {}
+    __cache__ = {}  # TODO: Caching of wpipe objects as an alternative to querying
 
     def __new__(cls, *args, **kwargs):
         # checking if given argument is sqlintf object or existing id

@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+"""
+Contains the BaseScheduler abstract class definition for all inherited
+scheduler classes.
+
+Please note that this module is private and should only be used internally to
+the schedulers subpackage.
+"""
 import abc
 import threading
 

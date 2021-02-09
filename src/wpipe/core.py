@@ -238,6 +238,27 @@ def wpipe_to_sqlintf_connection(cls, cls_name):
 
 
 def in_session(si_attr, **local_kw):
+    """
+    Returns a decorator that places the modified function in a begin_session
+    context manager statement. The modified must be defined around a first
+    positional argument which object will hold the associated BeginSession
+    object as attribute '_session'. Also, it adds to the corresponding Session
+    the object that is hold in the attribute designated by si_attr of that
+    same object in first positional argument of the modified function.
+
+    Parameters
+    ----------
+    si_attr : string
+        Name of the attribute where to find the object to add to the Session.
+
+    local_kw : dict
+        TODO
+
+    Returns
+    -------
+    decor :
+        Decorator to be used.
+    """
     def decor(func):
         def wrapper(self_cls, *args, **kwargs):
             with si.begin_session(**local_kw) as session:
@@ -294,6 +315,29 @@ def to_json(obj, *args, **kwargs):
 
 
 class BaseProxy:
+    """
+        Parent class of all proxy classes
+
+        Parameters
+        ----------
+        parents : sqlintf.Base object
+            TODO
+        attr_name : string
+            TODO
+        try_scalar : boolean
+            TODO
+
+        Attributes
+        ----------
+        parents : sqlintf.Base object
+            TODO
+        parent_id : int
+            TODO
+        attr_name : string
+            TODO
+        try_scalar : boolean
+            TODO
+    """
     def __new__(cls, *args, **kwargs):
         if cls is BaseProxy:
             proxy = getattr(kwargs.pop('parent', None),
@@ -319,22 +363,37 @@ class BaseProxy:
 
     @property
     def parent(self):
+        """
+        TODO
+        """
         return self._parent
 
     @property
     def parent_id(self):
+        """
+        TODO
+        """
         return self._parent_id
 
     @property
     def attr_name(self):
+        """
+        TODO
+        """
         return self._attr_name
 
     @property
     def try_scalar(self):
+        """
+        TODO
+        """
         return self._try_scalar
 
     @in_session('parent')
     def _augmented_assign(self, operator, other):
+        """
+        TODO
+        """
         for retry in self._session.retrying_nested():
             with retry:
                 _temp = retry.retry_state.query(self.parent.__class__).with_for_update(). \
@@ -355,6 +414,11 @@ class BaseProxy:
 
 
 class StrNumProxy(BaseProxy):
+    """
+        Class inherited from BaseProxy and parenting the StringProxy and
+        NumberProxy classes. Supports the augmented assignment methods
+        __iadd__, __imul__ and __imod__.
+    """
     def __new__(cls, *args, **kwargs):
         if cls is StrNumProxy:
             proxy = args[0]
@@ -381,10 +445,20 @@ class StrNumProxy(BaseProxy):
 
 
 class StringProxy(StrNumProxy, str):
+    """
+        Class inherited from StrNumProxy meant to proxy entries from the
+        database that represent string values. Behaves as a string object.
+    """
     pass
 
 
 class NumberProxy(StrNumProxy):
+    """
+        Class inherited from StrNumProxy and parenting the IntProxy and
+        FloatProxy classes. Supports the augmented assignment methods
+        __isub__, __ifloordiv__, __idiv__, __itruediv__, __ipow__, __iand__,
+        __ior__ and __ixor__.
+    """
     def __new__(cls, *args, **kwargs):
         if cls is NumberProxy:
             proxy = args[0]
@@ -426,6 +500,12 @@ class NumberProxy(StrNumProxy):
 
 
 class IntProxy(NumberProxy, int):
+    """
+        Class inherited from NumberProxy meant to proxy entries from the
+        database that represent integer values. Supports the augmented
+        assignment methods __ilshift__ and __irshift__. Behaves as an integer
+        object.
+    """
     def __ilshift__(self, other):
         return self._augmented_assign('__lshift__', other)
 
@@ -434,10 +514,19 @@ class IntProxy(NumberProxy, int):
 
 
 class FloatProxy(NumberProxy, float):
+    """
+        Class inherited from NumberProxy meant to proxy entries from the
+        database that represent float values. Behaves as a float object.
+    """
     pass
 
 
 class DatetimeProxy(BaseProxy, datetime.datetime):  # TODO: __add__ and __sub__ with timedelta objects
+    """
+        Class inherited from BaseProxy meant to proxy entries from the
+        database that represent datetime.datetime values. Behaves as a
+        datetime.datetime object.
+    """
     def __new__(cls, *args, **kwargs):
         if cls is DatetimeProxy:
             args = [
@@ -453,7 +542,7 @@ class DatetimeProxy(BaseProxy, datetime.datetime):  # TODO: __add__ and __sub__ 
         return super().__new__(cls, *args, *kwargs)
 
 
-class ChildrenProxy:
+class ChildrenProxy:  # TODO: Generalize proxy object with the BaseProxy
     """
         Proxy to access children of a Wpipe object.
 

@@ -1,8 +1,17 @@
+#!/usr/bin/env python
+"""
+Contains the scheduler.PbsScheduler class definition
+
+Please note that this module is private. The scheduler.PbsScheduler class is
+available in the ``wpipe.scheduler`` namespace - use that instead.
+"""
 import datetime
 
 from .BaseScheduler import BaseScheduler
 from .TemplateFactory import TemplateFactory
 import subprocess
+
+__all__ = ['PbsScheduler']
 
 
 class PbsScheduler(BaseScheduler):
