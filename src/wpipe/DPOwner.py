@@ -7,9 +7,9 @@ be used by itself, but through its inherited classes Pipeline, Input and
 Configuration.
 """
 from .core import datetime, si
-from .core import ChildrenProxy
 from .core import in_session
 from .core import split_path
+from .proxies import ChildrenProxy
 
 __all__ = ['DPOwner']
 

@@ -6,10 +6,10 @@ Please note that this module is private. The User class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import datetime, si
-from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import split_path
 from .core import PARSER
+from .proxies import ChildrenProxy
 
 __all__ = ['User']
 

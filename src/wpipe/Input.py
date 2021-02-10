@@ -6,9 +6,9 @@ Please note that this module is private. The Input class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, glob, shutil, datetime, si
-from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import clean_path, remove_path, split_path
+from .proxies import ChildrenProxy
 from .DPOwner import DPOwner
 
 __all__ = ['Input']

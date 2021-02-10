@@ -7,9 +7,9 @@ be used by itself, but through its inherited classes Target, Job, Event and
 DataProduct.
 """
 from .core import datetime, si
-from .core import DictLikeChildrenProxy
 from .core import in_session
 from .core import split_path
+from .proxies import DictLikeChildrenProxy
 from .Option import Option
 
 __all__ = ['OptOwner']

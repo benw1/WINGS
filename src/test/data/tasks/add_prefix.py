@@ -17,6 +17,7 @@ if __name__ == '__main__':
     my_job.logprint("Starting add_prefix task")
     my_conf = my_job.config
     filename = my_conf.target.name
+    my_conf.target.options['Interactions'] += 1
     my_dp = my_conf.dataproduct(filename, group='raw').make_copy(my_conf.procpath, group='proc')
     my_job.logprint("Copy of raw dataproduct made")
     my_job.logprint("NOW STARTING TO WAIT %f hours" % (WAITING_TIME/3600))

@@ -6,10 +6,10 @@ Please note that this module is private. The Pipeline class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, sys, glob, datetime, json, si
-from .core import ChildrenProxy
 from .core import to_json, initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import as_int, clean_path, remove_path, split_path
 from .core import PARSER
+from .proxies import ChildrenProxy
 from .DPOwner import DPOwner
 
 __all__ = ['Pipeline']

@@ -6,9 +6,9 @@ Please note that this module is private. The Task class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, sys, shutil, warnings, datetime, si
-from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import clean_path, remove_path, split_path
+from .proxies import ChildrenProxy
 
 __all__ = ['Task']
 

@@ -6,10 +6,10 @@ Please note that this module is private. The Job class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import sys, logging, datetime, si
-from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import as_int, split_path
 from .core import PARSER
+from .proxies import ChildrenProxy
 from .OptOwner import OptOwner
 
 __all__ = ['Job', 'JOBINITSTATE', 'JOBSUBMSTATE', 'JOBCOMPSTATE']

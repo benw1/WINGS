@@ -6,10 +6,10 @@ Please note that this module is private. The Event class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import datetime, subprocess, si
-from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import as_int, split_path
 from .core import PARSER
+from .proxies import ChildrenProxy
 from .OptOwner import OptOwner
 
 __all__ = ['Event']

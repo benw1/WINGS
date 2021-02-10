@@ -6,9 +6,9 @@ Please note that this module is private. The Target class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, datetime, json, si
-from .core import ChildrenProxy
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import remove_path, split_path
+from .proxies import ChildrenProxy
 from .OptOwner import OptOwner
 
 __all__ = ['Target']
