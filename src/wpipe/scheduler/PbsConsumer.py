@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+"""
+Contains the PbsConsumer utilities including the scheduler.checkPbsConnection
+and scheduler.sendJobToPbs function definitions
+
+Please note that this module is private. These functions are available in the
+main ``wpipe.scheduler`` namespace - use that instead.
+"""
 import asyncio
 import pickle
 import socket
@@ -7,10 +15,14 @@ from datetime import datetime
 from .StreamToLogger import StreamToLogger
 from .JobData import JobData
 from .PbsScheduler import PbsScheduler
-from wpipe.sqlintf.core import session
+from wpipe.sqlintf import SESSION
+
+__all__ = ['checkPbsConnection', 'sendJobToPbs']
 
 # TODO: Make this not hardcoded
 HOST_MACHINE = '10.150.27.94'
+
+
 # HOST_MACHINE = '127.0.0.1' # For debugging
 
 # This processes incoming pickled pipeline objects
@@ -18,6 +30,7 @@ class PipelineObjectProtocol(asyncio.Protocol):
 
     def __init__(self):
         self.transport = None
+
     # Called when a connection is made.
     # Transport is like a socket but we don't really use it.
     def connection_made(self, transport):
@@ -26,7 +39,6 @@ class PipelineObjectProtocol(asyncio.Protocol):
 
     def connection_lost(self, exc):
         logging.info('Connection was lost ...')
-
 
     # This is called when data is incoming.
     # With socket.sendall client side it seems to only call once versus called more than once
@@ -55,6 +67,7 @@ def checkPbsConnection():
     s.close()
     logging.info("Checking connection: {} ...".format(connected))
     return connected  # non zero for unconnected
+
 
 # Used by clients to send to the PbsConsumer
 def sendJobToPbs(pipejob):
@@ -87,7 +100,8 @@ def sendJobToPbs(pipejob):
 
 def periodicLog():
     logging.info("PbsConsumer is still running ...")
-    asyncio.get_event_loop().call_later(60*30, lambda: periodicLog())
+    asyncio.get_event_loop().call_later(60 * 30, lambda: periodicLog())
+
 
 if __name__ == "__main__":
 
@@ -121,9 +135,11 @@ if __name__ == "__main__":
         # TODO: Make this more sophisticated
         # Set to turn off after two days.
         logging.info('Running loop forever ...')
-        session.close()
+        if SESSION is not None:
+            SESSION.close()
+            # SESSION = None
         loop.call_later(172800, lambda: sendJobToPbs("poisonpill"))  # This kills the server after some time
-        loop.call_later(60*30, lambda: periodicLog())
+        loop.call_later(60 * 30, lambda: periodicLog())
         loop.run_forever()
     finally:
         # Shutdown server

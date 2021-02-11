@@ -6,11 +6,16 @@ Please note that this module is private. The Configuration class
 is available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, datetime, si
-from .core import ChildrenProxy, DictLikeChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection, remove_path
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import remove_path, split_path
+from .proxies import ChildrenProxy, DictLikeChildrenProxy
 from .DPOwner import DPOwner
 
 __all__ = ['Configuration']
+
+
+def _in_session(**local_kw):
+    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
 
 
 class Configuration(DPOwner):
@@ -157,7 +162,8 @@ class Configuration(DPOwner):
         if not isinstance(cls._configuration, si.Configuration):
             keyid = kwargs.get('id', cls._configuration)
             if isinstance(keyid, int):
-                cls._configuration = si.session.query(si.Configuration).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._configuration = session.query(si.Configuration).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)
@@ -168,41 +174,45 @@ class Configuration(DPOwner):
                 confdp = target.input.dataproduct(filename=name + '.conf', group='conf')
                 rawdps = [rawdp for rawdp in target.input.rawdataproducts]
                 # querying the database for existing row or create
-                for retry in si.retrying_nested():
-                    with retry:
-                        this_nested = si.begin_nested()
-                        try:
-                            cls._configuration = si.session.query(si.Configuration).with_for_update(). \
+                with si.begin_session() as session:
+                    for retry in session.retrying_nested():
+                        with retry:
+                            this_nested = retry.retry_state.begin_nested()
+                            cls._configuration = this_nested.session.query(si.Configuration).with_for_update(). \
                                 filter_by(target_id=target.target_id). \
-                                filter_by(name=name).one()
-                            this_nested.rollback()
-                        except si.orm.exc.NoResultFound:
-                            cls._configuration = si.Configuration(name=name,
-                                                                  datapath=target.datapath,
-                                                                  confpath=target.datapath + '/conf_' + name,
-                                                                  rawpath=target.datapath + '/raw_' + name,
-                                                                  logpath=target.datapath + '/log_' + name,
-                                                                  procpath=target.datapath + '/proc_' + name,
-                                                                  description=description)
-                            target._target.configurations.append(cls._configuration)
-                            this_nested.commit()
-                            if not os.path.isdir(cls._configuration.confpath):
-                                os.mkdir(cls._configuration.confpath)
-                            if not os.path.isdir(cls._configuration.rawpath):
-                                os.mkdir(cls._configuration.rawpath)
-                            if not os.path.isdir(cls._configuration.logpath):
-                                os.mkdir(cls._configuration.logpath)
-                            if not os.path.isdir(cls._configuration.procpath):
-                                os.mkdir(cls._configuration.procpath)
-                            with si.hold_commit():
-                                confdp.symlink(cls._configuration.confpath, dpowner=cls._configuration, group='conf')
-                                for rawdp in rawdps:
-                                    rawdp.symlink(cls._configuration.rawpath, dpowner=cls._configuration, group='raw')
-                        retry.retry_state.commit()
+                                filter_by(name=name).one_or_none()
+                            if cls._configuration is None:
+                                cls._configuration = si.Configuration(name=name,
+                                                                      datapath=target.datapath,
+                                                                      confpath=target.datapath + '/conf_' + name,
+                                                                      rawpath=target.datapath + '/raw_' + name,
+                                                                      logpath=target.datapath + '/log_' + name,
+                                                                      procpath=target.datapath + '/proc_' + name,
+                                                                      description=description)
+                                target._target.configurations.append(cls._configuration)
+                                this_nested.commit()
+                                if not os.path.isdir(cls._configuration.confpath):
+                                    os.mkdir(cls._configuration.confpath)
+                                if not os.path.isdir(cls._configuration.rawpath):
+                                    os.mkdir(cls._configuration.rawpath)
+                                if not os.path.isdir(cls._configuration.logpath):
+                                    os.mkdir(cls._configuration.logpath)
+                                if not os.path.isdir(cls._configuration.procpath):
+                                    os.mkdir(cls._configuration.procpath)
+                                with si.hold_commit():
+                                    confdp.symlink(cls._configuration.confpath,
+                                                   dpowner=cls._configuration, group='conf')
+                                    for rawdp in rawdps:
+                                        rawdp.symlink(cls._configuration.rawpath,
+                                                      dpowner=cls._configuration, group='raw')
+                            else:
+                                this_nested.rollback()
+                            retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Configuration')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_parameters_proxy'):
             self._parameters_proxy = DictLikeChildrenProxy(self._configuration, 'parameters', 'Parameter')
@@ -229,8 +239,9 @@ class Configuration(DPOwner):
         out : list of Configuration object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Configuration).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Configuration).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -240,20 +251,23 @@ class Configuration(DPOwner):
         return self.target
 
     @property
+    @_in_session()
     def name(self):
         """
         str: Name of the configuration.
         """
-        si.refresh(self._configuration)
+        self._session.refresh(self._configuration)
         return self._configuration.name
 
     @name.setter
+    @_in_session()
     def name(self, name):
         self._configuration.name = name
         self._configuration.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
     @property
+    @_in_session()
     def config_id(self):
         """
         int: Primary key id of the table row.
@@ -261,6 +275,7 @@ class Configuration(DPOwner):
         return self._configuration.id
 
     @property
+    @_in_session()
     def datapath(self):
         """
         str: Path to the parent target data sub-directory.
@@ -268,6 +283,7 @@ class Configuration(DPOwner):
         return self._configuration.datapath
 
     @property
+    @_in_session()
     def confpath(self):
         """
         str: Path to the configuration directory specific to configuration
@@ -276,6 +292,7 @@ class Configuration(DPOwner):
         return self._configuration.confpath
 
     @property
+    @_in_session()
     def rawpath(self):
         """
         str: Path to the configuration directory specific to raw data files.
@@ -283,6 +300,7 @@ class Configuration(DPOwner):
         return self._configuration.rawpath
 
     @property
+    @_in_session()
     def logpath(self):
         """
         str: Path to the configuration directory specific to logging files.
@@ -290,6 +308,7 @@ class Configuration(DPOwner):
         return self._configuration.logpath
 
     @property
+    @_in_session()
     def procpath(self):
         """
         str: Path to the configuration directory specific to processed data
@@ -298,20 +317,23 @@ class Configuration(DPOwner):
         return self._configuration.procpath
 
     @property
+    @_in_session()
     def description(self):
         """
         str: Description of the configuration
         """
-        si.refresh(self._configuration)
+        self._session.refresh(self._configuration)
         return self._configuration.description
 
     @description.setter
+    @_in_session()
     def description(self, description):
         self._configuration.description = description
         self._configuration.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
     @property
+    @_in_session()
     def target_id(self):
         """
         int: Primary key id of the table row of parent target.
@@ -319,6 +341,7 @@ class Configuration(DPOwner):
         return self._configuration.target_id
 
     @property
+    @_in_session()
     def target(self):
         """
         :obj:`Target`: Target object corresponding to parent target.
@@ -420,16 +443,16 @@ class Configuration(DPOwner):
         from .Job import Job
         return Job(self, *args, **kwargs)
 
+    def remove_data(self):
+        """
+        Remove pipeline's directories.
+        """
+        remove_path(self.confpath, self.rawpath, self.logpath, self.procpath)
+
     def delete(self):
         """
         Delete corresponding row from the database.
         """
-        for item in self.parameters:
-            item.delete()
-        for item in self.jobs:
-            item.delete()
-        super(Configuration, self).delete()
-        remove_path(self.confpath)
-        remove_path(self.rawpath)
-        remove_path(self.logpath)
-        remove_path(self.procpath)
+        self.parameters.delete()
+        self.jobs.delete()
+        super(Configuration, self).delete(self.remove_data)

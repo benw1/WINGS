@@ -5,13 +5,18 @@ Contains the Pipeline class definition
 Please note that this module is private. The Pipeline class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import os, sys, glob, shutil, datetime, json, si
-from .core import ChildrenProxy
-from .core import to_json, initialize_args, wpipe_to_sqlintf_connection, as_int, clean_path, remove_path
+from .core import os, sys, glob, datetime, json, si
+from .core import to_json, initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import as_int, clean_path, remove_path, split_path
 from .core import PARSER
+from .proxies import ChildrenProxy
 from .DPOwner import DPOwner
 
 __all__ = ['Pipeline']
+
+
+def _in_session(**local_kw):
+    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
 
 
 class Pipeline(DPOwner):
@@ -175,11 +180,12 @@ class Pipeline(DPOwner):
                         cls._pipeline = int(json.load(jsonfile)[0]['id'])
             keyid = kwargs.get('id', cls._pipeline)
             if isinstance(keyid, int):
-                try:
-                    cls._pipeline = si.session.query(si.Pipeline).filter_by(id=keyid).one()
-                except si.orm.exc.NoResultFound:
-                    raise (si.orm.exc.NoResultFound(
-                        "No row was found for one(): make sure the .wpipe/ directory was removed"))
+                with si.begin_session() as session:
+                    try:
+                        cls._pipeline = session.query(si.Pipeline).filter_by(id=keyid).one()
+                    except si.orm.exc.NoResultFound:
+                        raise (si.orm.exc.NoResultFound(
+                            "No row was found for one(): make sure the .wpipe/ directory was removed"))
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=8)
@@ -204,48 +210,50 @@ class Pipeline(DPOwner):
                 description = kwargs.get('description',
                                          '' if args[6] is None else args[6])
                 # querying the database for existing row or create
-                for retry in si.retrying_nested():
-                    with retry:
-                        this_nested = si.begin_nested()
-                        try:
-                            cls._pipeline = si.session.query(si.Pipeline).with_for_update(). \
+                with si.begin_session() as session:
+                    for retry in session.retrying_nested():
+                        with retry:
+                            this_nested = retry.retry_state.begin_nested()
+                            cls._pipeline = this_nested.session.query(si.Pipeline).with_for_update(). \
                                 filter_by(user_id=user.user_id). \
-                                filter_by(pipe_root=pipe_root).one()
-                            this_nested.rollback()
-                        except si.orm.exc.NoResultFound:
-                            cls._pipeline = si.Pipeline(name=name,
-                                                        pipe_root=pipe_root,
-                                                        software_root=software_root,
-                                                        input_root=input_root,
-                                                        data_root=data_root,
-                                                        config_root=config_root,
-                                                        description=description)
-                            user._user.pipelines.append(cls._pipeline)
-                            this_nested.commit()
-                            if not os.path.isdir(cls._pipeline.pipe_root + '/.wpipe'):
-                                os.mkdir(cls._pipeline.pipe_root + '/.wpipe')
-                            if not os.path.isfile(cls._pipeline.pipe_root + '/.wpipe/pipe.conf'):
-                                to_json(cls._pipeline, cls._pipeline.pipe_root + '/.wpipe/pipe.conf', orient='records')
-                            cls._pipeline.dataproducts.append(si.DataProduct(filename='pipe.conf',
-                                                                             group='conf',
-                                                                             relativepath=cls._pipeline.pipe_root +
-                                                                                          '/.wpipe'))
-                            if not os.path.isdir(cls._pipeline.software_root):
-                                os.mkdir(cls._pipeline.software_root)
-                            if not os.path.isfile(cls._pipeline.software_root + '/__init__.py'):
-                                with open(cls._pipeline.software_root + '/__init__.py', 'w') as file:
-                                    file.write("def register(task):\n    return")
-                            if not os.path.isdir(cls._pipeline.input_root):
-                                os.mkdir(cls._pipeline.input_root)
-                            if not os.path.isdir(cls._pipeline.data_root):
-                                os.mkdir(cls._pipeline.data_root)
-                            if not os.path.isdir(cls._pipeline.config_root):
-                                os.mkdir(cls._pipeline.config_root)
-                        retry.retry_state.commit()
+                                filter_by(pipe_root=pipe_root).one_or_none()
+                            if cls._pipeline is None:
+                                cls._pipeline = si.Pipeline(name=name,
+                                                            pipe_root=pipe_root,
+                                                            software_root=software_root,
+                                                            input_root=input_root,
+                                                            data_root=data_root,
+                                                            config_root=config_root,
+                                                            description=description)
+                                user._user.pipelines.append(cls._pipeline)
+                                this_nested.commit()
+                                if not os.path.isdir(cls._pipeline.pipe_root + '/.wpipe'):
+                                    os.mkdir(cls._pipeline.pipe_root + '/.wpipe')
+                                if not os.path.isfile(cls._pipeline.pipe_root + '/.wpipe/pipe.conf'):
+                                    to_json(cls._pipeline, cls._pipeline.pipe_root + '/.wpipe/pipe.conf', orient='records')
+                                cls._pipeline.dataproducts.append(si.DataProduct(filename='pipe.conf',
+                                                                                 group='conf',
+                                                                                 relativepath=cls._pipeline.pipe_root +
+                                                                                              '/.wpipe'))
+                                if not os.path.isdir(cls._pipeline.software_root):
+                                    os.mkdir(cls._pipeline.software_root)
+                                if not os.path.isfile(cls._pipeline.software_root + '/__init__.py'):
+                                    with open(cls._pipeline.software_root + '/__init__.py', 'w') as file:
+                                        file.write("def register(task):\n    return")
+                                if not os.path.isdir(cls._pipeline.input_root):
+                                    os.mkdir(cls._pipeline.input_root)
+                                if not os.path.isdir(cls._pipeline.data_root):
+                                    os.mkdir(cls._pipeline.data_root)
+                                if not os.path.isdir(cls._pipeline.config_root):
+                                    os.mkdir(cls._pipeline.config_root)
+                            else:
+                                this_nested.rollback()
+                            retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Pipeline')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
         if self.pipe_root not in map(os.path.abspath, sys.path):
             sys.path.insert(0, self.pipe_root)
@@ -276,8 +284,9 @@ class Pipeline(DPOwner):
         out : list of Pipeline object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Pipeline).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Pipeline).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -287,20 +296,23 @@ class Pipeline(DPOwner):
         return self.user
 
     @property
+    @_in_session()
     def name(self):
         """
         str: Name of the pipeline.
         """
-        si.refresh(self._pipeline)
+        self._session.refresh(self._pipeline)
         return self._pipeline.name
 
     @name.setter
+    @_in_session()
     def name(self, name):
         self._pipeline.name = name
         self._pipeline.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
     @property
+    @_in_session()
     def pipeline_id(self):
         """
         int: Primary key id of the table row.
@@ -308,14 +320,16 @@ class Pipeline(DPOwner):
         return self._pipeline.id
 
     @property
+    @_in_session()
     def timestamp(self):
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.refresh(self._pipeline)
+        self._session.refresh(self._pipeline)
         return self._pipeline.timestamp
 
     @property
+    @_in_session()
     def pipe_root(self):
         """
         str: Path to the pipeline directory.
@@ -323,6 +337,7 @@ class Pipeline(DPOwner):
         return self._pipeline.pipe_root
 
     @property
+    @_in_session()
     def software_root(self):
         """
         str: Elect name for the sub-directory where the software routines
@@ -331,6 +346,7 @@ class Pipeline(DPOwner):
         return self._pipeline.software_root
 
     @property
+    @_in_session()
     def input_root(self):
         """
         str: Elect name for the sub-directory where the input data will be
@@ -339,6 +355,7 @@ class Pipeline(DPOwner):
         return self._pipeline.input_root
 
     @property
+    @_in_session()
     def data_root(self):
         """
         str: Elect name for the sub-directory where the other data will be
@@ -347,6 +364,7 @@ class Pipeline(DPOwner):
         return self._pipeline.data_root
 
     @property
+    @_in_session()
     def config_root(self):
         """
         str: Elect name for the sub-directory where the configurations will
@@ -355,20 +373,23 @@ class Pipeline(DPOwner):
         return self._pipeline.config_root
 
     @property
+    @_in_session()
     def description(self):
         """
         str: Description of the pipeline.
         """
-        si.refresh(self._pipeline)
+        self._session.refresh(self._pipeline)
         return self._pipeline.description
 
     @description.setter
+    @_in_session()
     def description(self, description):
         self._pipeline.description = description
         self._pipeline.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
     @property
+    @_in_session()
     def user_id(self):
         """
         int: Primary key id of the table row of parent user.
@@ -376,6 +397,7 @@ class Pipeline(DPOwner):
         return self._pipeline.user_id
 
     @property
+    @_in_session()
     def user_name(self):
         """
         str: Name of parent user.
@@ -383,6 +405,7 @@ class Pipeline(DPOwner):
         return self._pipeline.user.name
 
     @property
+    @_in_session()
     def user(self):
         """
         :obj:`User`: User object corresponding to parent user.
@@ -523,11 +546,18 @@ class Pipeline(DPOwner):
         """
         Fully clean the pipeline.
         """
+        # self.nondummy_tasks.delete()  # TODO: Make InstrumentedList feature
         for item in self.nondummy_tasks:
             item.delete()
-        for item in self.inputs:
-            item.delete()
+        self.inputs.delete()
         remove_path(self.software_root + '/__pycache__', hard=True)
+
+    def remove_data(self):
+        """
+        Remove pipeline's directories.
+        """
+        remove_path(self.software_root, self.input_root, self.data_root, self.config_root)
+        remove_path(self.pipe_root + '/.wpipe', hard=True)
 
     def delete(self):
         """
@@ -535,9 +565,4 @@ class Pipeline(DPOwner):
         """
         self.clean()
         self.dummy_task.delete()
-        super(Pipeline, self).delete()
-        remove_path(self.software_root)
-        remove_path(self.input_root)
-        remove_path(self.data_root)
-        remove_path(self.config_root)
-        remove_path(self.pipe_root + '/.wpipe', hard=True)
+        super(Pipeline, self).delete(self.remove_data)

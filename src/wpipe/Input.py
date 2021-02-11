@@ -6,11 +6,16 @@ Please note that this module is private. The Input class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, glob, shutil, datetime, si
-from .core import ChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection, clean_path, remove_path
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import clean_path, remove_path, split_path
+from .proxies import ChildrenProxy
 from .DPOwner import DPOwner
 
 __all__ = ['Input']
+
+
+def _in_session(**local_kw):
+    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
 
 
 class Input(DPOwner):
@@ -128,37 +133,40 @@ class Input(DPOwner):
         if not isinstance(cls._input, si.Input):
             keyid = kwargs.get('id', cls._input)
             if isinstance(keyid, int):
-                cls._input = si.session.query(si.Input).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._input = session.query(si.Input).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
                 pipeline = kwargs.get('pipeline', wpargs.get('Pipeline', None))
                 base, name = os.path.split(clean_path(kwargs.get('path', args[0])))
                 # querying the database for existing row or create
-                for retry in si.retrying_nested():
-                    with retry:
-                        this_nested = si.begin_nested()
-                        try:
-                            cls._input = si.session.query(si.Input).with_for_update(). \
+                with si.begin_session() as session:
+                    for retry in session.retrying_nested():
+                        with retry:
+                            this_nested = retry.retry_state.begin_nested()
+                            cls._input = this_nested.session.query(si.Input).with_for_update(). \
                                 filter_by(pipeline_id=pipeline.pipeline_id). \
-                                filter_by(name=name).one()
-                            this_nested.rollback()
-                        except si.orm.exc.NoResultFound:
-                            cls._input = si.Input(name=name,
-                                                  rawspath=pipeline.input_root+'/'+name,
-                                                  confpath=pipeline.config_root+'/'+name)
-                            pipeline._pipeline.inputs.append(cls._input)
-                            this_nested.commit()
-                            if not os.path.isdir(cls._input.rawspath):
-                                os.mkdir(cls._input.rawspath)
-                            cls._copy_data(base+'/'+name)
-                            if not os.path.isdir(cls._input.confpath):
-                                os.mkdir(cls._input.confpath)
-                        retry.retry_state.commit()
+                                filter_by(name=name).one_or_none()
+                            if cls._input is None:
+                                cls._input = si.Input(name=name,
+                                                      rawspath=pipeline.input_root+'/'+name,
+                                                      confpath=pipeline.config_root+'/'+name)
+                                pipeline._pipeline.inputs.append(cls._input)
+                                this_nested.commit()
+                                if not os.path.isdir(cls._input.rawspath):
+                                    os.mkdir(cls._input.rawspath)
+                                cls._copy_data(base+'/'+name)
+                                if not os.path.isdir(cls._input.confpath):
+                                    os.mkdir(cls._input.confpath)
+                            else:
+                                this_nested.rollback()
+                            retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Input')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_targets_proxy'):
             self._targets_proxy = ChildrenProxy(self._input, 'targets', 'Target')
@@ -182,8 +190,9 @@ class Input(DPOwner):
         out : list of Input object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Input).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Input).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @classmethod
     def _copy_data(cls, path):
@@ -212,20 +221,23 @@ class Input(DPOwner):
         return self.pipeline
 
     @property
+    @_in_session()
     def name(self):
         """
         str: Name of the input.
         """
-        si.refresh(self._input)
+        self._session.refresh(self._input)
         return self._input.name
 
     @name.setter
+    @_in_session()
     def name(self, name):
         self._input.name = name
         self._input.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
     @property
+    @_in_session()
     def input_id(self):
         """
         int: Primary key id of the table row.
@@ -233,6 +245,7 @@ class Input(DPOwner):
         return self._input.id
 
     @property
+    @_in_session()
     def rawspath(self):
         """
         str: Path to the input directory specific to raw data files.
@@ -240,6 +253,7 @@ class Input(DPOwner):
         return self._input.rawspath
 
     @property
+    @_in_session()
     def confpath(self):
         """
         str: Path to the input directory specific to configuration files.
@@ -247,6 +261,7 @@ class Input(DPOwner):
         return self._input.confpath
 
     @property
+    @_in_session()
     def pipeline_id(self):
         """
         int: Primary key id of the table row of parent pipeline.
@@ -254,6 +269,7 @@ class Input(DPOwner):
         return self._input.pipeline_id
 
     @property
+    @_in_session()
     def pipeline(self):
         """
         :obj:`Pipeline`: Pipeline object corresponding to parent pipeline.
@@ -306,14 +322,17 @@ class Input(DPOwner):
         """
         Reset the input.
         """
-        for item in self.targets:
-            item.delete()
+        self.targets.delete()
+
+    def remove_data(self):
+        """
+        Remove pipeline's directories.
+        """
+        remove_path(self.confpath, self.rawspath)
 
     def delete(self):
         """
         Delete corresponding row from the database.
         """
         self.reset()
-        super(Input, self).delete()
-        remove_path(self.confpath)
-        remove_path(self.rawspath)
+        super(Input, self).delete(self.remove_data)

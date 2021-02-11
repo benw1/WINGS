@@ -1,4 +1,13 @@
+#!/usr/bin/env python
+"""
+Contains the scheduler.JobData class definition
+
+Please note that this module is private. The scheduler.JobData class is
+available in the ``wpipe.scheduler`` namespace - use that instead.
+"""
 from .. import si
+
+__all__ = ['JobData']
 
 
 # This class makes it so we can pickle and unpickle the info we need for the pbs scheduler for a job

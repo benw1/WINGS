@@ -7,10 +7,16 @@ be used by itself, but through its inherited classes Target, Job, Event and
 DataProduct.
 """
 from .core import datetime, si
-from .core import DictLikeChildrenProxy
+from .core import in_session
+from .core import split_path
+from .proxies import DictLikeChildrenProxy
 from .Option import Option
 
 __all__ = ['OptOwner']
+
+
+def _in_session(**local_kw):
+    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
 
 
 class OptOwner:
@@ -22,6 +28,7 @@ class OptOwner:
         capability to parent options. Please refer to their respective
         documentation for specific instructions.
     """
+    @_in_session()
     def __init__(self, options):
         if not hasattr(self, '_optowner'):
             self._optowner = si.OptOwner()
@@ -29,9 +36,10 @@ class OptOwner:
             self._options_proxy = DictLikeChildrenProxy(self._optowner, 'options', 'Option')
         self.options = options
         self._optowner.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
     @property
+    @_in_session()
     def optowner_id(self):
         """
         int: Points to attribute target_id/dp_id/job_id/event_id depending on
@@ -40,11 +48,12 @@ class OptOwner:
         return self._optowner.id
 
     @property
+    @_in_session()
     def timestamp(self):
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.refresh(self._optowner)
+        self._session.refresh(self._optowner)
         return self._optowner.timestamp
 
     @property
@@ -59,7 +68,6 @@ class OptOwner:
     def options(self, options):
         for key, value in options.items():
             self.option(name=key, value=value)
-        si.commit()
 
     def option(self, *args, **kwargs):
         """
@@ -81,7 +89,5 @@ class OptOwner:
         """
         Delete corresponding row from the database.
         """
-        for item in self.options:
-            item.delete()
-        si.session.delete(self._optowner)
-        si.commit()
+        self.options.delete()
+        si.delete(self._optowner)

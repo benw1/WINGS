@@ -18,5 +18,5 @@ if __name__ == '__main__':
         for line in file:
             print(line + " " + my_conf.parameters['proc_word'], end='')
     my_job.logprint("Edited file to make it proc")
-    opt_complete = my_conf.target.option("Configuration '"+my_conf.name+"' completed")
-    opt_complete.value = True
+    my_conf.target.options["Configuration '" + my_conf.name + "' completed"] = True
+    my_conf.target.options['Interactions'] += 1

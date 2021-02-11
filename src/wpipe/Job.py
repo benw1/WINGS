@@ -6,9 +6,10 @@ Please note that this module is private. The Job class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import sys, logging, datetime, si
-from .core import ChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection, as_int
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import as_int, split_path
 from .core import PARSER
+from .proxies import ChildrenProxy
 from .OptOwner import OptOwner
 
 __all__ = ['Job', 'JOBINITSTATE', 'JOBSUBMSTATE', 'JOBCOMPSTATE']
@@ -16,6 +17,10 @@ __all__ = ['Job', 'JOBINITSTATE', 'JOBSUBMSTATE', 'JOBCOMPSTATE']
 JOBINITSTATE = "Initialized"
 JOBSUBMSTATE = "Submitted"
 JOBCOMPSTATE = "Completed"
+
+
+def _in_session(**local_kw):
+    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
 
 
 class Job(OptOwner):
@@ -180,7 +185,8 @@ class Job(OptOwner):
         if not isinstance(cls._job, si.Job):
             keyid = kwargs.get('id', cls._job)
             if isinstance(keyid, int):
-                cls._job = si.session.query(si.Job).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._job = session.query(si.Job).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
@@ -196,11 +202,11 @@ class Job(OptOwner):
                                   wpargs.get('Node', None))
                 attempt = kwargs.get('attempt', 1 if args[0] is None else args[0])
                 # querying the database for existing row or create
-                for retry in si.retrying_nested():
-                    with retry:
-                        this_nested = si.begin_nested()
-                        try:
-                            cls._job = si.session.query(si.Job).with_for_update(). \
+                with si.begin_session() as session:
+                    for retry in session.retrying_nested():
+                        with retry:
+                            this_nested = retry.retry_state.begin_nested()
+                            cls._job = this_nested.session.query(si.Job).with_for_update(). \
                                 filter_by(task_id=task.task_id)
                             if config is not None:
                                 cls._job = cls._job. \
@@ -209,29 +215,31 @@ class Job(OptOwner):
                                 cls._job = cls._job. \
                                     filter_by(firing_event_id=event.event_id)
                             cls._job = cls._job. \
-                                filter_by(attempt=attempt).one()
-                            this_nested.rollback()
-                        except si.orm.exc.NoResultFound:
-                            cls._job = si.Job(attempt=attempt,
-                                              state=JOBINITSTATE)
-                            task._task.jobs.append(cls._job)
-                            if config is not None:
-                                config._configuration.jobs.append(cls._job)
-                            if event is not None:
-                                event._event.fired_jobs.append(cls._job)
-                            if node is not None:
-                                node._node.jobs.append(cls._job)
-                            this_nested.commit()
-                        retry.retry_state.commit()
+                                filter_by(attempt=attempt).one_or_none()
+                            if cls._job is None:
+                                cls._job = si.Job(attempt=attempt,
+                                                  state=JOBINITSTATE)
+                                task._task.jobs.append(cls._job)
+                                if config is not None:
+                                    config._configuration.jobs.append(cls._job)
+                                if event is not None:
+                                    event._event.fired_jobs.append(cls._job)
+                                if node is not None:
+                                    node._node.jobs.append(cls._job)
+                                this_nested.commit()
+                            else:
+                                this_nested.rollback()
+                            retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Job')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_child_events_proxy'):
             self._child_events_proxy = ChildrenProxy(self._job, 'child_events', 'Event')
         if not hasattr(self, '_log_dp'):
-            if self._job.config is not None:
+            if not self.config_is_none:
                 logpath = self.target.datapath + '/log_' + self.config.name
                 logowner = self.config
             else:
@@ -258,8 +266,9 @@ class Job(OptOwner):
         out : list of Job object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Job).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Job).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -271,6 +280,7 @@ class Job(OptOwner):
         return self.task, self.config, self.node, self.firing_event
 
     @property
+    @_in_session()
     def attempt(self):
         """
         int: Job attempt number.
@@ -278,20 +288,23 @@ class Job(OptOwner):
         return self._job.attempt
 
     @property
+    @_in_session()
     def state(self):
         """
         str: State of this job.
         """
-        si.refresh(self._job)
+        self._session.refresh(self._job)
         return self._job.state
 
     @state.setter
+    @_in_session()
     def state(self, state):
         self._job.state = state
         self._job.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
     @property
+    @_in_session()
     def job_id(self):
         """
         int: Primary key id of the table row.
@@ -299,19 +312,21 @@ class Job(OptOwner):
         return self._job.id
 
     @property
+    @_in_session()
     def starttime(self):
         """
         :obj:`datetime.datetime`: Timestamp of job starting time.
         """
-        si.refresh(self._job)
+        self._session.refresh(self._job)
         return self._job.starttime
 
     @property
+    @_in_session()
     def endtime(self):
         """
         :obj:`datetime.datetime`: Timestamp of job ending time.
         """
-        si.refresh(self._job)
+        self._session.refresh(self._job)
         return self._job.endtime
 
     @property
@@ -346,6 +361,7 @@ class Job(OptOwner):
             return self.task.last_modification_timestamp > self.starttime
 
     @property
+    @_in_session()
     def task_id(self):
         """
         int: Primary key id of the table row of parent task.
@@ -353,6 +369,7 @@ class Job(OptOwner):
         return self._job.task_id
 
     @property
+    @_in_session()
     def task(self):
         """
         :obj:`Task`: Task object corresponding to parent task.
@@ -364,22 +381,25 @@ class Job(OptOwner):
             return Task(self._job.task)
 
     @property
+    @_in_session()
     def node_id(self):
         """
         int: Primary key id of the table row of parent node.
         """
-        si.refresh(self._job)
+        self._session.refresh(self._job)
         return self._job.node_id
 
     @property
+    @_in_session()
     def has_a_node(self):
         """
         bool: True if Job object is associated to a Node object, False if not.
         """
-        si.refresh(self._job)
+        self._session.refresh(self._job)
         return self._job.node is not None
 
     @property
+    @_in_session()
     def node(self):
         """
         :obj:`Node`: Node object corresponding to parent node.
@@ -392,14 +412,22 @@ class Job(OptOwner):
                 return Node(self._job.node)
 
     @node.setter
+    @_in_session()
     def node(self, node):
         if self.has_a_node:
             raise AttributeError("can't set attribute")
         else:
+            self._session.add(node._node)
             node._node.jobs.append(self._job)
-            si.commit()
+            self._session.commit()
 
     @property
+    @_in_session()
+    def config_is_none(self):
+        return self._job.config is None
+
+    @property
+    @_in_session()
     def config_id(self):
         """
         int: Primary key id of the table row of parent configuration.
@@ -407,12 +435,13 @@ class Job(OptOwner):
         return self._job.config_id
 
     @property
+    @_in_session()
     def config(self):
         """
         :obj:`Configuration`: Configuration object corresponding to parent
         configuration.
         """
-        if self._job.config is not None:
+        if not self.config_is_none:
             if hasattr(self._job.config, '_wpipe_object'):
                 return self._job.config._wpipe_object
             else:
@@ -448,14 +477,16 @@ class Job(OptOwner):
         return self.config.target
 
     @property
+    @_in_session()
     def firing_event_id(self):
         """
         int: Primary key id of the table row of parent event.
         """
-        si.refresh(self._job)
+        self._session.refresh(self._job)
         return self._job.firing_event_id
 
     @property
+    @_in_session()
     def firing_event(self):
         """
         :obj:`Event`: Event object corresponding to parent event.
@@ -506,6 +537,7 @@ class Job(OptOwner):
                 log.write('\n')
         return self._log_dp
 
+    @_in_session()
     def _starting_todo(self, logprint=True):
         if not self.has_a_node:
             from . import DefaultNode
@@ -517,8 +549,9 @@ class Job(OptOwner):
         self.state = JOBSUBMSTATE
         self._job.starttime = datetime.datetime.utcnow()
         self._job.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
+    @_in_session()
     def _ending_todo(self):
         if hasattr(sys, "last_value"):
             self.state = repr(sys.last_value)
@@ -526,7 +559,7 @@ class Job(OptOwner):
             self.state = JOBCOMPSTATE
             self._job.endtime = datetime.datetime.utcnow()
         self._job.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
     def reset(self):
         """
@@ -534,9 +567,8 @@ class Job(OptOwner):
         """
         self._job.starttime = None
         self._job.endtime = None
-        self._log_dp.remove()
-        for item in self.child_events:
-            item.delete()
+        self._log_dp.remove_data()
+        self.child_events.delete()
         self.state = JOBINITSTATE
 
     def delete(self):
@@ -544,6 +576,5 @@ class Job(OptOwner):
         Delete corresponding row from the database.
         """
         self._log_dp.delete()
-        for item in self.child_events:
-            item.delete()
+        self.child_events.delete()
         super(Job, self).delete()

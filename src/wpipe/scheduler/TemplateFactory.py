@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+"""
+Contains the TemplateFactory class definition.
+
+Please note that this module is private and should only be used internally to
+the schedulers subpackage.
+"""
 from jinja2 import Template
 
 
