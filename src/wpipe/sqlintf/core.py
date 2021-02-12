@@ -3,19 +3,18 @@
 Contains the core import statements and developing tools of sqlintf
 
 Please note that this module is private. All functions and objects
-are available in the main ``sqlintf`` namespace - use that instead.
+are available in the main ``wpipe.sqlintf`` namespace - use that instead.
 """
 import os
 import argparse
 
 import tenacity as tn
 import sqlalchemy as sa
-import sqlalchemy.orm as orm
-import sqlalchemy.exc as exc
+from sqlalchemy import orm, exc, pool
 from sqlalchemy.ext.declarative import declarative_base
 
-__all__ = ['argparse', 'tn', 'sa', 'orm', 'exc', 'PARSER', 'verbose',
-           'engine', 'Base', 'session']
+__all__ = ['argparse', 'tn', 'sa', 'orm', 'exc', 'pool', 'PARSER', 'verbose',
+           'Engine', 'Base', 'Session']
 
 PARSER = argparse.ArgumentParser()
 """
@@ -49,7 +48,7 @@ else:
 
 POOL_RECYLE = 3600
 
-engine = sa.create_engine(ENGINE_URL, echo=verbose, pool_recycle=POOL_RECYLE, pool_pre_ping=True)
+Engine = sa.create_engine(ENGINE_URL, echo=verbose, pool_recycle=POOL_RECYLE)
 """
 sqlalchemy.engine.base.Engine object: handles the connection to the database.
 """
@@ -59,18 +58,18 @@ sqlalchemy.engine.base.Engine object: handles the connection to the database.
 # engine = sa.create_engine("mysql+pymysql://root:password@localhost:8000/server")  # This is for the mysql container
 
 if not sqlite:
-    engine.execute("CREATE DATABASE IF NOT EXISTS wpipe")
-    engine.execute("USE wpipe")
+    Engine.execute("CREATE DATABASE IF NOT EXISTS wpipe")
+    Engine.execute("USE wpipe")
     ENGINE_URL = ENGINE_URL.replace('server', 'wpipe')
-    engine.dispose()
-    engine = sa.create_engine(ENGINE_URL, echo=verbose, pool_recycle=POOL_RECYLE,pool_pre_ping=True)
+    Engine.dispose()
+    Engine = sa.create_engine(ENGINE_URL, echo=verbose, pool_recycle=POOL_RECYLE)
 
 Base = declarative_base()
 """
-sqlalchemy.ext.declarative.api.DeclarativeMeta: Base class to sqlintf classes.
+sqlalchemy.ext.declarative.api.Base class: Base class to sqlintf classes.
 """
 
-session = orm.sessionmaker(bind=engine)()
+Session = orm.sessionmaker(bind=Engine)
 """
-sqlalchemy.orm.session.Session: manages database operations via the engine.
+sqlalchemy.orm.session.Session class: initiates new sessions bound to the engine. 
 """

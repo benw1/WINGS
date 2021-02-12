@@ -6,9 +6,14 @@ Please note that this module is private. The Mask class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import datetime, si
-from .core import initialize_args, wpipe_to_sqlintf_connection
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import split_path
 
 __all__ = ['Mask']
+
+
+def _in_session(**local_kw):
+    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
 
 
 class Mask:
@@ -74,7 +79,8 @@ class Mask:
         if not isinstance(cls._mask, si.Mask):
             keyid = kwargs.get('id', cls._mask)
             if isinstance(keyid, int):
-                cls._mask = si.session.query(si.Mask).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._mask = session.query(si.Mask).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=3)
@@ -83,28 +89,30 @@ class Mask:
                 source = kwargs.get('source', '' if args[1] is None else args[1])
                 value = kwargs.get('value', '' if args[2] is None else args[2])
                 # querying the database for existing row or create
-                for retry in si.retrying_nested():
-                    with retry:
-                        this_nested = si.begin_nested()
-                        try:
-                            cls._mask = si.session.query(si.Mask).with_for_update(). \
+                with si.begin_session() as session:
+                    for retry in session.retrying_nested():
+                        with retry:
+                            this_nested = retry.retry_state.begin_nested()
+                            cls._mask = this_nested.session.query(si.Mask).with_for_update(). \
                                 filter_by(task_id=task.task_id). \
-                                filter_by(name=name).one()
-                            this_nested.rollback()
-                        except si.orm.exc.NoResultFound:
-                            cls._mask = si.Mask(name=name,
-                                                source=source,
-                                                value=value)
-                            task._task.masks.append(cls._mask)
-                            this_nested.commit()
-                        retry.retry_state.commit()
+                                filter_by(name=name).one_or_none()
+                            if cls._mask is None:
+                                cls._mask = si.Mask(name=name,
+                                                    source=source,
+                                                    value=value)
+                                task._task.masks.append(cls._mask)
+                                this_nested.commit()
+                            else:
+                                this_nested.rollback()
+                            retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Mask')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
         self._mask.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -121,8 +129,9 @@ class Mask:
         out : list of Mask object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Mask).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Mask).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -132,20 +141,23 @@ class Mask:
         return self.task
 
     @property
+    @_in_session()
     def name(self):
         """
         str: Name of the mask.
         """
-        si.refresh(self._mask)
+        self._session.refresh(self._mask)
         return self._mask.name
 
     @name.setter
+    @_in_session()
     def name(self, name):
         self._mask.name = name
         self._mask.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
     @property
+    @_in_session()
     def mask_id(self):
         """
         int: Primary key id of the table row.
@@ -153,14 +165,16 @@ class Mask:
         return self._mask.id
 
     @property
+    @_in_session()
     def timestamp(self):
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.refresh(self._mask)
+        self._session.refresh(self._mask)
         return self._mask.timestamp
 
     @property
+    @_in_session()
     def source(self):
         """
         str: Source of the mask.
@@ -168,6 +182,7 @@ class Mask:
         return self._mask.source
 
     @property
+    @_in_session()
     def value(self):
         """
         str: Value of the mask.
@@ -175,6 +190,7 @@ class Mask:
         return self._mask.value
 
     @property
+    @_in_session()
     def task(self):
         """
         :obj:`Task`: Task object corresponding to parent task.
@@ -186,6 +202,7 @@ class Mask:
             return Task(self._mask.task)
 
     @property
+    @_in_session()
     def task_id(self):
         """
         int: Primary key id of the table row of parent task.
@@ -196,5 +213,4 @@ class Mask:
         """
         Delete corresponding row from the database.
         """
-        si.session.delete(self._mask)
-        si.commit()
+        si.delete(self._mask)

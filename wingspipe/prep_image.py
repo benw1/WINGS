@@ -166,7 +166,6 @@ if __name__ == '__main__':
         # wp.si.session.execute('UNLOCK TABLES')
         ######
         update_option = parent_job.options[compname]
-        wp.si.commit()
         if (needcheck == 1):
             update_option += 1
         ######

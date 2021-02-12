@@ -296,7 +296,7 @@ def getgalradec(infile, ra, dec, magni, background):
     filedir = background + '/'
     outfile = starpre + '_' + filt + '.tbl'
     flux = wtips.get_counts(magni[:, 0], zp_ab[0])
-    wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/1000)))
+    wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/1000))+1)
     stars = wtips([outfile], fast_reader={'chunk_size': 2**20})
     galaxies = wtips([filedir + filt + '.txt'])  # this file will be provided pre-made
     radec = galaxies.random_radec_for(stars)
@@ -326,7 +326,7 @@ def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, s
         # flux    = wtips.get_counts(magni[:,j],zp_ab[j])
         flux = wtips.get_counts(magni[:, mindex], zp_vega[j])
         # This makes a stars only input list
-        wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/1000)))
+        wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/1000))+1)
         my_job.logprint("LINE 330")
         stars = wtips([outfile], fast_reader={'chunk_size': 2**20})
         my_job.logprint("LINE 332")
@@ -339,7 +339,7 @@ def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, s
             stars.merge_with(galaxies)  # merge stars and galaxies list
         outfile = filedir + 'Mixed' + '_' + outfilename
         mixedfilename = 'Mixed' + '_' + outfilename
-        stars.write_stips(outfile, ipac=True, max_writing_packet=int(np.round(len(flux)/1000)))
+        stars.write_stips(outfile, ipac=True, max_writing_packet=int(np.round(len(flux)/1000))+1)
         del stars
         del galaxies
         gc.collect()

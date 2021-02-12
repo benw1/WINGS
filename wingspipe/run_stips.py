@@ -140,7 +140,6 @@ if __name__ == '__main__':
     dec_dither = this_event.options['dec_dither']
     run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither))
     update_option = parent_job.options[compname]
-    wp.si.commit()
     update_option += 1
     to_run = this_event.options['to_run']
     catalogID = this_event.options['dp_id']
