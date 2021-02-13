@@ -136,6 +136,7 @@ class BeginSession:
                 retry_state.begin_nested = retry_state.session.begin_nested
                 retry_state.query = retry_state.session.query
                 retry_state.TRANSACTION = retry_state.begin_nested()
+                retry_state.rollback = retry_state.TRANSACTION.rollback
 
                 def _commit():
                     if retry_state.TRANSACTION.is_active:
@@ -151,7 +152,7 @@ class BeginSession:
             except exc.OperationalError as Err:
                 print("Encountered %s\n%s\n\nAttempting rollback\n" % (Err.orig, Err.statement))
             try:
-                retry_state.TRANSACTION.rollback()
+                retry_state.rollback()
                 print("Rollback successful\n")
             except exc.OperationalError as Err:
                 print("Rollback unsuccessful %s\n%s\n\nProceeding anyway\n" % (Err.orig, Err.statement))

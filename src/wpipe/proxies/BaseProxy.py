@@ -6,7 +6,7 @@ classes
 Please note that this module is private. The proxies.BaseProxy class is
 available in the ``wpipe.proxies`` namespace - use that instead.
 """
-from .core import numbers, datetime, in_session, try_scalar
+from .core import numbers, datetime, si, in_session, try_scalar
 
 __all__ = ['BaseProxy']
 
@@ -37,8 +37,10 @@ class BaseProxy:
     """
     def __new__(cls, *args, **kwargs):
         if cls is BaseProxy:
-            proxy = getattr(kwargs.pop('parent', None),
-                            kwargs.pop('attr_name', ''))
+            parent = kwargs.pop('parent', None)
+            with si.begin_session() as session:
+                session.add(parent)
+                proxy = getattr(parent, kwargs.pop('attr_name', ''))
             if kwargs.pop('try_scalar', False):
                 proxy = try_scalar(proxy)
             if isinstance(proxy, str) or isinstance(proxy, numbers.Number):
@@ -55,10 +57,10 @@ class BaseProxy:
 
     def __init__(self, *args, **kwargs):
         self._parent = kwargs.pop('parent', None)
-        self._parent_id = int(self.parent.id)
         self._attr_name = kwargs.pop('attr_name', '')
         self._try_scalar = kwargs.pop('try_scalar', False)
         self._session = None
+        self._parent_id = self._get_parent_id()
 
     @property
     def parent(self):
@@ -87,6 +89,14 @@ class BaseProxy:
         TODO
         """
         return self._try_scalar
+
+    @in_session('parent')
+    def delete(self):
+        si.delete(self._parent)
+
+    @in_session('parent')
+    def _get_parent_id(self):
+        return int(self._parent.id)
 
     @in_session('parent')
     def _augmented_assign(self, operator, other):

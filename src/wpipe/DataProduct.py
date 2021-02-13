@@ -496,6 +496,7 @@ class DataProduct(OptOwner):
 
     def _copy_symlink(self, path, kwargs, func):
         dpowner = kwargs.pop('dpowner', self.dpowner)
+        return_dp = kwargs.pop('return_dp', True)
         kwargs = self._prep_copy_symlink(path, kwargs)
         filename = kwargs['filename']
         path = kwargs['relativepath']
@@ -504,11 +505,14 @@ class DataProduct(OptOwner):
             if len(selection):  # TAKE OLDEST ONE? CHECK TIMESTAMPS?
                 new_dp = selection[0]
         if 'new_dp' not in locals():
+            new_dp = None
             if '.'.join(type(dpowner).__module__.split('.')[:-1]) == 'wpipe.sqlintf':
                 dpowner.dataproducts.append(si.DataProduct(**kwargs))
-                new_dp = DataProduct(dpowner.dataproducts[-1])
+                if return_dp:
+                    new_dp = DataProduct(dpowner.dataproducts[-1])
             elif '.'.join(type(dpowner).__module__.split('.')[:-1]) == 'wpipe':
-                new_dp = dpowner.dataproduct(**kwargs)
+                if return_dp:
+                    new_dp = dpowner.dataproduct(**kwargs)
             else:
                 raise TypeError
         if not os.path.exists(path + '/' + filename):

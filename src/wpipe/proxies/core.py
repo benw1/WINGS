@@ -14,10 +14,10 @@ import datetime
 
 import numpy as np
 
-from ..core import in_session
+from ..core import si, in_session
 
 __all__ = ['contextlib', 'sys', 'itertools', 'numbers', 'datetime', 'np',
-           'in_session', 'try_scalar']
+           'si', 'in_session', 'try_scalar']
 
 
 def try_scalar(string):

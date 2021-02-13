@@ -200,10 +200,10 @@ class Configuration(DPOwner):
                                 if not os.path.isdir(cls._configuration.procpath):
                                     os.mkdir(cls._configuration.procpath)
                                 with si.hold_commit():
-                                    confdp.symlink(cls._configuration.confpath,
+                                    confdp.symlink(cls._configuration.confpath, return_dp=False,
                                                    dpowner=cls._configuration, group='conf')
                                     for rawdp in rawdps:
-                                        rawdp.symlink(cls._configuration.rawpath,
+                                        rawdp.symlink(cls._configuration.rawpath, return_dp=False,
                                                       dpowner=cls._configuration, group='raw')
                             else:
                                 this_nested.rollback()

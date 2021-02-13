@@ -38,43 +38,25 @@ class DictLikeChildrenProxy(ChildrenProxy):
         self._refresh()
         return repr(dict(self._items))
 
-    @in_session('_parent')
     def __getitem__(self, item):
-        if isinstance(item, int):
-            return super(DictLikeChildrenProxy, self).__getitem__(item)
-        self._refresh()
-        _temp = self._keys_children
-        try:
-            key = child = None
-            while key != item:
-                key, child = next(_temp)
-            return BaseProxy(parent=child,
-                             attr_name=self._child_value,
-                             try_scalar=True)
-        except StopIteration:
-            raiseerror = True
-        if raiseerror:
-            raise KeyError(item)
+        child = super(DictLikeChildrenProxy, self).__getitem__(item)
+        return BaseProxy(parent=getattr(child, '_'+self._cls_name.lower()),
+                         attr_name=self._child_value,
+                         try_scalar=True)
 
-    @in_session('_parent')
     def __setitem__(self, item, value):
         if not isinstance(value, BaseProxy):
-            self._refresh()
-            _temp = self._keys_children
-            try:
-                key = None
-                count = -1
-                while key != item:
-                    key, child = next(_temp)
-                    count += 1
-                child = self.children[count]
-                setattr(child, self._child_value, value)
-                self._session.commit()
-            except StopIteration:
-                _temp = getattr(sys.modules['wpipe'], self._cls_name)(
-                    getattr(sys.modules['wpipe'], self._parent.__class__.__name__)(self._parent),
-                    **{self._child_attr: item, self._child_value: value}
-                )
+            if isinstance(item, str):
+                child = self._search_child_from_attritem(item)
+                if child is None:
+                    _temp = getattr(sys.modules['wpipe'], self._cls_name)(
+                        getattr(sys.modules['wpipe'], self._parent.__class__.__name__)(self._parent),
+                        **{self._child_attr: item, self._child_value: value}
+                    )
+                else:
+                    setattr(child, self._child_value, value)
+            else:
+                raise TypeError  # TODO
 
     @property
     def _keys_children(self):

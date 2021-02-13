@@ -156,8 +156,6 @@ class Target(OptOwner):
             self._configurations_proxy = ChildrenProxy(self._target, 'configurations', 'Configuration')
         if not hasattr(self, '_optowner'):
             self._optowner = self._target
-        if not hasattr(self, '_default_conf'):
-            self._default_conf = self.configuration()
         self.configure_target()
         super(Target, self).__init__(kwargs.get('options', {}))
 
