@@ -154,7 +154,7 @@ class BeginSession:
             try:
                 retry_state.rollback()
                 print("Rollback successful\n")
-            except exc.OperationalError as Err:
+            except exc.OperationalError or exc.ResourceClosedError as Err:
                 print("Rollback unsuccessful %s\n%s\n\nProceeding anyway\n" % (Err.orig, Err.statement))
 
         return tn.Retrying(retry=tn.retry_if_exception_type(exc.OperationalError),
