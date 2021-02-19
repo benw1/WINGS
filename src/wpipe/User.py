@@ -114,6 +114,9 @@ class User:
         self._user.timestamp = datetime.datetime.utcnow()
         self._session.commit()
 
+    def __repr__(self):  # TODO
+        return super(User, self).__repr__()
+
     @classmethod
     def select(cls, **kwargs):
         """
