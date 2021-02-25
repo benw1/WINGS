@@ -136,7 +136,12 @@ class BeginSession:
                 retry_state.begin_nested = retry_state.session.begin_nested
                 retry_state.query = retry_state.session.query
                 retry_state.TRANSACTION = retry_state.begin_nested()
-                retry_state.rollback = retry_state.TRANSACTION.rollback
+
+                def _rollback():
+                    if retry_state.TRANSACTION.is_active:
+                        retry_state.TRANSACTION.rollback()
+
+                retry_state.rollback = _rollback
 
                 def _commit():
                     if retry_state.TRANSACTION.is_active:
