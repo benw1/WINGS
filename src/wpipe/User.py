@@ -5,7 +5,7 @@ Contains the User class definition
 Please note that this module is private. The User class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import datetime, si
+from .core import datetime, pd, si
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import split_path
 from .core import PARSER
@@ -13,9 +13,13 @@ from .proxies import ChildrenProxy
 
 __all__ = ['User']
 
+KEYID_ATTR = 'user_id'
+UNIQ_ATTRS = ['name']
+CLASS_LOW = split_path(__file__)[1].lower()
+
 
 def _in_session(**local_kw):
-    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' % CLASS_LOW, **local_kw)
 
 
 class User:
@@ -75,22 +79,39 @@ class User:
         - either, evidently, via a parse argument -u/--user
         - or via a pre-defined environment variable WPIPE_USER (recommended)
     """
-    __cache__ = {}  # TODO: Caching of wpipe objects as an alternative to querying
+    __cache__ = pd.DataFrame(columns=[KEYID_ATTR]+UNIQ_ATTRS+[CLASS_LOW])
+
+    @classmethod
+    def _check_in_cache(cls, kind, loc):  # kind = ['keyid', 'args']
+        try:
+            cls._inst = getattr(cls.__cache__.set_index({'keyid': KEYID_ATTR,
+                                                         'args': UNIQ_ATTRS}[kind]).loc[loc],
+                                CLASS_LOW)
+        except KeyError:
+            with si.begin_session() as session:
+                yield session
+                if hasattr(cls, '_to_cache'):
+                    session.add(getattr(cls, '_%s' % CLASS_LOW))
+                    cls._to_cache[KEYID_ATTR] = getattr(cls, '_%s' % CLASS_LOW).id
+                    for attr in UNIQ_ATTRS:
+                        cls._to_cache[attr] = getattr(getattr(cls, '_%s' % CLASS_LOW), attr)
 
     def __new__(cls, *args, **kwargs):
+        delattr(cls, '_inst') if hasattr(cls, '_inst') else None
+        cls._to_cache = {}
         # checking if given argument is sqlintf object or existing id
         cls._user = args[0] if len(args) else None
         if not isinstance(cls._user, si.User):
             keyid = kwargs.get('id', cls._user)
             if isinstance(keyid, int):
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='keyid', loc=keyid):
                     cls._user = session.query(si.User).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
                 name = kwargs.get('name', PARSER.parse_known_args()[0].user_name if args[0] is None else args[0])
                 # querying the database for existing row or create
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='args', loc=(name,)):
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
@@ -103,8 +124,17 @@ class User:
                             else:
                                 this_nested.rollback()
                             retry.retry_state.commit()
+        else:
+            with si.begin_session() as session:
+                session.add(cls._user)
+                for _session in cls._check_in_cache(kind='keyid', loc=cls._user.id):
+                    pass
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'User')
+        # add instance to cache dataframe
+        if cls._to_cache:
+            cls._to_cache[CLASS_LOW] = cls._inst
+            cls.__cache__.loc[len(cls.__cache__)] = cls._to_cache
         return cls._inst
 
     @_in_session()

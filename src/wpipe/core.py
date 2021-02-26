@@ -6,6 +6,7 @@ Please note that this module is private. All functions and objects
 are available in the main ``wpipe`` namespace - use that instead.
 """
 import importlib
+import contextlib
 import os
 import sys
 import types
@@ -25,9 +26,9 @@ import pandas as pd
 
 from . import sqlintf as si
 
-__all__ = ['importlib', 'os', 'sys', 'types', 'datetime', 'time', 'subprocess',
-           'logging', 'glob', 'shutil', 'warnings', 'json', 'ast', 'atexit',
-           'np', 'pd', 'si', 'PARSER', 'as_int',
+__all__ = ['importlib', 'contextlib', 'os', 'sys', 'types', 'datetime',
+           'time', 'subprocess', 'logging', 'glob', 'shutil', 'warnings',
+           'json', 'ast', 'atexit', 'np', 'pd', 'si', 'PARSER', 'as_int',
            'clean_path', 'split_path', 'remove_path', 'key_wpipe_separator',
            'initialize_args', 'wpipe_to_sqlintf_connection', 'in_session',
            'return_dict_of_attrs', 'to_json']
@@ -200,14 +201,15 @@ def wpipe_to_sqlintf_connection(cls, cls_name):
     cls_name : string
         Name of the class of the Wpipe object to be instantiated.
     """
-    cls_attr = '_' + cls_name.lower()
-    if hasattr(getattr(cls, cls_attr), '_wpipe_object'):
-        cls._inst = getattr(cls, cls_attr)._wpipe_object
-    else:
-        cls._inst = super(getattr(sys.modules['wpipe'], cls_name), cls).__new__(cls)
-        getattr(cls, cls_attr)._wpipe_object = cls._inst
-        setattr(cls._inst, cls_attr, getattr(cls, cls_attr))
-        setattr(cls._inst, '_session', None)
+    if not hasattr(cls, '_inst'):
+        cls_attr = '_' + cls_name.lower()
+        if hasattr(getattr(cls, cls_attr), '_wpipe_object'):
+            cls._inst = getattr(cls, cls_attr)._wpipe_object
+        else:
+            cls._inst = super(getattr(sys.modules['wpipe'], cls_name), cls).__new__(cls)
+            getattr(cls, cls_attr)._wpipe_object = cls._inst
+            setattr(cls._inst, cls_attr, getattr(cls, cls_attr))
+            setattr(cls._inst, '_session', None)
 
 
 def in_session(si_attr, **local_kw):
@@ -236,11 +238,13 @@ def in_session(si_attr, **local_kw):
     def decor(func):
         def wrapper(self_cls, *args, **kwargs):
             with si.begin_session(**local_kw) as session:
-                _temp = self_cls._session
-                self_cls._session = session
+                if hasattr(self_cls, '_session'):
+                    _temp = self_cls._session
+                    self_cls._session = session
                 session.add(getattr(self_cls, si_attr))
                 output = func(self_cls, *args, **kwargs)
-                self_cls._session = _temp
+                if hasattr(self_cls, '_session'):
+                    self_cls._session = _temp
                 return output
 
         return wrapper
