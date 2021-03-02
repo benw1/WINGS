@@ -143,6 +143,8 @@ __all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
            'Task', 'Mask', 'Job', 'Event', 'PbsScheduler', 'DefaultUser',
            'DefaultNode', 'wingspipe']
 
+warnings.filterwarnings("ignore", message=".*Cannot correctly sort tables;.*")
+
 DefaultUser = User()
 """
 User object: User object constructed at wpipe importation (see User doc Notes)

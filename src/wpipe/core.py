@@ -29,7 +29,8 @@ from . import sqlintf as si
 __all__ = ['importlib', 'contextlib', 'os', 'sys', 'types', 'datetime',
            'time', 'subprocess', 'logging', 'glob', 'shutil', 'warnings',
            'json', 'ast', 'atexit', 'np', 'pd', 'si', 'PARSER', 'as_int',
-           'clean_path', 'split_path', 'remove_path', 'key_wpipe_separator',
+           'clean_path', 'split_path', 'remove_path',
+           'make_yield_session_if_not_cached', 'key_wpipe_separator',
            'initialize_args', 'wpipe_to_sqlintf_connection', 'in_session',
            'return_dict_of_attrs', 'to_json']
 
@@ -142,6 +143,24 @@ def remove_path(*paths, hard=False):
         raise TypeError('remove_path expected at least 1 arguments, get 0')
 
 
+def make_yield_session_if_not_cached(keyid_attr, uniq_attrs, class_low):
+    def yield_session_if_not_cached(cls, kind, loc):
+        if kind not in ['keyid', 'args']:
+            raise KeyError(kind)
+        try:
+            cls._inst = cls.__cache__.set_index({'keyid': keyid_attr, 'args': uniq_attrs}[kind]).loc[loc][class_low]
+            setattr(cls, '_%s' % class_low, getattr(cls._inst, '_%s' % class_low))
+        except KeyError:
+            with si.begin_session() as session:
+                yield session
+                if hasattr(cls, '_to_cache'):
+                    session.add(getattr(cls, '_%s' % class_low))
+                    cls._to_cache[keyid_attr] = getattr(cls, '_%s' % class_low).id
+                    for attr in uniq_attrs:
+                        cls._to_cache[attr] = getattr(getattr(cls, '_%s' % class_low), attr)
+    return yield_session_if_not_cached
+
+
 def key_wpipe_separator(obj):
     """
     Returns true if given object is a Wpipe object.
@@ -238,11 +257,23 @@ def in_session(si_attr, **local_kw):
     def decor(func):
         def wrapper(self_cls, *args, **kwargs):
             with si.begin_session(**local_kw) as session:
+                # swap session in self_cls '_session' attribute if exists
                 if hasattr(self_cls, '_session'):
                     _temp = self_cls._session
                     self_cls._session = session
-                session.add(getattr(self_cls, si_attr))
+                # attempt adding existing sqlintf instance if possible otherwise query and replace
+                try:
+                    session.add(getattr(self_cls, si_attr))
+                except si.exc.InvalidRequestError:
+                    warnings.warn("FIXING ENCOUNTERED BROKEN INSTANCE")
+                    broken_instance = getattr(self_cls, si_attr)
+                    setattr(self_cls, si_attr, session.query(broken_instance.__class__).
+                            filter_by(id=broken_instance._sa_instance_state.key[1][0]).one())
+                    if hasattr(broken_instance, '_wpipe_object'):
+                        setattr(getattr(self_cls, si_attr), '_wpipe_object', getattr(broken_instance, '_wpipe_object'))
+                # execute wrapped function
                 output = func(self_cls, *args, **kwargs)
+                # return given session in self_cls '_session' attribute if exists
                 if hasattr(self_cls, '_session'):
                     self_cls._session = _temp
                 return output

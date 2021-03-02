@@ -6,7 +6,7 @@ Please note that this module is private. The User class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import datetime, pd, si
-from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import make_yield_session_if_not_cached, initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import split_path
 from .core import PARSER
 from .proxies import ChildrenProxy
@@ -20,6 +20,9 @@ CLASS_LOW = split_path(__file__)[1].lower()
 
 def _in_session(**local_kw):
     return in_session('_%s' % CLASS_LOW, **local_kw)
+
+
+_check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
 
 
 class User:
@@ -82,22 +85,22 @@ class User:
     __cache__ = pd.DataFrame(columns=[KEYID_ATTR]+UNIQ_ATTRS+[CLASS_LOW])
 
     @classmethod
-    def _check_in_cache(cls, kind, loc):  # kind = ['keyid', 'args']
-        try:
-            cls._inst = getattr(cls.__cache__.set_index({'keyid': KEYID_ATTR,
-                                                         'args': UNIQ_ATTRS}[kind]).loc[loc],
-                                CLASS_LOW)
-        except KeyError:
-            with si.begin_session() as session:
-                yield session
-                if hasattr(cls, '_to_cache'):
-                    session.add(getattr(cls, '_%s' % CLASS_LOW))
-                    cls._to_cache[KEYID_ATTR] = getattr(cls, '_%s' % CLASS_LOW).id
-                    for attr in UNIQ_ATTRS:
-                        cls._to_cache[attr] = getattr(getattr(cls, '_%s' % CLASS_LOW), attr)
+    def _check_in_cache(cls, kind, loc):
+        return _check_in_cache(cls, kind, loc)
+
+    @classmethod
+    def _sqlintf_instance_argument(cls):
+        if hasattr(cls, '_%s' % CLASS_LOW):
+            for _session in cls._check_in_cache(kind='keyid',
+                                                loc=getattr(cls, '_%s' % CLASS_LOW)._sa_instance_state.key[1][0]):
+                pass
 
     def __new__(cls, *args, **kwargs):
-        delattr(cls, '_inst') if hasattr(cls, '_inst') else None
+        if hasattr(cls, '_inst'):
+            old_cls_inst = cls._inst
+            delattr(cls, '_inst')
+        else:
+            old_cls_inst = None
         cls._to_cache = {}
         # checking if given argument is sqlintf object or existing id
         cls._user = args[0] if len(args) else None
@@ -135,7 +138,11 @@ class User:
         if cls._to_cache:
             cls._to_cache[CLASS_LOW] = cls._inst
             cls.__cache__.loc[len(cls.__cache__)] = cls._to_cache
-        return cls._inst
+        new_cls_inst = cls._inst
+        delattr(cls, '_inst')
+        if old_cls_inst is not None:
+            cls._inst = old_cls_inst
+        return new_cls_inst
 
     @_in_session()
     def __init__(self, *args, **kwargs):

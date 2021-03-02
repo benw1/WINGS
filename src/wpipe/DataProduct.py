@@ -5,16 +5,23 @@ Contains the DataProduct class definition
 Please note that this module is private. The DataProduct class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import os, shutil, datetime, si
-from .core import return_dict_of_attrs, initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import os, shutil, datetime, pd, si
+from .core import make_yield_session_if_not_cached, initialize_args, wpipe_to_sqlintf_connection, in_session, return_dict_of_attrs
 from .core import clean_path, remove_path, split_path
 from .OptOwner import OptOwner
 
 __all__ = ['DataProduct']
 
+KEYID_ATTR = 'dp_id'
+UNIQ_ATTRS = ['dpowner_id', 'group', 'filename']
+CLASS_LOW = split_path(__file__)[1].lower()
+
 
 def _in_session(**local_kw):
-    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' % CLASS_LOW, **local_kw)
+
+
+_check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
 
 
 class DataProduct(OptOwner):
@@ -164,13 +171,32 @@ class DataProduct(OptOwner):
         or
         >>> my_dp = wp.DataProduct(my_config, filename, group)
     """
+    __cache__ = pd.DataFrame(columns=[KEYID_ATTR]+UNIQ_ATTRS+[CLASS_LOW])
+
+    @classmethod
+    def _check_in_cache(cls, kind, loc):
+        return _check_in_cache(cls, kind, loc)
+
+    @classmethod
+    def _sqlintf_instance_argument(cls):
+        if hasattr(cls, '_%s' % CLASS_LOW):
+            for _session in cls._check_in_cache(kind='keyid',
+                                                loc=getattr(cls, '_%s' % CLASS_LOW)._sa_instance_state.key[1][0]):
+                pass
+
     def __new__(cls, *args, **kwargs):
+        if hasattr(cls, '_inst'):
+            old_cls_inst = cls._inst
+            delattr(cls, '_inst')
+        else:
+            old_cls_inst = None
+        cls._to_cache = {}
         # checking if given argument is sqlintf object or existing id
         cls._dataproduct = args[0] if len(args) else None
         if not isinstance(cls._dataproduct, si.DataProduct):
             keyid = kwargs.get('id', cls._dataproduct)
             if isinstance(keyid, int):
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='keyid', loc=keyid):
                     cls._dataproduct = session.query(si.DataProduct).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
@@ -188,7 +214,7 @@ class DataProduct(OptOwner):
                 dec = kwargs.get('dec', 0 if args[7] is None else args[7])
                 pointing_angle = kwargs.get('pointing_angle', 0 if args[8] is None else args[8])
                 # querying the database for existing row or create
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='args', loc=(dpowner.dpowner_id, group, filename)):
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
@@ -220,9 +246,22 @@ class DataProduct(OptOwner):
                             else:
                                 this_nested.rollback()
                             retry.retry_state.commit()
+        else:
+            with si.begin_session() as session:
+                session.add(cls._dataproduct)
+                for _session in cls._check_in_cache(kind='keyid', loc=cls._dataproduct.id):
+                    pass
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'DataProduct')
-        return cls._inst
+        # add instance to cache dataframe
+        if cls._to_cache:
+            cls._to_cache[CLASS_LOW] = cls._inst
+            cls.__cache__.loc[len(cls.__cache__)] = cls._to_cache
+        new_cls_inst = cls._inst
+        delattr(cls, '_inst')
+        if old_cls_inst is not None:
+            cls._inst = old_cls_inst
+        return new_cls_inst
 
     @_in_session()
     def __init__(self, *args, **kwargs):

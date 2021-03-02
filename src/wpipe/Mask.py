@@ -5,15 +5,22 @@ Contains the Mask class definition
 Please note that this module is private. The Mask class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import datetime, si
-from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import datetime, pd, si
+from .core import make_yield_session_if_not_cached, initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import split_path
 
 __all__ = ['Mask']
 
+KEYID_ATTR = 'mask_id'
+UNIQ_ATTRS = ['task_id', 'name']
+CLASS_LOW = split_path(__file__)[1].lower()
+
 
 def _in_session(**local_kw):
-    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' % CLASS_LOW, **local_kw)
+
+
+_check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
 
 
 class Mask:
@@ -73,13 +80,32 @@ class Mask:
         task_id : int
             Primary key id of the table row of parent task.
     """
+    __cache__ = pd.DataFrame(columns=[KEYID_ATTR]+UNIQ_ATTRS+[CLASS_LOW])
+
+    @classmethod
+    def _check_in_cache(cls, kind, loc):
+        return _check_in_cache(cls, kind, loc)
+
+    @classmethod
+    def _sqlintf_instance_argument(cls):
+        if hasattr(cls, '_%s' % CLASS_LOW):
+            for _session in cls._check_in_cache(kind='keyid',
+                                                loc=getattr(cls, '_%s' % CLASS_LOW)._sa_instance_state.key[1][0]):
+                pass
+
     def __new__(cls, *args, **kwargs):
+        if hasattr(cls, '_inst'):
+            old_cls_inst = cls._inst
+            delattr(cls, '_inst')
+        else:
+            old_cls_inst = None
+        cls._to_cache = {}
         # checking if given argument is sqlintf object or existing id
         cls._mask = args[0] if len(args) else None
         if not isinstance(cls._mask, si.Mask):
             keyid = kwargs.get('id', cls._mask)
             if isinstance(keyid, int):
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='keyid', loc=keyid):
                     cls._mask = session.query(si.Mask).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
@@ -89,7 +115,7 @@ class Mask:
                 source = kwargs.get('source', '' if args[1] is None else args[1])
                 value = kwargs.get('value', '' if args[2] is None else args[2])
                 # querying the database for existing row or create
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='args', loc=(task.task_id, name)):
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
@@ -105,9 +131,22 @@ class Mask:
                             else:
                                 this_nested.rollback()
                             retry.retry_state.commit()
+        else:
+            with si.begin_session() as session:
+                session.add(cls._mask)
+                for _session in cls._check_in_cache(kind='keyid', loc=cls._mask.id):
+                    pass
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Mask')
-        return cls._inst
+        # add instance to cache dataframe
+        if cls._to_cache:
+            cls._to_cache[CLASS_LOW] = cls._inst
+            cls.__cache__.loc[len(cls.__cache__)] = cls._to_cache
+        new_cls_inst = cls._inst
+        delattr(cls, '_inst')
+        if old_cls_inst is not None:
+            cls._inst = old_cls_inst
+        return new_cls_inst
 
     @_in_session()
     def __init__(self, *args, **kwargs):

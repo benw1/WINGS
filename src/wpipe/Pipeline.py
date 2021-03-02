@@ -5,8 +5,8 @@ Contains the Pipeline class definition
 Please note that this module is private. The Pipeline class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import os, sys, glob, datetime, json, si
-from .core import to_json, initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import os, sys, glob, datetime, json, pd, si
+from .core import make_yield_session_if_not_cached, initialize_args, wpipe_to_sqlintf_connection, in_session, to_json
 from .core import as_int, clean_path, remove_path, split_path
 from .core import PARSER
 from .proxies import ChildrenProxy
@@ -14,9 +14,16 @@ from .DPOwner import DPOwner
 
 __all__ = ['Pipeline']
 
+KEYID_ATTR = 'pipeline_id'
+UNIQ_ATTRS = ['user_id', 'pipe_root']
+CLASS_LOW = split_path(__file__)[1].lower()
+
 
 def _in_session(**local_kw):
-    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' % CLASS_LOW, **local_kw)
+
+
+_check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
 
 
 class Pipeline(DPOwner):
@@ -169,8 +176,26 @@ class Pipeline(DPOwner):
         configuration file. The third and last one called run_pipeline
         simply starts the pipeline run.
     """
+    __cache__ = pd.DataFrame(columns=[KEYID_ATTR]+UNIQ_ATTRS+[CLASS_LOW])
+
+    @classmethod
+    def _check_in_cache(cls, kind, loc):
+        return _check_in_cache(cls, kind, loc)
+
+    @classmethod
+    def _sqlintf_instance_argument(cls):
+        if hasattr(cls, '_%s' % CLASS_LOW):
+            for _session in cls._check_in_cache(kind='keyid',
+                                                loc=getattr(cls, '_%s' % CLASS_LOW)._sa_instance_state.key[1][0]):
+                pass
 
     def __new__(cls, *args, **kwargs):
+        if hasattr(cls, '_inst'):
+            old_cls_inst = cls._inst
+            delattr(cls, '_inst')
+        else:
+            old_cls_inst = None
+        cls._to_cache = {}
         # checking if given argument is sqlintf object or existing id
         cls._pipeline = args[0] if len(args) else as_int(PARSER.parse_known_args()[0].pipeline)
         if not isinstance(cls._pipeline, si.Pipeline):
@@ -180,7 +205,7 @@ class Pipeline(DPOwner):
                         cls._pipeline = int(json.load(jsonfile)[0]['id'])
             keyid = kwargs.get('id', cls._pipeline)
             if isinstance(keyid, int):
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='keyid', loc=keyid):
                     try:
                         cls._pipeline = session.query(si.Pipeline).filter_by(id=keyid).one()
                     except si.orm.exc.NoResultFound:
@@ -210,7 +235,7 @@ class Pipeline(DPOwner):
                 description = kwargs.get('description',
                                          '' if args[6] is None else args[6])
                 # querying the database for existing row or create
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='args', loc=(user.user_id, pipe_root)):
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
@@ -249,9 +274,19 @@ class Pipeline(DPOwner):
                             else:
                                 this_nested.rollback()
                             retry.retry_state.commit()
+        else:
+            cls._sqlintf_instance_argument()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Pipeline')
-        return cls._inst
+        # add instance to cache dataframe
+        if cls._to_cache:
+            cls._to_cache[CLASS_LOW] = cls._inst
+            cls.__cache__.loc[len(cls.__cache__)] = cls._to_cache
+        new_cls_inst = cls._inst
+        delattr(cls, '_inst')
+        if old_cls_inst is not None:
+            cls._inst = old_cls_inst
+        return new_cls_inst
 
     @_in_session()
     def __init__(self, *args, **kwargs):

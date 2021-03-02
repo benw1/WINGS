@@ -13,9 +13,11 @@ from .proxies import ChildrenProxy
 
 __all__ = ['DPOwner']
 
+CLASS_LOW = split_path(__file__)[1].lower()
+
 
 def _in_session(**local_kw):
-    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' % CLASS_LOW, **local_kw)
 
 
 class DPOwner:
