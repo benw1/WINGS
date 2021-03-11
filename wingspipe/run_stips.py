@@ -103,8 +103,8 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
     print("Running ",filename,float(ra),float(dec))
     print("SEED ",seed)
     scene_general = {'ra': float(ra), 'dec': float(dec), 'pa': pa, 'seed': seed}
-    obs = {'instrument': 'WFI', 'filters': [filtername], 'detectors': my_params['detectors'], 'distortion': False, 'oversample': my_params['oversample'], 'pupil_mask': '', 'background': 'avg', 'observations_id': dp_id, 'exptime': my_params['exptime'], 'offsets': [{'offset_id': event_id, 'offset_centre': False, 'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
-    obm = ObservationModule(obs, scene_general=scene_general, psf_grid_size=int(my_params['psf_grid']))
+    obs = {'instrument': 'WFI', 'filters': [filtername], 'detectors': my_params['detectors'], 'distortion': False, 'pupil_mask': '', 'background': 'avg', 'observations_id': dp_id, 'exptime': my_params['exptime'], 'offsets': [{'offset_id': event_id, 'offset_centre': False, 'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
+    obm = ObservationModule(obs, scene_general=scene_general, psf_grid_size=int(my_params['psf_grid']), oversample=int(my_params['oversample']))
     try:
         os.symlink(my_params['psf_cache'],my_config.procpath+"/psf_cache")
     except:
@@ -157,7 +157,8 @@ if __name__ == '__main__':
         comp_name = 'completed' + this_target.name
         options = {comp_name: 0}
         this_job.options = options
-        total = len(image_dps)
+        total = to_run
+        #total = len(image_dps)
         # print(image_dps(0))
         for dps in image_dps:
             print(dps)

@@ -2,6 +2,7 @@
 import gc
 import os
 import subprocess
+import time
 
 import pandas as pd
 import wpipe as wp
@@ -75,14 +76,23 @@ def split_catalog(job_id, dp_id, detid):
         my_data[keep].to_csv(outfile, index=False, single_file=True)
         _dp = my_config.dataproduct(filename=filename, relativepath=my_config.procpath, group='proc',
                                     subtype='split_catalog')
+        checksize = len(my_data[keep])
         dpid = _dp.dp_id
-        new_event = my_job.child_event('new_split_catalog', tag=dpid,
+        if (checksize < 10000000):
+            new_event = my_job.child_event('new_split_catalog', tag=dpid,
                                          options={'dp_id': dpid, 'racent': detracent, 'deccent': detdeccent,
-                                                  'submission_type': 'pbs'})
-        print("Firing event test")
-        my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_split_catalog"]))
-        new_event.fire()
-
+                                                  'submission_type': 'pbs', 'detname': detname})
+            my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_split_catalog"]))
+            new_event.fire()
+        if (checksize >= 10000000):
+            my_job.logprint("Large catalog... waiting 5 minutes to fire event...")
+            time.sleep(300)
+            new_event = my_job.child_event('new_split_catalog', tag=dpid,
+                                         options={'dp_id': dpid, 'racent': detracent, 'deccent': detdeccent,
+                                                  'submission_type': 'pbs', 'detname': detname})
+            my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_split_catalog"]))
+            new_event.fire()
+            
 
 def read_fixed(filepath, my_config, my_job, racent, deccent):
     data = pd.read_csv(filepath)

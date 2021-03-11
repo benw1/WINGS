@@ -180,6 +180,7 @@ if __name__ == '__main__':
                 detnames1 = this_config.parameters['detnames']
             except:
                 detnames1 = this_target.name
+            '''
             this_job.logprint(''.join(["Detnames =",detnames1,"\n"]))
             for i in range(numdet):
                 try: 
@@ -197,4 +198,15 @@ if __name__ == '__main__':
                 this_job.logprint('images_prepped\n')
                 this_job.logprint(''.join(["Event= ", str(new_event.event_id),"\n",detname,"\n","images_prepped\n"]))
                 time.sleep(1)
+            '''
+            try:
+                detname = this_event.tag['detname']
+            except:
+                detname = this_target.name
+            new_event = this_job.child_event('images_prepped', tag=detname, options={'target_id': tid,'detname': detname,'submission_type': 'pbs'})
+            this_job.logprint('about to fire')
+            new_event.fire()
+            this_job.logprint('fired')
+            this_job.logprint('images_prepped\n')
+            this_job.logprint(''.join(["Event= ", str(new_event.event_id),"\n",detname,"\n","images_prepped\n"]))
 

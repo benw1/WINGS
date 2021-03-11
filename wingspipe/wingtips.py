@@ -4,12 +4,14 @@ WFIRST Infrared Nearby Galaxies Test Image Product Simulator
 Produces input files for the WFIRST STIPS simulator
 """
 import time
+import subprocess
 import resource
 import gc
 import numpy as np
 from astropy import wcs
 from astropy.io import fits, ascii
 from astropy.table import Table
+import dask.dataframe as dd
 
 import wpipe as wp
 
@@ -33,6 +35,7 @@ class WingTips:
         else:
             if isinstance(infile, str):
                 infile = [infile]
+            specialprint("Attempting read stips...")
             self.tab = WingTips.read_stips(infile[0], **kwargs)
             specialprint("After read_stips %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
             if len(infile) > 1:
@@ -137,9 +140,45 @@ class WingTips:
                         formats=dict(zip(_nms, _fmt)),
                         **[{'delimiter': ' ', 'delimiter_pad': ''}, {}][(ipac and i == 0)])
         outfile.close()
-        specialprint("After ascii.write %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
+        del _t
         gc.collect()
+        specialprint("After ascii.write %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         return specialprint('Wrote out %s \n' % outfile)
+
+    def append_stips(self, outfile='temp.txt', hasID=False, hasCmnt=False, saveID=False, startID=1, ipac=False,
+                    max_writing_packet=np.inf):
+        """
+        Append a STIPS input file
+        """
+        gc.collect()
+        _tab = WingTips.get_tabular(self.tab, hasID, hasCmnt, saveID, startID)
+        specialprint("After get_tabular %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
+        #_nms = ('id', 'ra', 'dec', 'flux', 'type', 'n', 're', 'phi', 'ratio', 'notes')
+        _nms = ('0', '0.0', '0.00', '0.000', 'point', '1.000', '1.0000', '1.00000', '1.0000000',  'comment')
+        _fmt = ('%10d', '%15.7f', '%15.7f', '%15.7f', '%8s', '%10.3f', '%15.7f', '%15.7f', '%15.7f', '%8s')
+        _t = Table(_tab, names=_nms)
+        del _tab
+        gc.collect()
+        specialprint("After astropy.Table in append %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
+        _length = len(_t)
+        _max = min(max_writing_packet, _length)
+        outname = str(outfile)
+        outfile = open(outfile, 'a')
+        for i in range(int(np.ceil(_length / _max))):
+            ascii.write(_t[i * _max:(i + 1) * _max], outfile,
+                        format=['fixed_width_no_header', ['fixed_width', 'ipac'][ipac]][i == 0],
+                        formats=dict(zip(_nms, _fmt)),
+                        **[{'delimiter': ' ', 'delimiter_pad': ''}, {}][(ipac and i == 0)])
+        outfile.close()
+        del _t
+        gc.collect()
+        specialprint("After ascii.write in append %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
+        rmline = str(startID+1)
+        specialprint(rmline)
+        command = "sed -i \'"+rmline+"d\' "+outname
+        _p=subprocess.run(command,shell=True)
+
+        return specialprint('Appended %s \n' % outfile)
 
     @staticmethod
     def from_scratch(flux, ra=[], dec=[], center=[], ID=[], Type=[], n=[], re=[], phi=[], ratio=[], notes=[],
@@ -173,31 +212,52 @@ class WingTips:
         elif len(Type) == _temp.n:
             Type = np.array(Type)
         specialprint("After defining Type %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
-        #
-        _tab = np.array([ra, dec, flux, Type, n, re, phi, ratio], dtype='object').T
-        specialprint("After defining _tab %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
-        del ra, dec, flux, Type, n, re, phi, ratio
-        gc.collect()
-        #
+        
+        check = len(flux)
+
         if len(ID) == _temp.n:
             _tab = np.hstack((np.array(ID, ndmin=2).T, _tab))
             del ID
         if len(notes) == _temp.n:
             _tab = np.hstack((_tab, np.array(notes, ndmin=2).T))
             del notes
-        #
-        _temp.tab = np.array(_tab)
-        del _tab
-        gc.collect()
-        specialprint("After defining _temp.tab %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
-        #
+        
         if outfile is None:
             return _temp
-        else:
+        elif check < 10000000:
+            _tab = np.array([ra, dec, flux, Type, n, re, phi, ratio], dtype='object').T
+            _temp.tab = np.array(_tab)
+            del _tab
+            gc.collect()
+            specialprint("After defining _temp.tab %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
             _temp.write_stips(outfile, hasID=bool(ID), hasCmnt=bool(notes), saveID=bool(ID),
                               max_writing_packet=max_writing_packet)
+        elif check >= 10000000:
+            runs = np.int(np.floor(check/10000000)+1)
+            _tab = np.array([ra[0:10000000], dec[0:10000000], flux[0:10000000], Type[0:10000000], n[0:10000000], re[0:10000000], phi[0:10000000], ratio[0:10000000]], dtype='object').T
+            _temp.tab = np.array(_tab)
+            del _tab
+            gc.collect()
+            _temp.write_stips(outfile, hasID=bool(ID), hasCmnt=bool(notes), saveID=bool(ID),
+                          max_writing_packet=max_writing_packet)
+            for i in range(runs-1):
+                index1 = (i+1)*10000000
+                index2 = (i+2)*10000000 
+                if index1 > check-1:
+                   continue
+                if index2 > check-1:
+                   index2 = check-1
+                specialprint("INDEXES %i %i" % (index1,index2))
+                _tab = np.array([ra[index1:index2], dec[index1:index2], flux[index1:index2], Type[index1:index2], n[index1:index2], re[index1:index2], phi[index1:index2], ratio[index1:index2]], dtype='object').T
+                #print(ra[index1:index2])
+                #print(_tab)
+                _temp.tab = np.array(_tab)
+                del _tab
+                gc.collect()
+                _temp.append_stips(outfile, hasID=bool(ID), hasCmnt=bool(notes), saveID=bool(ID), startID=index1+1, max_writing_packet=max_writing_packet)
         del _temp
         gc.collect()
+        specialprint("OUT OF LOOP")
 
     @staticmethod
     def read_stips(infile, getRADEC=True, getID=False, getCmnt=False, **kwargs):
@@ -210,24 +270,21 @@ class WingTips:
                         getRADEC * ['ra', 'dec'] + \
                         ['flux', 'type', 'n', 're', 'phi', 'ratio'] + \
                         getCmnt * ['comment']
-        kwargs['include_names'] = include_names
-        _infile = ascii.read(infile, **kwargs)
-        specialprint("After ascii.read %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
-        specialprint('\nRead in %s \n' % infile)
-        _temp = np.array(_infile.as_array().tolist(), dtype='object')
-        del _infile
-        gc.collect()
+        kwargs['usecols'] = include_names
+        _temp = dd.read_table(infile, sep='\s+', **kwargs).to_dask_array().compute()
+        specialprint("After dd.read_table > to_array > compute %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
         return _temp
 
     @staticmethod
-    def get_tabular(_tab, hasID=False, hasCmnt=False, saveID=False):
+    def get_tabular(_tab, hasID=False, hasCmnt=False, saveID=False, startID=1):
         """
         Return tabular lists for STIPS input file columns
         """
         _i = int(hasID)
         if ~saveID:
             _n = _tab.shape[0]
-            _ID = np.array(np.linspace(1, _n, _n), ndmin=2).T
+            #_ID = np.array(np.linspace(1, _n, _n), ndmin=2).T
+            _ID = np.array(np.linspace(startID, startID-1+_n, _n), ndmin=2).T
             _tab = np.hstack((_ID, _tab[:, _i:]))
             del _ID
             specialprint("After ~saveID %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
