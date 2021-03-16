@@ -162,7 +162,8 @@ class BeginSession:
             except exc.OperationalError or exc.ResourceClosedError as Err:
                 print("Rollback unsuccessful %s\n%s\n\nProceeding anyway\n" % (Err.orig, Err.statement))
 
-        return tn.Retrying(retry=tn.retry_if_exception_type(exc.OperationalError),
+        return tn.Retrying(retry=(tn.retry_if_exception_type(exc.OperationalError) |
+                                  tn.retry_if_exception_type(exc.InvalidRequestError)),
                            wait=tn.wait_random_exponential(multiplier=0.1),
                            before=before,
                            after=after)

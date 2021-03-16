@@ -516,7 +516,7 @@ class Pipeline(DPOwner):
         """
         inputs_path = clean_path(inputs_path)
         if inputs_path is not None:
-            for input_path in glob.glob(inputs_path + '/*'):
+            for input_path in glob.glob(inputs_path + '/*') if os.path.isdir(inputs_path) else [inputs_path]:
                 if os.access(inputs_path, os.R_OK):
                     self.input(input_path).make_config(config_file)
 

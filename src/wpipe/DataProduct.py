@@ -275,6 +275,10 @@ class DataProduct(OptOwner):
         self._session.commit()
 
     @property
+    def filesplitext(self):
+        return os.path.splitext(self.filename)
+
+    @property
     @_in_session()
     def dp_id(self):
         """
