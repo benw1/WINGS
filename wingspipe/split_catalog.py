@@ -83,13 +83,17 @@ def split_catalog(job_id, dp_id, detid):
                                          options={'dp_id': dpid, 'racent': detracent, 'deccent': detdeccent,
                                                   'submission_type': 'pbs', 'detname': detname})
             my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_split_catalog"]))
+            my_job.logprint(''.join(["event detname is ", str(detname)]))
             new_event.fire()
         if (checksize >= 10000000):
             my_job.logprint("Large catalog... waiting 5 minutes to fire event...")
-            time.sleep(300)
+            sleepsec = np.random.randint(500)
+            my_job.logprint(str(sleepsec))
+            time.sleep(sleepsec)
             new_event = my_job.child_event('new_split_catalog', tag=dpid,
                                          options={'dp_id': dpid, 'racent': detracent, 'deccent': detdeccent,
                                                   'submission_type': 'pbs', 'detname': detname})
+            my_job.logprint(''.join(["event detname is ", str(detname)]))
             my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_split_catalog"]))
             new_event.fire()
             

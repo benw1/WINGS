@@ -73,10 +73,10 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
                     eventtag = filtname+'_ra:'+str(k)+'/'+str(ra_dithers)+'_dec:'+str(j)+'/'+str(dec_dithers)
                     #new_event = my_job.child_event('new_stips_catalog', tag=eventtag,
                     #                               options={'dp_id': newdpid, 'to_run': total, 'name': comp_name,'submission_type' : 'pbs',
-                    #                                        'ra_dither': ra_dither, 'dec_dither': dec_dither})
+                    #                                        'ra_dither': ra_dither, 'dec_dither': dec_dither, 'detname': detname})
                     new_event = my_job.child_event('new_stips_catalog', tag=eventtag,
                                                    options={'dp_id': newdpid, 'to_run': total, 'name': comp_name,
-                                                            'ra_dither': ra_dither, 'dec_dither': dec_dither})
+                                                            'ra_dither': ra_dither, 'dec_dither': dec_dither, 'detname': detname})
                     dithnum += 1
                     my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
                     new_event.fire()
@@ -101,7 +101,7 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
                                            options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'submission_type' : 'pbs',
                                                     'ra_dither': 0.0, 'dec_dither': 0.0, 'detname': detname})
             my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
-            print(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
+            my_job.logprint(''.join(["event detname is ", str(detname)]))
             new_event.fire()
             i += 1
 

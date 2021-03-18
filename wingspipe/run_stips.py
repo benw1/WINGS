@@ -20,64 +20,6 @@ def register(task):
     _temp = task.mask(source='*', name='new_stips_catalog', value='*')
 
 
-def hyak_stips(event_id, dp_id, stips_script):
-    my_event = wp.Event(event_id)
-    catalog_id = my_event.options['dp_id']
-    catalog_dp = wp.DataProduct(catalog_id)
-    my_config = catalog_dp.config
-    slurmfile = stips_script + '.slurm'
-    with open(slurmfile, 'w') as f:
-        f.write('#!/bin/bash' + '\n' +
-                '## Job Name' + '\n' +
-                '#SBATCH --job-name=stips' + str(dp_id) + '\n' +
-                '## Allocation Definition ' + '\n' +
-                '#SBATCH --account=astro' + '\n' +
-                '#SBATCH --partition=astro' + '\n' +
-                '## Resources' + '\n' +
-                '## Nodes' + '\n' +
-                '#SBATCH --ntasks=1' + '\n' +
-                '## Walltime (3 hours)' + '\n' +
-                '#SBATCH --time=10:00:00' + '\n' +
-                '## Memory per node' + '\n' +
-                '#SBATCH --mem=10G' + '\n' +
-                '## Specify the working directory for this job' + '\n' +
-                '#SBATCH --workdir=' + my_config.procpath + '\n' +
-                '##turn on e-mail notification' + '\n' +
-                'source activate forSTIPS3' + '\n' +
-                'python ' + stips_script)
-    subprocess.run(['sbatch', slurmfile], cwd=my_config.procpath)
-
-
-def pbs_stips(event_id, dp_id, stips_script):
-    my_event = wp.Event(event_id)
-    catalog_id = my_event.options['dp_id']
-    catalog_dp = wp.DataProduct(catalog_id)
-    my_config = catalog_dp.config
-    filename = str(catalog_dp.filename)  # for example, Mixed_h15_shell_3Mpc_Z.tbl
-    filebase = filename.split('.')[0]
-    # pbsfile = stips_script+'.pbs'
-    pbsfile = '/home1/bwilli24/Wpipelines/run_stips_jobs'
-    # with open(pbsfile, 'w') as f:
-    with open(pbsfile, 'a') as f:
-        f.write('#PBS -S /bin/bash' + '\n' +
-                '#PBS -j oe' + '\n' +
-                '#PBS -l select=1:ncpus=4:model=san' + '\n' +
-                '#PBS -W group_list=s1692' + '\n' +
-                '#PBS -l walltime=10:00:00' + '\n' +
-                'source ~/.bashrc' + '\n' +
-                'cd ' + my_config.procpath + '\n' +
-
-                'source /nobackupp11/bwilli24/miniconda3/bin/activate STIPS' + '\n' +
-                'source /nobackupp11/bwilli24/miniconda3/bin/activate STIPS && ' + 'cd /tmp' +
-                ' && python ' + stips_script +
-                ' && mv /tmp/sim*' + str(dp_id) + '*fits ' + my_config.procpath +
-                ' && mv /tmp/' + filebase + '* ' + my_config.procpath + '\n')
-        # 'source /nobackupp11/bwilli24/miniconda3/bin/activate STIPS && ' + 'cd ' + my_config.procpath +
-        # ' && python ' + stips_script + '\n')
-        # 'python '+stips_script)
-    return
-    # subprocess.run(['qsub',pbsfile],cwd=my_config.procpath)
-
 def run_stips(event_id, dp_id, ra_dith, dec_dith):
     catalog_dp = wp.DataProduct(dp_id)
     my_config = catalog_dp.config
@@ -143,10 +85,11 @@ if __name__ == '__main__':
     update_option += 1
     to_run = this_event.options['to_run']
     catalogID = this_event.options['dp_id']
+    detname = this_event.options['detname']
     catalogDP = wp.DataProduct(catalogID)
     this_conf = catalogDP.config
     this_target = this_conf.target
-    image_dps = wp.DataProduct.select(config_id=this_conf.config_id, data_type="stips_image")
+    image_dps = wp.DataProduct.select(config_id=this_conf.config_id, data_type="stips_image", subtype=detname)
     print(''.join(["Completed ", str(update_option), " of ", str(to_run)]))
     this_job.logprint(''.join(["Completed ", str(update_option), " of ", str(to_run), "\n"]))
     if update_option == to_run:
@@ -154,7 +97,8 @@ if __name__ == '__main__':
         DP = wp.DataProduct(this_dp_id)
         tid = DP.target_id
         path = this_conf.procpath
-        comp_name = 'completed' + this_target.name
+        #comp_name = 'completed' + this_target.name
+        comp_name = 'completed' + detname
         options = {comp_name: 0}
         this_job.options = options
         total = to_run
@@ -165,7 +109,8 @@ if __name__ == '__main__':
             dpid = dps.dp_id
             new_event = this_job.child_event('stips_done', tag=dpid,
                                              options={'target_id': tid, 'dp_id': dpid, 'submission_type': 'pbs',
-                                                      'name': comp_name, 'to_run': total})
+                                                      'name': comp_name, 'to_run': total, 'detname': detname})
+            this_job.logprint(''.join(["event detname is ", str(detname)]))
             new_event.fire()
             # this_job.logprint('stips_done but not firing any events for now\n')
             this_job.logprint(''.join(["Event= ", str(this_event.event_id)]))
