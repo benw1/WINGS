@@ -114,7 +114,7 @@ class ChildrenProxy:  # TODO: Generalize proxy object with the BaseProxy
                     if getattr(child, self._child_attr) == item:
                         _temp = child
                         break
-                retry.retry_state.rollback()
+                retry.retry_state.commit()
         if _temp is not None:
             if self._work_with_sqlintf == 0:
                 return getattr(sys.modules['wpipe'], self._cls_name)(_temp)

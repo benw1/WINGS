@@ -231,10 +231,12 @@ class Pipeline(DPOwner):
                                     os.mkdir(cls._pipeline.pipe_root + '/.wpipe')
                                 if not os.path.isfile(cls._pipeline.pipe_root + '/.wpipe/pipe.conf'):
                                     to_json(cls._pipeline, cls._pipeline.pipe_root + '/.wpipe/pipe.conf', orient='records')
+                                # TODO: MOVE BLOC BEFORE COMMIT # (MAYBE)
                                 cls._pipeline.dataproducts.append(si.DataProduct(filename='pipe.conf',
                                                                                  group='conf',
                                                                                  relativepath=cls._pipeline.pipe_root +
                                                                                               '/.wpipe'))
+                                #################################
                                 if not os.path.isdir(cls._pipeline.software_root):
                                     os.mkdir(cls._pipeline.software_root)
                                 if not os.path.isfile(cls._pipeline.software_root + '/__init__.py'):
