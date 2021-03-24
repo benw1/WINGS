@@ -150,6 +150,8 @@ class Target(OptOwner):
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
                 input = kwargs.get('input', wpargs.get('Input', None))
                 name = kwargs.get('name', input.name if args[0] is None else args[0])
+                datapath = input.pipeline.data_root+'/'+name
+                dataraws = input.rawspath
                 # querying the database for existing row or create
                 for session in cls._check_in_cache(kind='args', loc=(input.input_id, name)):
                     for retry in session.retrying_nested():
@@ -159,12 +161,11 @@ class Target(OptOwner):
                                 filter_by(input_id=input.input_id). \
                                 filter_by(name=name).one_or_none()
                             if cls._target is None:
-                                with si.hold_commit():
-                                    cls._target = si.Target(name=name,
-                                                            datapath=input.pipeline.data_root+'/'+name,
-                                                            dataraws=input.rawspath)
-                                    input._input.targets.append(cls._target)
-                                    this_nested.commit()
+                                cls._target = si.Target(name=name,
+                                                        datapath=datapath,
+                                                        dataraws=dataraws)
+                                input._input.targets.append(cls._target)
+                                this_nested.commit()
                                 if not os.path.isdir(cls._target.datapath):
                                     os.mkdir(cls._target.datapath)
                                 if not os.path.isdir(cls._target.dataraws):

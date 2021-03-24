@@ -141,16 +141,18 @@ class BeginSession:
                 retry_state.query = retry_state.session.query
                 retry_state.TRANSACTION = retry_state.begin_nested()
 
+                @tn.retry(retry=tn.retry_if_exception_type(exc.OperationalError))
                 def _rollback():
                     if retry_state.TRANSACTION.is_active:
                         retry_state.TRANSACTION.rollback()
+                    retry_state.TRANSACTION = retry_state.begin_nested()
 
                 retry_state.rollback = _rollback
 
                 def _commit():
                     if retry_state.TRANSACTION.is_active:
                         retry_state.TRANSACTION.commit()
-                    if COMMIT_FLAG and not retry_state.session.EXISTING_SESSION:
+                    if COMMIT_FLAG:
                         retry_state.session.commit()
 
                 retry_state.commit = _commit
@@ -158,15 +160,12 @@ class BeginSession:
         def after(retry_state):
             try:
                 retry_state.outcome.result()
-            except exc.OperationalError as Err:
+            except (exc.OperationalError, exc.IntegrityError) as Err:
                 print("Encountered %s\n%s\n\nAttempting rollback\n" % (Err.orig, Err.statement))
-            try:
-                retry_state.rollback()
-                print("Rollback successful\n")
-            except exc.OperationalError or exc.ResourceClosedError as Err:
-                print("Rollback unsuccessful %s\n%s\n\nProceeding anyway\n" % (Err.orig, Err.statement))
+            retry_state.rollback()
 
-        return tn.Retrying(retry=tn.retry_if_exception_type(exc.OperationalError),
+        return tn.Retrying(retry=(tn.retry_if_exception_type(exc.OperationalError) |
+                                  tn.retry_if_exception_type(exc.IntegrityError)),
                            wait=tn.wait_random_exponential(multiplier=0.1),
                            before=before,
                            after=after)

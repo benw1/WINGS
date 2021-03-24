@@ -6,7 +6,6 @@ import subprocess
 import pandas as pd
 import wpipe as wp
 import numpy as np
-
 if __name__ == '__main__':
     from wingtips import WingTips as wtips
 else:
@@ -20,7 +19,7 @@ def register(task):
     _temp = task.mask(source='*', name='new_split_catalog', value='*')
 
 
-def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent):
+def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
     my_job = wp.Job(my_job_id)
     catalog_dp = wp.DataProduct(my_dp_id)
     my_target = catalog_dp.target
@@ -40,7 +39,7 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent):
     fileroot = my_config.procpath + '/'
     procdp = my_config.dataproduct(filename=filename, relativepath=fileroot, group='proc')
     stips_files, filters = read_fixed(procdp.relativepath + '/' + procdp.filename, my_config, my_job, racent, deccent)
-    comp_name = 'completed' + my_target.name
+    comp_name = 'completed' + detname
     options = {comp_name: 0}
     my_job.options = options
     try:
@@ -48,24 +47,20 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent):
         dec_dithers = my_params['dec_dithers']
         dither_size = my_params['dither_size']
         centdec = my_params['deccent']
-        total = len(stips_files) * (int(ra_dithers) * int(dec_dithers))*np.int(my_params['ndetect'])
+        #total = len(stips_files) * (int(ra_dithers) * int(dec_dithers))*np.int(my_params['ndetect'])
+        total = len(stips_files) * (int(ra_dithers) * int(dec_dithers))
         i = 0
         for stips_cat in stips_files:
             filtname = filters[i]
             _dp = my_config.dataproduct(filename=stips_cat, relativepath=my_config.procpath, group='proc',
                                         filtername=filtname, subtype='stips_input_catalog')
             stipsfilepath = my_config.procpath + '/' + stips_cat
-            print("LINE 49")
             dpid = _dp.dp_id
-            print("LINE 51", str(dpid))
             dithnum = 0
             for k in range(int(ra_dithers)):
-                print("LINE 53", str(dither_size), str(centdec), str(k))
                 ra_dither = float(dither_size) * np.cos(float(centdec) * 3.14159 / 180.0) * int(k)
-                print("LINE 57")
                 for j in range(int(dec_dithers)):
                     dec_dither = float(dither_size) * (int(j))
-                    print("LINE 56")
                     filename = stipsfilepath.split('/')[-1]
                     filtroot = filename.split('_')[-1].split('.')[0]
                     dithfilepath = stipsfilepath.replace(''.join(['_', str(filtroot)]),
@@ -78,10 +73,10 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent):
                     eventtag = filtname+'_ra:'+str(k)+'/'+str(ra_dithers)+'_dec:'+str(j)+'/'+str(dec_dithers)
                     #new_event = my_job.child_event('new_stips_catalog', tag=eventtag,
                     #                               options={'dp_id': newdpid, 'to_run': total, 'name': comp_name,'submission_type' : 'pbs',
-                    #                                        'ra_dither': ra_dither, 'dec_dither': dec_dither})
+                    #                                        'ra_dither': ra_dither, 'dec_dither': dec_dither, 'detname': detname})
                     new_event = my_job.child_event('new_stips_catalog', tag=eventtag,
                                                    options={'dp_id': newdpid, 'to_run': total, 'name': comp_name,
-                                                            'ra_dither': ra_dither, 'dec_dither': dec_dither})
+                                                            'ra_dither': ra_dither, 'dec_dither': dec_dither, 'detname': detname})
                     dithnum += 1
                     my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
                     new_event.fire()
@@ -94,7 +89,8 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent):
         my_job.logprint("No Dithers Found")
         print("No Dithers Found")
         print("STIPS",stips_files,filters)
-        total = len(stips_files)*np.int(my_params['ndetect'])
+        #total = len(stips_files)*np.int(my_params['ndetect'])
+        total = len(stips_files)
         i = 0
         for stips_cat in stips_files:
             filtname = filters[i]
@@ -103,12 +99,9 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent):
             dpid = _dp.dp_id
             new_event = my_job.child_event('new_stips_catalog', tag=filtname,
                                            options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'submission_type' : 'pbs',
-                                                    'ra_dither': 0.0, 'dec_dither': 0.0})
-            #new_event = my_job.child_event('new_stips_catalog', tag=filtname,
-            #                               options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 
-            #                                        'ra_dither': 0.0, 'dec_dither': 0.0})
+                                                    'ra_dither': 0.0, 'dec_dither': 0.0, 'detname': detname})
             my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
-            print(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
+            my_job.logprint(''.join(["event detname is ", str(detname)]))
             new_event.fire()
             i += 1
 
@@ -165,7 +158,7 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     file2 = '.'.join(file1[0:len(file1) - 1])
     #file3 = my_config.procpath + '/' + file2 + str(np.around(hden, decimals=5)) + '.' + file1[-1]
     file3 = my_config.procpath + '/' + file2 + '.' + file1[-1]
-    galradec = getgalradec(file3, ra * 0.0 + racent, dec * 0.0 + deccent, magni, background)
+    galradec = getgalradec(file3, ra * 0.0 + racent, dec * 0.0 + deccent, magni, background, my_job)
     stips_lists, filters = write_stips(file3, ra, dec, magni, background,
                                        galradec, racent, deccent, starsonly, filtsinm, my_job)
     del magni
@@ -279,7 +272,7 @@ def read_match(filepath, cols, my_config, my_job):
     file2 = '.'.join(file1[0:len(file1) - 1])
     file3 = my_config.procpath + '/' + file2 + str(np.around(hden, decimals=5)) + '.' + file1[-1]
     # print("STIPS",file3)
-    galradec = getgalradec(file3, ra * 0.0 + racent, dec * 0.0 + deccent, magni, background)
+    galradec = getgalradec(file3, ra * 0.0 + racent, dec * 0.0 + deccent, magni, background, my_job)
     stips_lists, filters = write_stips(file3, ra, dec, magni, background,
                                        galradec, racent, deccent, starsonly, filtsinm)
     del magni
@@ -288,7 +281,7 @@ def read_match(filepath, cols, my_config, my_job):
     return stips_in, filters
 
 
-def getgalradec(infile, ra, dec, magni, background):
+def getgalradec(infile, ra, dec, magni, background, my_job):
     filt = 'F087'
     zp_ab = np.array([26.365, 26.357, 26.320, 26.367, 25.913])
     zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588])
@@ -297,7 +290,9 @@ def getgalradec(infile, ra, dec, magni, background):
     outfile = starpre + '_' + filt + '.tbl'
     flux = wtips.get_counts(magni[:, 0], zp_ab[0])
     wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/1000))+1)
-    stars = wtips([outfile], fast_reader={'chunk_size': 2**20})
+    my_job.logprint("LINE 302")
+    stars = wtips([outfile])
+    my_job.logprint("LINE 304")
     galaxies = wtips([filedir + filt + '.txt'])  # this file will be provided pre-made
     radec = galaxies.random_radec_for(stars)
     return radec
@@ -326,9 +321,12 @@ def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, s
         # flux    = wtips.get_counts(magni[:,j],zp_ab[j])
         flux = wtips.get_counts(magni[:, mindex], zp_vega[j])
         # This makes a stars only input list
+        my_job.logprint("LINE 328")
+        print(ra[0:99999])
         wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/1000))+1)
         my_job.logprint("LINE 330")
-        stars = wtips([outfile], fast_reader={'chunk_size': 2**20})
+        #stars = wtips([outfile], fast_reader={'chunk_size': 2**20})
+        stars = wtips([outfile])
         my_job.logprint("LINE 332")
         galaxies = wtips([background + '/' + filt + '.txt'])  # this file will be provided pre-made
         my_job.logprint("LINE 334")
@@ -425,6 +423,9 @@ if __name__ == '__main__':
         this_job = wp.Job(job_id)
         event = this_job.firing_event
         dp_id = event.options['dp_id']
+        catalog_dp = wp.DataProduct(dp_id)
+        my_target = catalog_dp.target
+        targname = my_target.name
        
         if 'match' in event.name:
             process_match_catalog(job_id, dp_id)
@@ -438,7 +439,7 @@ if __name__ == '__main__':
             except:
                 ndetect = 1
             if ndetect == 1:
-                process_fixed_catalog(job_id, dp_id, 0.0, 0.0)
+                process_fixed_catalog(job_id, dp_id, 0.0, 0.0, targname)
             if ndetect > 1:
                 for i in range(ndetect):
                     dpid = dp_id
@@ -449,8 +450,9 @@ if __name__ == '__main__':
         elif 'split' in event.name:
             detracent = event.options['racent']
             detdeccent = event.options['deccent']
+            detname = event.options['detname']
             my_job = wp.Job(job_id)
             catalog_dp = wp.DataProduct(dp_id)
             my_config = catalog_dp.config
             my_params = my_config.parameters
-            process_fixed_catalog(job_id, dp_id, detracent, detdeccent)
+            process_fixed_catalog(job_id, dp_id, detracent, detdeccent, detname)

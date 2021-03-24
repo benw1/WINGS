@@ -187,6 +187,7 @@ if __name__ == '__main__':
     this_config = this_job.config
     this_target = this_config.target
     tid = this_target.target_id
+    this_job.logprint(''.join(["detname ", str(detname), "\n"]))
     paramdp = write_dolphot_pars(this_target, this_config, this_job, detname)
     dpid = int(paramdp.dp_id)
     this_job.logprint(''.join(["Parameter file DPID ", str(dpid), "\n"]))
