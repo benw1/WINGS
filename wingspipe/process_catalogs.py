@@ -439,7 +439,8 @@ if __name__ == '__main__':
             except:
                 ndetect = 1
             if ndetect == 1:
-                process_fixed_catalog(job_id, dp_id, 0.0, 0.0, targname)
+                detname = '.'.join(targname.split('.')[:-1])
+                process_fixed_catalog(job_id, dp_id, 0.0, 0.0, detname)
             if ndetect > 1:
                 for i in range(ndetect):
                     dpid = dp_id
