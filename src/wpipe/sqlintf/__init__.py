@@ -135,6 +135,7 @@ class BeginSession:
                 retry_state.session = self
                 retry_state.begin_nested = retry_state.session.begin_nested
                 retry_state.query = retry_state.session.query
+                retry_state.refresh = retry_state.session.refresh
                 retry_state.TRANSACTION = retry_state.begin_nested()
 
                 @tn.retry(retry=tn.retry_if_exception_type(exc.OperationalError))
