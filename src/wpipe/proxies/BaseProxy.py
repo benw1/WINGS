@@ -107,6 +107,7 @@ class BaseProxy:
             with retry:
                 _temp = retry.retry_state.query(self.parent.__class__).with_for_update(). \
                     filter_by(id=self.parent_id).one()
+                retry.retry_state.refresh(_temp)
                 _result = getattr(
                     [lambda x: x, try_scalar][self._try_scalar](getattr(_temp, self.attr_name)),
                     operator)(other)

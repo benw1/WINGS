@@ -86,6 +86,8 @@ if __name__ == '__main__':
     to_run = this_event.options['to_run']
     catalogID = this_event.options['dp_id']
     detname = this_event.options['detname']
+    detname = detname.replace(".cat","")
+    print("DETNAME ",detname)
     catalogDP = wp.DataProduct(catalogID)
     this_conf = catalogDP.config
     this_target = this_conf.target
