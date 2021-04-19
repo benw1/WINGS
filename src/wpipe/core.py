@@ -7,6 +7,7 @@ are available in the main ``wpipe`` namespace - use that instead.
 """
 import importlib
 import contextlib
+import functools
 import os
 import sys
 import types
@@ -231,7 +232,7 @@ def wpipe_to_sqlintf_connection(cls, cls_name):
             setattr(cls._inst, '_session', None)
 
 
-def in_session(si_attr, **local_kw):
+def in_session(si_attr, generator=False, **local_kw):
     """
     Returns a decorator that places the modified function in a begin_session
     context manager statement. The modified must be defined around a first
@@ -245,6 +246,9 @@ def in_session(si_attr, **local_kw):
     si_attr : string
         Name of the attribute where to find the object to add to the Session.
 
+    generator : boolean
+        TODO
+
     local_kw : dict
         TODO
 
@@ -255,6 +259,7 @@ def in_session(si_attr, **local_kw):
     """
 
     def decor(func):
+        @functools.wraps(func)
         def wrapper(self_cls, *args, **kwargs):
             with si.begin_session(**local_kw) as session:
                 # swap session in self_cls '_session' attribute if exists
@@ -280,7 +285,37 @@ def in_session(si_attr, **local_kw):
 
         return wrapper
 
-    return decor
+    def decor_gene(func):
+        @functools.wraps(func)
+        def wrapper(self_cls, *args, **kwargs):
+            with si.begin_session(**local_kw) as session:
+                # swap session in self_cls '_session' attribute if exists
+                if hasattr(self_cls, '_session'):
+                    _temp = self_cls._session
+                    self_cls._session = session
+                # attempt adding existing sqlintf instance if possible otherwise query and replace
+                try:
+                    session.add(getattr(self_cls, si_attr))
+                except si.exc.InvalidRequestError:
+                    warnings.warn("FIXING ENCOUNTERED BROKEN INSTANCE")
+                    broken_instance = getattr(self_cls, si_attr)
+                    setattr(self_cls, si_attr, session.query(broken_instance.__class__).
+                            filter_by(id=broken_instance._sa_instance_state.key[1][0]).one())
+                    if hasattr(broken_instance, '_wpipe_object'):
+                        setattr(getattr(self_cls, si_attr), '_wpipe_object', getattr(broken_instance, '_wpipe_object'))
+                # execute wrapped function
+                output = yield from func(self_cls, *args, **kwargs)
+                # return given session in self_cls '_session' attribute if exists
+                if hasattr(self_cls, '_session'):
+                    self_cls._session = _temp
+                return output
+
+        return wrapper
+
+    if generator:
+        return decor_gene
+    else:
+        return decor
 
 
 def return_dict_of_attrs(obj):

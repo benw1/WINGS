@@ -206,7 +206,7 @@ class DataProduct(OptOwner):
                 dpowner = kwargs.get('dpowner', wpargs.get('DPOwner', None))
                 filename = kwargs.get('filename', args[0])
                 relativepath = clean_path(kwargs.get('relativepath', args[1]))
-                group = kwargs.get('group', args[2])
+                group = kwargs.get('group', args[2])  # TODO: Switch group and relativepath args order
                 data_type = kwargs.get('data_type', '' if args[3] is None else args[3])
                 subtype = kwargs.get('subtype', '' if args[4] is None else args[4])
                 filtername = kwargs.get('filtername', '' if args[5] is None else args[5])

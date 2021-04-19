@@ -110,7 +110,8 @@ class DPOwner:
         dataproducts : list of :obj:`DataProduct`
             Filtered list of dataproducts.
         """
-        return self.dataproducts[self.dataproducts.group == group]
+        with self.dataproducts.hold_structure():
+            return self.dataproducts[self.dataproducts.group == group]
 
     def dataproduct(self, *args, **kwargs):
         """
