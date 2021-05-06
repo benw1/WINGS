@@ -90,7 +90,7 @@ class Mask:
     def _sqlintf_instance_argument(cls):
         if hasattr(cls, '_%s' % CLASS_LOW):
             for _session in cls._check_in_cache(kind='keyid',
-                                                loc=getattr(cls, '_%s' % CLASS_LOW)._sa_instance_state.key[1][0]):
+                                                loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
                 pass
 
     def __new__(cls, *args, **kwargs):
@@ -132,10 +132,7 @@ class Mask:
                                 this_nested.rollback()
                             retry.retry_state.commit()
         else:
-            with si.begin_session() as session:
-                session.add(cls._mask)
-                for _session in cls._check_in_cache(kind='keyid', loc=cls._mask.id):
-                    pass
+            cls._sqlintf_instance_argument()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Mask')
         # add instance to cache dataframe
@@ -148,13 +145,13 @@ class Mask:
             cls._inst = old_cls_inst
         return new_cls_inst
 
-    @_in_session()
+    # @_in_session()
     def __init__(self, *args, **kwargs):
-        self._mask.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        pass
+        # self.update_timestamp()
 
     @classmethod
-    def select(cls, **kwargs):
+    def select(cls, *args, **kwargs):
         """
         Returns a list of Mask objects fulfilling the kwargs filter.
 
@@ -170,6 +167,8 @@ class Mask:
         """
         with si.begin_session() as session:
             cls._temp = session.query(si.Mask).filter_by(**kwargs)
+            for arg in args:
+                cls._temp = cls._temp.filter(arg)
             return list(map(cls, cls._temp.all()))
 
     @property
@@ -192,8 +191,9 @@ class Mask:
     @_in_session()
     def name(self, name):
         self._mask.name = name
-        self._mask.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._mask.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -247,6 +247,14 @@ class Mask:
         int: Primary key id of the table row of parent task.
         """
         return self._mask.task_id
+
+    @_in_session()
+    def update_timestamp(self):
+        """
+
+        """
+        self._mask.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     def delete(self):
         """

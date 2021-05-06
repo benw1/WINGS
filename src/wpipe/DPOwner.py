@@ -29,15 +29,14 @@ class DPOwner:
         capability to parent dataproducts. Please refer to their respective
         documentation for specific instructions.
     """
-    @_in_session()
+    # @_in_session()
     def __init__(self):
         if not hasattr(self, '_dpowner'):
             self._dpowner = si.DPOwner()
         if not hasattr(self, '_dataproducts_proxy'):
             self._dataproducts_proxy = ChildrenProxy(self._dpowner, 'dataproducts', 'DataProduct',
                                                      child_attr='filename')
-        self._dpowner.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        # self.update_timestamp()
 
     @property
     @_in_session()
@@ -129,6 +128,14 @@ class DPOwner:
         """
         from .DataProduct import DataProduct
         return DataProduct(self, *args, **kwargs)
+
+    @_in_session()
+    def update_timestamp(self):
+        """
+
+        """
+        self._dpowner.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     def delete(self, *predeletes):
         """

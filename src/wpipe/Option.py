@@ -88,7 +88,7 @@ class Option:
     def _sqlintf_instance_argument(cls):
         if hasattr(cls, '_%s' % CLASS_LOW):
             for _session in cls._check_in_cache(kind='keyid',
-                                                loc=getattr(cls, '_%s' % CLASS_LOW)._sa_instance_state.key[1][0]):
+                                                loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
                 pass
 
     def __new__(cls, *args, **kwargs):
@@ -130,10 +130,7 @@ class Option:
                                 this_nested.rollback()
                             retry.retry_state.commit()
         else:
-            with si.begin_session() as session:
-                session.add(cls._option)
-                for _session in cls._check_in_cache(kind='keyid', loc=cls._option.id):
-                    pass
+            cls._sqlintf_instance_argument()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Option')
         # add instance to cache dataframe
@@ -146,13 +143,13 @@ class Option:
             cls._inst = old_cls_inst
         return new_cls_inst
 
-    @_in_session()
+    # @_in_session()
     def __init__(self, *args, **kwargs):
-        self._option.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        pass
+        # self.update_timestamp()
 
     @classmethod
-    def select(cls, **kwargs):
+    def select(cls, *args, **kwargs):
         """
         Returns a list of Option objects fulfilling the kwargs filter.
 
@@ -168,6 +165,8 @@ class Option:
         """
         with si.begin_session() as session:
             cls._temp = session.query(si.Option).filter_by(**kwargs)
+            for arg in args:
+                cls._temp = cls._temp.filter(arg)
             return list(map(cls, cls._temp.all()))
 
     @property
@@ -191,8 +190,9 @@ class Option:
     @_in_session()
     def name(self, name):
         self._option.name = name
-        self._option.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._option.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -224,8 +224,9 @@ class Option:
     @_in_session()
     def value(self, value):
         self._option.value = value
-        self._option.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._option.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -257,6 +258,14 @@ class Option:
         int: Primary key id of the table row of parent optowner.
         """
         return self._option.optowner_id
+
+    @_in_session()
+    def update_timestamp(self):
+        """
+
+        """
+        self._option.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     def delete(self):
         """

@@ -181,7 +181,7 @@ class DataProduct(OptOwner):
     def _sqlintf_instance_argument(cls):
         if hasattr(cls, '_%s' % CLASS_LOW):
             for _session in cls._check_in_cache(kind='keyid',
-                                                loc=getattr(cls, '_%s' % CLASS_LOW)._sa_instance_state.key[1][0]):
+                                                loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
                 pass
 
     def __new__(cls, *args, **kwargs):
@@ -247,10 +247,7 @@ class DataProduct(OptOwner):
                                 this_nested.rollback()
                             retry.retry_state.commit()
         else:
-            with si.begin_session() as session:
-                session.add(cls._dataproduct)
-                for _session in cls._check_in_cache(kind='keyid', loc=cls._dataproduct.id):
-                    pass
+            cls._sqlintf_instance_argument()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'DataProduct')
         # add instance to cache dataframe
@@ -263,14 +260,14 @@ class DataProduct(OptOwner):
             cls._inst = old_cls_inst
         return new_cls_inst
 
-    @_in_session()
+    # @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_optowner'):
             self._optowner = self._dataproduct
         super(DataProduct, self).__init__(kwargs.get('options', {}))
 
     @classmethod
-    def select(cls, **kwargs):
+    def select(cls, *args, **kwargs):
         """
         Returns a list of DataProduct objects fulfilling the kwargs filter.
 
@@ -286,6 +283,8 @@ class DataProduct(OptOwner):
         """
         with si.begin_session() as session:
             cls._temp = session.query(si.DataProduct).filter_by(**kwargs)
+            for arg in args:
+                cls._temp = cls._temp.filter(arg)
             return list(map(cls, cls._temp.all()))
 
     @property
@@ -310,8 +309,9 @@ class DataProduct(OptOwner):
     def filename(self, filename):
         os.rename(self.relativepath + '/' + self._dataproduct.filename, self.relativepath + '/' + filename)
         self._dataproduct.name = filename
-        self._dataproduct.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._dataproduct.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     def filesplitext(self):

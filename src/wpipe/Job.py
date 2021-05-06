@@ -195,7 +195,7 @@ class Job(OptOwner):
     def _sqlintf_instance_argument(cls):
         if hasattr(cls, '_%s' % CLASS_LOW):
             for _session in cls._check_in_cache(kind='keyid',
-                                                loc=getattr(cls, '_%s' % CLASS_LOW)._sa_instance_state.key[1][0]):
+                                                loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
                 pass
 
     def __new__(cls, *args, **kwargs):
@@ -290,7 +290,7 @@ class Job(OptOwner):
         super(Job, self).__init__(kwargs.get('options', {}))
 
     @classmethod
-    def select(cls, **kwargs):
+    def select(cls, *args, **kwargs):
         """
         Returns a list of Job objects fulfilling the kwargs filter.
 
@@ -306,6 +306,8 @@ class Job(OptOwner):
         """
         with si.begin_session() as session:
             cls._temp = session.query(si.Job).filter_by(**kwargs)
+            for arg in args:
+                cls._temp = cls._temp.filter(arg)
             return list(map(cls, cls._temp.all()))
 
     @property
@@ -338,8 +340,9 @@ class Job(OptOwner):
     @_in_session()
     def state(self, state):
         self._job.state = state
-        self._job.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._job.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -586,8 +589,9 @@ class Job(OptOwner):
             logging.basicConfig(filename=logprint.path, format="%(asctime)s %(levelname)s %(name)s %(message)s")
         self.state = JOBSUBMSTATE
         self._job.starttime = datetime.datetime.utcnow()
-        self._job.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._job.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @_in_session()
     def _ending_todo(self):
@@ -596,8 +600,9 @@ class Job(OptOwner):
         else:
             self.state = JOBCOMPSTATE
             self._job.endtime = datetime.datetime.utcnow()
-        self._job.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._job.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     def reset(self):
         """

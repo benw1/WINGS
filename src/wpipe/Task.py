@@ -129,7 +129,7 @@ class Task:
     def _sqlintf_instance_argument(cls):
         if hasattr(cls, '_%s' % CLASS_LOW):
             for _session in cls._check_in_cache(kind='keyid',
-                                                loc=getattr(cls, '_%s' % CLASS_LOW)._sa_instance_state.key[1][0]):
+                                                loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
                 pass
 
     def __new__(cls, *args, **kwargs):
@@ -175,10 +175,7 @@ class Task:
                                 this_nested.rollback()
                             retry.retry_state.commit()
         else:
-            with si.begin_session() as session:
-                session.add(cls._task)
-                for _session in cls._check_in_cache(kind='keyid', loc=cls._task.id):
-                    pass
+            cls._sqlintf_instance_argument()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Task')
         # add instance to cache dataframe
@@ -191,18 +188,17 @@ class Task:
             cls._inst = old_cls_inst
         return new_cls_inst
 
-    @_in_session()
+    # @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_masks_proxy'):
             self._masks_proxy = ChildrenProxy(self._task, 'masks', 'Mask')
         if not hasattr(self, '_jobs_proxy'):
             self._jobs_proxy = ChildrenProxy(self._task, 'jobs', 'Job',
                                              child_attr='id')
-        self._task.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        # self.update_timestamp()
 
     @classmethod
-    def select(cls, **kwargs):
+    def select(cls, *args, **kwargs):
         """
         Returns a list of Task objects fulfilling the kwargs filter.
 
@@ -218,6 +214,8 @@ class Task:
         """
         with si.begin_session() as session:
             cls._temp = session.query(si.Task).filter_by(**kwargs)
+            for arg in args:
+                cls._temp = cls._temp.filter(arg)
             return list(map(cls, cls._temp.all()))
 
     @property
@@ -240,8 +238,9 @@ class Task:
     @_in_session()
     def name(self, name):
         self._task.name = name
-        self._task.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._task.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -369,6 +368,14 @@ class Task:
         """
         from .Job import Job
         return Job(self, *args, **kwargs)
+
+    @_in_session()
+    def update_timestamp(self):
+        """
+
+        """
+        self._task.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     def register(self):
         """

@@ -105,9 +105,8 @@ class ChildrenProxy:  # TODO: Generalize proxy object with the BaseProxy
         finally:
             self._hold_struct_children = None
 
-    @in_session('_parent')
     def _get_parent_id(self):
-        return int(self._parent.id)
+        return int(self._parent.get_id())
 
     @in_session('_parent')
     def _get_child_of_index(self, item):

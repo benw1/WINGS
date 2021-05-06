@@ -92,7 +92,7 @@ class User:
     def _sqlintf_instance_argument(cls):
         if hasattr(cls, '_%s' % CLASS_LOW):
             for _session in cls._check_in_cache(kind='keyid',
-                                                loc=getattr(cls, '_%s' % CLASS_LOW)._sa_instance_state.key[1][0]):
+                                                loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
                 pass
 
     def __new__(cls, *args, **kwargs):
@@ -128,10 +128,7 @@ class User:
                                 this_nested.rollback()
                             retry.retry_state.commit()
         else:
-            with si.begin_session() as session:
-                session.add(cls._user)
-                for _session in cls._check_in_cache(kind='keyid', loc=cls._user.id):
-                    pass
+            cls._sqlintf_instance_argument()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'User')
         # add instance to cache dataframe
@@ -144,18 +141,17 @@ class User:
             cls._inst = old_cls_inst
         return new_cls_inst
 
-    @_in_session()
+    # @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_pipelines_proxy'):
             self._pipelines_proxy = ChildrenProxy(self._user, 'pipelines', 'Pipeline', child_attr='pipe_root')
-        self._user.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
 
     def __repr__(self):  # TODO
         return super(User, self).__repr__()
 
     @classmethod
-    def select(cls, **kwargs):
+    def select(cls, *args, **kwargs):
         """
         Returns a list of User objects fulfilling the kwargs filter.
 
@@ -171,6 +167,8 @@ class User:
         """
         with si.begin_session() as session:
             cls._temp = session.query(si.User).filter_by(**kwargs)
+            for arg in args:
+                cls._temp = cls._temp.filter(arg)
             return list(map(cls, cls._temp.all()))
 
     @property
@@ -192,14 +190,10 @@ class User:
     @name.setter
     @_in_session()
     def name(self, name):
-        # with si.begin_session() as session:
-        #     # session.add(self._user)
-        #     self._user.name = name
-        #     self._user.timestamp = datetime.datetime.utcnow()
-        #     session.commit()
         self._user.name = name
-        self._user.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._user.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -241,6 +235,14 @@ class User:
         """
         from .Pipeline import Pipeline
         return Pipeline(self, *args, **kwargs)
+
+    @_in_session()
+    def update_timestamp(self):
+        """
+
+        """
+        self._user.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     def delete(self):
         """

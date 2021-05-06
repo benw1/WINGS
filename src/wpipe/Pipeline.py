@@ -186,7 +186,7 @@ class Pipeline(DPOwner):
     def _sqlintf_instance_argument(cls):
         if hasattr(cls, '_%s' % CLASS_LOW):
             for _session in cls._check_in_cache(kind='keyid',
-                                                loc=getattr(cls, '_%s' % CLASS_LOW)._sa_instance_state.key[1][0]):
+                                                loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
                 pass
 
     def __new__(cls, *args, **kwargs):
@@ -307,7 +307,7 @@ class Pipeline(DPOwner):
         super(Pipeline, self).__init__()
 
     @classmethod
-    def select(cls, **kwargs):
+    def select(cls, *args, **kwargs):
         """
         Returns a list of Pipeline objects fulfilling the kwargs filter.
 
@@ -323,6 +323,8 @@ class Pipeline(DPOwner):
         """
         with si.begin_session() as session:
             cls._temp = session.query(si.Pipeline).filter_by(**kwargs)
+            for arg in args:
+                cls._temp = cls._temp.filter(arg)
             return list(map(cls, cls._temp.all()))
 
     @property
@@ -345,8 +347,9 @@ class Pipeline(DPOwner):
     @_in_session()
     def name(self, name):
         self._pipeline.name = name
-        self._pipeline.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._pipeline.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -355,15 +358,6 @@ class Pipeline(DPOwner):
         int: Primary key id of the table row.
         """
         return self._pipeline.id
-
-    @property
-    @_in_session()
-    def timestamp(self):
-        """
-        :obj:`datetime.datetime`: Timestamp of last access to table row.
-        """
-        self._session.refresh(self._pipeline)
-        return self._pipeline.timestamp
 
     @property
     @_in_session()
@@ -422,8 +416,9 @@ class Pipeline(DPOwner):
     @_in_session()
     def description(self, description):
         self._pipeline.description = description
-        self._pipeline.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._pipeline.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()

@@ -5,7 +5,7 @@ Contains the Event class definition
 Please note that this module is private. The Event class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import datetime, subprocess, pd, si
+from .core import os, datetime, subprocess, pd, si
 from .core import make_yield_session_if_not_cached, initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import as_int, split_path
 from .core import PARSER
@@ -142,7 +142,7 @@ class Event(OptOwner):
     def _sqlintf_instance_argument(cls):
         if hasattr(cls, '_%s' % CLASS_LOW):
             for _session in cls._check_in_cache(kind='keyid',
-                                                loc=getattr(cls, '_%s' % CLASS_LOW)._sa_instance_state.key[1][0]):
+                                                loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
                 pass
 
     def __new__(cls, *args, **kwargs):
@@ -187,10 +187,7 @@ class Event(OptOwner):
                                 this_nested.rollback()
                             retry.retry_state.commit()
         else:
-            with si.begin_session() as session:
-                session.add(cls._event)
-                for _session in cls._check_in_cache(kind='keyid', loc=cls._event.id):
-                    pass
+            cls._sqlintf_instance_argument()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Event')
         # add instance to cache dataframe
@@ -213,7 +210,7 @@ class Event(OptOwner):
         super(Event, self).__init__(kwargs.get('options', {}))
 
     @classmethod
-    def select(cls, **kwargs):
+    def select(cls, *args, **kwargs):
         """
         Returns a list of Event objects fulfilling the kwargs filter.
 
@@ -229,6 +226,8 @@ class Event(OptOwner):
         """
         with si.begin_session() as session:
             cls._temp = session.query(si.Event).filter_by(**kwargs)
+            for arg in args:
+                cls._temp = cls._temp.filter(arg)
             return list(map(cls, cls._temp.all()))
 
     @property
@@ -251,8 +250,9 @@ class Event(OptOwner):
     @_in_session()
     def name(self, name):
         self._event.name = name
-        self._event.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._event.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -268,8 +268,9 @@ class Event(OptOwner):
     @_in_session()
     def tag(self, tag):
         self._event.tag = tag
-        self._event.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._event.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -300,8 +301,9 @@ class Event(OptOwner):
     @_in_session()
     def value(self, value):
         self._event.value = value
-        self._event.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._event.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -422,18 +424,18 @@ class Event(OptOwner):
                 submission_type = options['submission_type']
             except KeyError:
                 pass
-            if submission_type is None:
-                print(task.executable, '-e', str(self.event_id), ''+si.core.verbose*'-v')
-                subprocess.Popen([task.executable, '-e', str(self.event_id)]+si.core.verbose*['-v'],
-                                 cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
-            elif 'pbs' == submission_type:
+            if 'pbs' == submission_type and 'WPIPE_NO_PBS_SCHEDULER' not in os.environ.keys():
                 from .scheduler import sendJobToPbs
                 sendJobToPbs(self._generate_new_job(task))
                 return
-            elif 'hyak' == submission_type:
+            elif 'hyak' == submission_type:  # TODO and 'WPIPE_NO_SLURM_SCHEDULER' not in os.environ.keys():
                 pass
-            else:
-                raise ValueError("'%s' isn't a valid 'submission_type'" % submission_type)
+            else:  # TODO elif submission_type is None:
+                print(task.executable, '-e', str(self.event_id), ''+si.core.verbose*'-v')
+                subprocess.Popen([task.executable, '-e', str(self.event_id)]+si.core.verbose*['-v'],
+                                 cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
+            # else:
+            #     raise ValueError("'%s' isn't a valid 'submission_type'" % submission_type)
 
     def _generate_new_job(self, task):
         return self.fired_job(len(self.fired_jobs) + 1, task, self.config)
