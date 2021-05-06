@@ -30,7 +30,7 @@ class JobData:
         print(job.firing_event.options)
         event_options = job.firing_event.options
         try:
-            self._job_time = event_options['job_time']
+            self._job_time = 0+event_options['job_time']
         except KeyError:
             self._job_time = None
 
