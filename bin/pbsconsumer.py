@@ -1,9 +1,9 @@
 #! /usr/bin/env python
+import os
 import argparse
 import subprocess
 from wpipe.scheduler.PbsConsumer import sendJobToPbs
 from wpipe.scheduler.PbsConsumer import checkPbsConnection
-
 
 
 if __name__ == '__main__':
@@ -22,14 +22,23 @@ if __name__ == '__main__':
             connection = checkPbsConnection()
             if connection != 0:
                 print("Starting PbsConsumer ...")
-                subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"])
+                homedir = os.path.expanduser('~/.pbsconsumer')
+                if not os.path.exists(homedir):
+                    os.mkdir(homedir)
+                elif not os.path.isdir(homedir):
+                    raise FileExistsError("%s is not a directory" % homedir)
+                subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"], cwd=homedir)
             else:
                 print("PbsConsumer is already running ...")
-        elif args.which == 'stop':
+        else:
             connection = checkPbsConnection()
             if connection == 0:
-                print("Shutting down PbsConsumer ...")
-                sendJobToPbs('poisonpill')
+                if args.which == 'stop':
+                    print("Shutting down PbsConsumer ...")
+                    sendJobToPbs('poisonpill')
+                elif args.which == 'log':
+                    print("Printing current PbsConsumer log ...")
+                    # TODO
             else:
                 print("No server found, nothing to do ...")
 

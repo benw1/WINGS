@@ -106,7 +106,7 @@ def periodicLog():
 if __name__ == "__main__":
 
     # Setup the logging
-    logging.basicConfig(filename='config/PbsConsumerLog-{}.log'.format(datetime.today().strftime('%m-%d-%Y-%H-%M-%S')),
+    logging.basicConfig(filename='PbsConsumerLog-{}.log'.format(datetime.today().strftime('%m-%d-%Y-%H-%M-%S')),
                         level=logging.DEBUG, filemode='a',
                         format="[%(asctime)s][%(levelname)s][%(name)s]: %(message)s")
 
