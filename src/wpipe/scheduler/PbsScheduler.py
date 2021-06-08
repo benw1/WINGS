@@ -6,6 +6,7 @@ Please note that this module is private. The scheduler.PbsScheduler class is
 available in the ``wpipe.scheduler`` namespace - use that instead.
 """
 import datetime
+import math
 
 from .BaseScheduler import BaseScheduler
 from .TemplateFactory import TemplateFactory
@@ -104,8 +105,23 @@ class PbsScheduler(BaseScheduler):
 
         template = TemplateFactory.getPbsFileTemplate()
 
+        node_cores = {'bro': 2*14, 'has': 2*12, 'ivy': 2*10, 'san': 2*8}
+        node_model = 'has'
+        omp_threads = False
+        n_jobs = len(self._jobList)
+        n_nodes = [math.ceil(n_jobs / node_cores[node_model]), n_jobs][omp_threads]
+        n_cpus = node_cores[node_model]
+        n_jobs_per_node = [n_cpus, 1][omp_threads]
+        omp_threads = ['', 'ompthreads=%d:' % n_cpus][omp_threads]
+
         # create a dictionary
-        pbsDict = {'njobs': len(self._jobList), 'pipe_root': self._jobList[0].getPipelinePipeRoot(),
+        pbsDict = {'model': node_model,
+                   'nnodes': n_nodes,
+                   'ncpus': n_cpus,
+                   'ompthreads': omp_threads,
+                   'njobs': n_jobs_per_node,
+                   'walltime': '24:00:00',
+                   'pipe_root': self._jobList[0].getPipelinePipeRoot(),
                    'executables_list_path': executablesListPath}
 
         output = template.render(pbs=pbsDict)
