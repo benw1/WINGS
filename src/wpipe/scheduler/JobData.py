@@ -6,6 +6,7 @@ Please note that this module is private. The scheduler.JobData class is
 available in the ``wpipe.scheduler`` namespace - use that instead.
 """
 from .. import si
+from .PbsScheduler import DEFAULT_NODE_MODEL
 
 __all__ = ['JobData']
 
@@ -30,10 +31,17 @@ class JobData:
         print(job.firing_event.options)
         event_options = job.firing_event.options
         try:
-            self._job_time = 0+event_options['job_time']
+            self._job_time = 0 + event_options['job_time']
         except KeyError:
             self._job_time = None
-
+        try:
+            self._node_model = '' + event_options['node_model']
+        except KeyError:
+            self._node_model = DEFAULT_NODE_MODEL
+        try:
+            self._job_openmp = bool(event_options['job_openmp'])
+        except KeyError:
+            self._job_openmp = False
 
     # These are required
     def validate(self):
@@ -84,6 +92,12 @@ class JobData:
     def setTime(self, time):
         self._job_time = time
 
+    def getNodemodel(self):
+        return self._node_model
+
+    def getJobOpenMP(self):
+        return self._job_openmp
+
     # For pretty printing or logging
     def toString(self):
         string = 'JobData:\n'
@@ -97,4 +111,8 @@ class JobData:
         string += '\tSet verbosity to: {}\n'.format(self.getVerbose())
         if self.getTime() is not None:
             string += '\tJob Time: {}\n'.format(self.getTime())
+        if self.getNodemodel() is not None:
+            string += '\tRequested Node model: {}\n'.format(self.getNodemodel())
+        if self.getJobOpenMP():
+            string += '\tJob requires OpenMP resources\n'
         return string
