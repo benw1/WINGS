@@ -92,9 +92,14 @@ class PbsScheduler(BaseScheduler):
 
         # Make job list into a dictionary to pass to jinja2
         jobsForJinja = list()
+        node_cores = NODE_CORES_DICT
+        node_model = self._jobList[0].getNodemodel()
+        omp_threads = self._jobList[0].getJobOpenMP()
+        n_cpus = node_cores[node_model]
         for jobdata in self._jobList:
             jobsForJinja.append(
-                {'command': jobdata.getTaskExecutable() + ' -p ' + str(jobdata.getPipelineId()) +
+                {'command': "export OMP_NUM_THREADS=%d && " % n_cpus if omp_threads else "" +
+                            jobdata.getTaskExecutable() + ' -p ' + str(jobdata.getPipelineId()) +
                             ' -u ' + str(jobdata.getPipelineUserName()) + ' -j ' + str(jobdata.getJobId()) +
                             bool(jobdata.getVerbose()) * ' -v'})
 
