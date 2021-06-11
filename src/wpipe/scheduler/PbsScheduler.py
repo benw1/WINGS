@@ -98,10 +98,12 @@ class PbsScheduler(BaseScheduler):
         n_cpus = node_cores[node_model]
         for jobdata in self._jobList:
             jobsForJinja.append(
-                {'command': "export OMP_NUM_THREADS=%d && " % n_cpus if omp_threads else "" +
-                            jobdata.getTaskExecutable() + ' -p ' + str(jobdata.getPipelineId()) +
-                            ' -u ' + str(jobdata.getPipelineUserName()) + ' -j ' + str(jobdata.getJobId()) +
-                            bool(jobdata.getVerbose()) * ' -v'})
+                {'command': ("export OMP_NUM_THREADS=%d && " % n_cpus if omp_threads else "")
+                            + jobdata.getTaskExecutable()
+                            + ' -p ' + str(jobdata.getPipelineId())
+                            + ' -u ' + str(jobdata.getPipelineUserName())
+                            + ' -j ' + str(jobdata.getJobId())
+                            + bool(jobdata.getVerbose()) * ' -v'})
 
         output = template.render(jobs=jobsForJinja)
         print()
@@ -167,7 +169,7 @@ class PbsScheduler(BaseScheduler):
 
         def __init__(self, jobdata):
             # self._key = jobdata.getTaskName()  # For debugging
-            self._key = str(jobdata.getPipelineId()) + jobdata.getTaskName() + jobdata.getNodemodel() +\
+            self._key = str(jobdata.getPipelineId()) + jobdata.getTaskName() + jobdata.getNodemodel() + \
                         ['', 'OpenMP'][jobdata.getJobOpenMP()]
 
         def equals(self, other):

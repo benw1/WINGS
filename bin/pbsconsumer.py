@@ -27,7 +27,7 @@ if __name__ == '__main__':
                     os.mkdir(homedir)
                 elif not os.path.isdir(homedir):
                     raise FileExistsError("%s is not a directory" % homedir)
-                subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"], cwd=homedir)
+                subprocess.Popen(["nohup", "python", "-m", "wpipe.scheduler.PbsConsumer"], cwd=homedir)
             else:
                 print("PbsConsumer is already running ...")
         else:
