@@ -135,13 +135,13 @@ from .Task import Task
 from .Mask import Mask
 from .Job import Job
 from .Event import Event
-from .scheduler import PbsScheduler
-from .scheduler import checkPbsConnection
+from .scheduler import pbsconsumer
+# from .scheduler import PbsScheduler
 
 __all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
            'Option', 'Target', 'Configuration', 'Parameter', 'DataProduct',
-           'Task', 'Mask', 'Job', 'Event', 'PbsScheduler', 'DefaultUser',
-           'DefaultNode', 'wingspipe']
+           'Task', 'Mask', 'Job', 'Event',  # 'PbsScheduler',
+           'DefaultUser', 'DefaultNode', 'wingspipe']
 
 warnings.filterwarnings("ignore", message=".*Cannot correctly sort tables;.*")
 
@@ -306,16 +306,7 @@ def wingspipe(args=None):
             my_pipe.attach_inputs(args.inputs_path, args.config_file)
         elif args.which == 'run':
             if not ('WPIPE_NO_PBS_SCHEDULER' in os.environ.keys()):
-                if checkPbsConnection() != 0:
-                    print("Starting a PBS scheduler ...")
-                    import subprocess
-                    # subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"],
-                    # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    subprocess.Popen(["python", "-m",
-                                      "wpipe.scheduler.PbsConsumer"])  # Have everything print to the main terminal for now
-                    time.sleep(1)
-                else:
-                    print("PBS scheduler already running ...")
+                pbsconsumer('start')
             my_pipe.run()
 
         elif args.which == 'diagnose':
