@@ -13,4 +13,4 @@ dependencies:
   - mysqlclient
   - astropy 
   - jinja2
-  - pytables
+  - tables
