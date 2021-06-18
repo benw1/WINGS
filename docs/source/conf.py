@@ -31,6 +31,7 @@ release = '1.0'
 # ones.
 #extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'sphinx.ext.autosectionlabel']
 extensions = ['autoapi.extension', 'sphinx.ext.napoleon', 'sphinx.ext.autosectionlabel']
+autoapi_dirs = ['../../src']
 napoleon_google_docstring = False
 napoleon_use_param = False
 napoleon_use_ivar = True
