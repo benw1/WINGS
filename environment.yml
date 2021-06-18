@@ -6,13 +6,9 @@ channels:
 dependencies:
   - python=3.7
   - tables
-  - pip
-  - pip:
-    - tables
   - numpy
   - pandas
   - tenacity
-  - tables
   - sqlalchemy
   - mysql-connector-python
   - mysqlclient
