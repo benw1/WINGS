@@ -5,6 +5,9 @@
 # Required
 version: 2
 
+conda:
+  environment: environment.yml
+
 build:
    image: latest
   
@@ -20,6 +23,6 @@ sphinx:
 python:
    version: 3.7
    install:
-   - method: conda
+   - method: pip
      path: .
 #   - requirements: docs/requirements.txt
