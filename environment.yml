@@ -13,4 +13,8 @@ dependencies:
   - mysqlclient
   - astropy 
   - jinja2
-  - tables
+  - pip
+  pip:
+    - tables
+  
+  
