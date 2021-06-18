@@ -12,11 +12,12 @@ from .core import PARSER
 from .proxies import ChildrenProxy
 from .OptOwner import OptOwner
 
-__all__ = ['Job', 'JOBINITSTATE', 'JOBSUBMSTATE', 'JOBCOMPSTATE']
+__all__ = ['Job', 'JOBINITSTATE', 'JOBSUBMSTATE', 'JOBCOMPSTATE', 'JOBEXPISTATE']
 
 JOBINITSTATE = "Initialized"
 JOBSUBMSTATE = "Submitted"
 JOBCOMPSTATE = "Completed"
+JOBEXPISTATE = "Expired"
 
 KEYID_ATTR = 'job_id'
 UNIQ_ATTRS = ['task_id', 'config_id', 'firing_event_id', 'attempt']
@@ -600,6 +601,14 @@ class Job(OptOwner):
         else:
             self.state = JOBCOMPSTATE
             self._job.endtime = datetime.datetime.utcnow()
+        self.update_timestamp()
+        # self._job.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
+
+    @_in_session()
+    def expire(self):
+        self.state = JOBEXPISTATE
+        self._job.endtime = datetime.datetime.utcnow()
         self.update_timestamp()
         # self._job.timestamp = datetime.datetime.utcnow()
         # self._session.commit()

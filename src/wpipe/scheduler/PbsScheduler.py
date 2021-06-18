@@ -12,9 +12,10 @@ from .BaseScheduler import BaseScheduler
 from .TemplateFactory import TemplateFactory
 import subprocess
 
-__all__ = ['DEFAULT_NODE_MODEL', 'PbsScheduler']
+__all__ = ['DEFAULT_NODE_MODEL', 'DEFAULT_WALLTIME', 'PbsScheduler']
 
 DEFAULT_NODE_MODEL = 'has'
+DEFAULT_WALLTIME = '24:00:00'
 NODE_CORES_DICT = {'bro': 2 * 14, 'has': 2 * 12, 'ivy': 2 * 10, 'san': 2 * 8}
 
 
@@ -131,7 +132,7 @@ class PbsScheduler(BaseScheduler):
                    'ncpus': n_cpus,
                    'ompthreads': omp_threads,
                    'njobs': n_jobs_per_node,
-                   'walltime': '24:00:00',
+                   'walltime': self._jobList[0].getWalltime(),
                    'pipe_root': self._jobList[0].getPipelinePipeRoot(),
                    'executables_list_path': executablesListPath}
 
@@ -169,8 +170,8 @@ class PbsScheduler(BaseScheduler):
 
         def __init__(self, jobdata):
             # self._key = jobdata.getTaskName()  # For debugging
-            self._key = str(jobdata.getPipelineId()) + jobdata.getTaskName() + jobdata.getNodemodel() + \
-                        ['', 'OpenMP'][jobdata.getJobOpenMP()]
+            self._key = str(jobdata.getPipelineId()) + jobdata.getTaskName() + jobdata.getNodemodel() +\
+                        jobdata.getWalltime() + ['', 'OpenMP'][jobdata.getJobOpenMP()]
 
         def equals(self, other):
             if self._key == other.getKey():

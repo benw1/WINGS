@@ -6,7 +6,7 @@ Please note that this module is private. The scheduler.JobData class is
 available in the ``wpipe.scheduler`` namespace - use that instead.
 """
 from .. import si
-from .PbsScheduler import DEFAULT_NODE_MODEL
+from .PbsScheduler import DEFAULT_NODE_MODEL, DEFAULT_WALLTIME
 
 __all__ = ['JobData']
 
@@ -39,6 +39,10 @@ class JobData:
         except KeyError:
             self._node_model = DEFAULT_NODE_MODEL
         try:
+            self._walltime = str(event_options['walltime'])
+        except KeyError:
+            self._walltime = DEFAULT_WALLTIME
+        try:
             self._job_openmp = bool(event_options['job_openmp'])
         except KeyError:
             self._job_openmp = False
@@ -60,6 +64,8 @@ class JobData:
             errors += "Job for scheduler has no pipeline username\n"
         if self._job_id is None:
             errors += "Job for scheduler has no job id\n"
+        if self._verbose is None:
+            errors += "Job for scheduler has no verbose flag\n"
         return errors
 
     def getTaskName(self):
@@ -95,6 +101,9 @@ class JobData:
     def getNodemodel(self):
         return self._node_model
 
+    def getWalltime(self):
+        return self._walltime
+
     def getJobOpenMP(self):
         return self._job_openmp
 
@@ -113,6 +122,8 @@ class JobData:
             string += '\tJob Time: {}\n'.format(self.getTime())
         if self.getNodemodel() is not None:
             string += '\tRequested Node model: {}\n'.format(self.getNodemodel())
+        if self.getWalltime() is not None:
+            string += '\tRequested Wall time: {}\n'.format(self.getWalltime())
         if self.getJobOpenMP():
             string += '\tJob requires OpenMP resources\n'
         return string

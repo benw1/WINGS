@@ -12,7 +12,7 @@ TODO
 
 Utilities
 ---------
-PbsScheduler
+pbsconsumer
     TODO
 
 JobData
@@ -27,11 +27,11 @@ sendJobToPbs
 import os
 import subprocess
 
-from .PbsScheduler import PbsScheduler
+# from .PbsScheduler import PbsScheduler
 from .PbsConsumer import checkPbsConnection, sendJobToPbs
 from .JobData import JobData
 
-__all__ = ['pbsconsumer', 'PbsScheduler', 'JobData', 'checkPbsConnection', 'sendJobToPbs']
+__all__ = ['pbsconsumer', 'JobData', 'checkPbsConnection', 'sendJobToPbs']
 
 
 def pbsconsumer(which):

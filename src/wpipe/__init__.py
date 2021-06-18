@@ -136,11 +136,10 @@ from .Mask import Mask
 from .Job import Job
 from .Event import Event
 from .scheduler import pbsconsumer
-# from .scheduler import PbsScheduler
 
 __all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
            'Option', 'Target', 'Configuration', 'Parameter', 'DataProduct',
-           'Task', 'Mask', 'Job', 'Event',  # 'PbsScheduler',
+           'Task', 'Mask', 'Job', 'Event',
            'DefaultUser', 'DefaultNode', 'wingspipe']
 
 warnings.filterwarnings("ignore", message=".*Cannot correctly sort tables;.*")
