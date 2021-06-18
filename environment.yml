@@ -14,7 +14,7 @@ dependencies:
   - astropy 
   - jinja2
   - pip
-  pip:
+  - pip:
     - tables
   
   
