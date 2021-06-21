@@ -6,7 +6,7 @@ channels:
 dependencies:
   - python=3.7
   - pytables
-  - sphinx-autoapi
+  #  - sphinx-autoapi
   - numpy
   - pandas
   - tenacity
