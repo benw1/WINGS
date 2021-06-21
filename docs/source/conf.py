@@ -29,9 +29,9 @@ release = '1.0'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-#extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'sphinx.ext.autosectionlabel']
-extensions = ['autoapi.extension', 'sphinx.ext.napoleon', 'sphinx.ext.autosectionlabel']
-autoapi_dirs = ['../../src']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'sphinx.ext.autosectionlabel']
+#extensions = ['autoapi.extension', 'sphinx.ext.napoleon', 'sphinx.ext.autosectionlabel']
+#autoapi_dirs = ['../../src']
 napoleon_google_docstring = False
 napoleon_use_param = False
 napoleon_use_ivar = True
