@@ -94,7 +94,7 @@ class ChildrenProxy:  # TODO: Generalize proxy object with the BaseProxy
     @in_session('_parent')
     def delete(self):
         while len(self):
-            self._search_child_from_attritem(0).delete()
+            self._get_child_of_index(0).delete()
 
     @contextlib.contextmanager
     @in_session('_parent', generator=True)
