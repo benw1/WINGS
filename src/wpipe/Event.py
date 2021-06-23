@@ -425,7 +425,8 @@ class Event(OptOwner):
             except KeyError:
                 pass
             if 'pbs' == submission_type and 'WPIPE_NO_PBS_SCHEDULER' not in os.environ.keys():
-                from .scheduler import sendJobToPbs
+                from .scheduler import pbsconsumer, sendJobToPbs
+                pbsconsumer('start')
                 sendJobToPbs(self._generate_new_job(task))
                 return
             elif 'hyak' == submission_type:  # TODO and 'WPIPE_NO_SLURM_SCHEDULER' not in os.environ.keys():
