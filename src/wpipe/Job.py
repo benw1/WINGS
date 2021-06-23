@@ -105,6 +105,8 @@ class Job(OptOwner):
             True if job is active, False if not.
         has_completed : boolean
             True if job has ended, False if not.
+        has_expired : boolean
+            True if job has expired, False if not.
         task_changed : boolean
             True if task was modified since job started, False if not.
         task_id : int
@@ -391,6 +393,13 @@ class Job(OptOwner):
         bool: True if job has ended, False if not.
         """
         return self.state == JOBCOMPSTATE
+
+    @property
+    def has_expired(self):
+        """
+        bool: True if job has expired, False if not.
+        """
+        return self.state == JOBEXPISTATE
 
     @property
     def task_changed(self):

@@ -392,7 +392,7 @@ class Event(OptOwner):
                 if fired_job.is_active:
                     print()  # fired_job keep going
                 else:
-                    if fired_job.task_changed:
+                    if fired_job.has_expired or fired_job.task_changed:
                         self.__fire(fired_job.task)
                     else:
                         print()  # task will produce same error
