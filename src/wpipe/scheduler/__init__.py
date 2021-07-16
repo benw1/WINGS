@@ -45,6 +45,8 @@ def pbsconsumer(which):
             elif not os.path.isdir(homedir):
                 raise FileExistsError("%s is not a directory" % homedir)
             subprocess.Popen(["nohup", "python", "-m", "wpipe.scheduler.PbsConsumer"], cwd=homedir)
+            while checkPbsConnection() != 0:
+                pass
         else:
             print("PbsConsumer is already running ...")
     else:
