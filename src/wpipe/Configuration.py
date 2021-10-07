@@ -6,7 +6,8 @@ Please note that this module is private. The Configuration class
 is available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, datetime, pd, si
-from .core import make_yield_session_if_not_cached, initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import remove_path, split_path
 from .proxies import ChildrenProxy, DictLikeChildrenProxy
 from .DPOwner import DPOwner
@@ -23,6 +24,8 @@ def _in_session(**local_kw):
 
 
 _check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
+
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW)
 
 
 class Configuration(DPOwner):
@@ -294,12 +297,13 @@ class Configuration(DPOwner):
         str: Name of the configuration.
         """
         self._session.refresh(self._configuration)
-        return self._configuration.name
+        return _query_return_and_update_cached_row(self, 'name')
 
     @name.setter
     @_in_session()
     def name(self, name):
         self._configuration.name = name
+        _temp = _query_return_and_update_cached_row(self, 'name')
         self.update_timestamp()
         # self._configuration.timestamp = datetime.datetime.utcnow()
         # self._session.commit()
@@ -495,3 +499,4 @@ class Configuration(DPOwner):
         self.parameters.delete()
         self.jobs.delete()
         super(Configuration, self).delete(self.remove_data)
+        self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]

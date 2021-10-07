@@ -7,7 +7,8 @@ available in the main ``wpipe`` namespace - use that instead.
 """
 import socket
 from .core import datetime, pd, si
-from .core import make_yield_session_if_not_cached, initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import split_path
 from .proxies import ChildrenProxy
 
@@ -23,6 +24,8 @@ def _in_session(**local_kw):
 
 
 _check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
+
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW)
 
 
 class Node:
@@ -193,12 +196,13 @@ class Node:
         str: Name of node.
         """
         self._session.refresh(self._node)
-        return self._node.name
+        return _query_return_and_update_cached_row(self, 'name')
 
     @name.setter
     @_in_session()
     def name(self, name):
         self._node.name = name
+        _temp = _query_return_and_update_cached_row(self, 'name')
         self.update_timestamp()
         # self._node.timestamp = datetime.datetime.utcnow()
         # self._session.commit()
@@ -273,3 +277,4 @@ class Node:
         Delete corresponding row from the database.
         """
         si.delete(self._node)
+        self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]

@@ -6,7 +6,8 @@ Please note that this module is private. The DataProduct class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, shutil, datetime, pd, si
-from .core import make_yield_session_if_not_cached, initialize_args, wpipe_to_sqlintf_connection, in_session, return_dict_of_attrs
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session, return_dict_of_attrs
 from .core import clean_path, remove_path, split_path
 from .OptOwner import OptOwner
 
@@ -22,6 +23,8 @@ def _in_session(**local_kw):
 
 
 _check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
+
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW)
 
 
 class DataProduct(OptOwner):
@@ -302,13 +305,15 @@ class DataProduct(OptOwner):
         str: Name of the file the dataproduct points to.
         """
         self._session.refresh(self._dataproduct)
-        return self._dataproduct.filename
+        return _query_return_and_update_cached_row(self, 'filename')
 
     @filename.setter
     @_in_session()
     def filename(self, filename):
-        os.rename(self.relativepath + '/' + self._dataproduct.filename, self.relativepath + '/' + filename)
+        temp = self.relativepath
+        os.rename(temp + '/' + self._dataproduct.filename, temp + '/' + filename)
         self._dataproduct.name = filename
+        _temp = _query_return_and_update_cached_row(self, 'filename')
         self.update_timestamp()
         # self._dataproduct.timestamp = datetime.datetime.utcnow()
         # self._session.commit()
@@ -638,3 +643,4 @@ class DataProduct(OptOwner):
         """
         self.remove_data()
         super(DataProduct, self).delete()
+        self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]

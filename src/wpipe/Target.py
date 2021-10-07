@@ -6,7 +6,8 @@ Please note that this module is private. The Target class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, datetime, json, pd, si
-from .core import make_yield_session_if_not_cached, initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import remove_path, split_path
 from .proxies import ChildrenProxy
 from .OptOwner import OptOwner
@@ -23,6 +24,8 @@ def _in_session(**local_kw):
 
 
 _check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
+
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW)
 
 
 class Target(OptOwner):
@@ -231,12 +234,13 @@ class Target(OptOwner):
         str: Name of the target.
         """
         self._session.refresh(self._target)
-        return self._target.name
+        return _query_return_and_update_cached_row(self, 'name')
 
     @name.setter
     @_in_session()
     def name(self, name):
         self._target.name = name
+        _temp = _query_return_and_update_cached_row(self, 'name')
         self.update_timestamp()
         # self._target.timestamp = datetime.datetime.utcnow()
         # self._session.commit()
@@ -355,3 +359,4 @@ class Target(OptOwner):
         self.configurations.delete()
         self.remove_data()
         super(Target, self).delete()
+        self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]

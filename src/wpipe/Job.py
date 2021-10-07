@@ -6,7 +6,8 @@ Please note that this module is private. The Job class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import sys, logging, datetime, pd, si
-from .core import make_yield_session_if_not_cached, initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import as_int, split_path
 from .core import PARSER
 from .proxies import ChildrenProxy
@@ -29,6 +30,8 @@ def _in_session(**local_kw):
 
 
 _check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
+
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW)
 
 
 class Job(OptOwner):
@@ -639,3 +642,4 @@ class Job(OptOwner):
         self._log_dp.delete()
         self.child_events.delete()
         super(Job, self).delete()
+        self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]

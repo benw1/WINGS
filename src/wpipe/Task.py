@@ -6,7 +6,8 @@ Please note that this module is private. The Task class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, sys, shutil, warnings, datetime, pd, si
-from .core import make_yield_session_if_not_cached, initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import clean_path, remove_path, split_path
 from .proxies import ChildrenProxy
 
@@ -22,6 +23,8 @@ def _in_session(**local_kw):
 
 
 _check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
+
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW)
 
 
 class Task:
@@ -232,12 +235,15 @@ class Task:
         str: Name of the task.
         """
         self._session.refresh(self._task)
-        return self._task.name
+        return _query_return_and_update_cached_row(self, 'name')
 
     @name.setter
     @_in_session()
     def name(self, name):
+        temp = self.pipeline.software_root
+        os.rename(temp + '/' + self._task.name, temp + '/' + name)
         self._task.name = name
+        _temp = _query_return_and_update_cached_row(self, 'name')
         self.update_timestamp()
         # self._task.timestamp = datetime.datetime.utcnow()
         # self._session.commit()
@@ -413,3 +419,4 @@ class Task:
         self.remove_data()
         self.jobs.delete()
         si.delete(self._task)
+        self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]

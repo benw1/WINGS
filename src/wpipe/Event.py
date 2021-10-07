@@ -6,7 +6,8 @@ Please note that this module is private. The Event class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, datetime, subprocess, pd, si
-from .core import make_yield_session_if_not_cached, initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import as_int, split_path
 from .core import PARSER
 from .proxies import ChildrenProxy
@@ -24,6 +25,8 @@ def _in_session(**local_kw):
 
 
 _check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
+
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW)
 
 
 class Event(OptOwner):
@@ -244,12 +247,13 @@ class Event(OptOwner):
         str: Name of the mask which task is meant to be the fired job task.
         """
         self._session.refresh(self._event)
-        return self._event.name
+        return _query_return_and_update_cached_row(self, 'name')
 
     @name.setter
     @_in_session()
     def name(self, name):
         self._event.name = name
+        _temp = _query_return_and_update_cached_row(self, 'name')
         self.update_timestamp()
         # self._event.timestamp = datetime.datetime.utcnow()
         # self._session.commit()
@@ -262,12 +266,13 @@ class Event(OptOwner):
         the same task.
         """
         self._session.refresh(self._event)
-        return self._event.tag
+        return _query_return_and_update_cached_row(self, 'tag')
 
     @tag.setter
     @_in_session()
     def tag(self, tag):
         self._event.tag = tag
+        _temp = _query_return_and_update_cached_row(self, 'tag')
         self.update_timestamp()
         # self._event.timestamp = datetime.datetime.utcnow()
         # self._session.commit()
@@ -447,3 +452,4 @@ class Event(OptOwner):
         """
         self.fired_jobs.delete()
         super(Event, self).delete()
+        self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]

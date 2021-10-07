@@ -6,7 +6,8 @@ Please note that this module is private. The Parameter class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import datetime, pd, si
-from .core import make_yield_session_if_not_cached, initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import split_path
 
 __all__ = ['Parameter']
@@ -21,6 +22,8 @@ def _in_session(**local_kw):
 
 
 _check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
+
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW)
 
 
 class Parameter:
@@ -179,12 +182,14 @@ class Parameter:
         """
         str: Name of the parameter.
         """
-        return self._parameter.name
+        self._session.refresh(self._parameter)
+        return _query_return_and_update_cached_row(self, 'name')
 
     @name.setter
     @_in_session()
     def name(self, name):
         self._parameter.name = name
+        _temp = _query_return_and_update_cached_row(self, 'name')
         self.update_timestamp()
         # self._parameter.timestamp = datetime.datetime.utcnow()
         # self._session.commit()
@@ -257,3 +262,4 @@ class Parameter:
         Delete corresponding row from the database.
         """
         si.delete(self._parameter)
+        self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]

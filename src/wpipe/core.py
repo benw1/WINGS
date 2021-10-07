@@ -31,15 +31,16 @@ __all__ = ['importlib', 'contextlib', 'os', 'sys', 'types', 'datetime',
            'time', 'subprocess', 'logging', 'glob', 'shutil', 'warnings',
            'json', 'ast', 'atexit', 'np', 'pd', 'si', 'PARSER', 'as_int',
            'clean_path', 'split_path', 'remove_path',
-           'make_yield_session_if_not_cached', 'key_wpipe_separator',
-           'initialize_args', 'wpipe_to_sqlintf_connection', 'in_session',
+           'make_yield_session_if_not_cached', 'make_query_rtn_upd',
+           'key_wpipe_separator', 'initialize_args',
+           'wpipe_to_sqlintf_connection', 'in_session',
            'return_dict_of_attrs', 'to_json']
 
 PARSER = si.PARSER
 PARSER.add_argument('--user', '-u', dest='user_name', type=str,
                     default=os.environ['WPIPE_USER'] if 'WPIPE_USER' in os.environ.keys()
                     else [warnings.warn("Set environment variable $WPIPE_USER to associate a default username"),
-                          'default'][1],
+                          'default'][1],  # TODO change to $USER
                     help='Name of user - default to WPIPE_USER environment variable')
 PARSER.add_argument('--pipeline', '-p', dest='pipeline', type=str, default=os.getcwd(),
                     help='Path or ID of pipeline - default to current working directory')
@@ -160,6 +161,16 @@ def make_yield_session_if_not_cached(keyid_attr, uniq_attrs, class_low):
                     for attr in uniq_attrs:
                         cls._to_cache[attr] = getattr(getattr(cls, '_%s' % class_low), attr)
     return yield_session_if_not_cached
+
+
+def make_query_rtn_upd(class_low):
+    def query_return_and_update_cached_row(self, value_attr):
+        value = getattr(getattr(self, '_%s' % class_low), value_attr)
+        temp = self.__cache__[class_low] == self
+        if (getattr(self.__cache__[temp], value_attr) != value).iloc[0]:
+            self.__cache__.loc[temp, value_attr] = value
+        return value
+    return query_return_and_update_cached_row
 
 
 def key_wpipe_separator(obj):
