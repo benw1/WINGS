@@ -6,9 +6,14 @@ Please note that this module is private. The Parameter class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import datetime, si
-from .core import initialize_args, wpipe_to_sqlintf_connection
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import split_path
 
 __all__ = ['Parameter']
+
+
+def _in_session(**local_kw):
+    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
 
 
 class Parameter:
@@ -71,7 +76,8 @@ class Parameter:
         if not isinstance(cls._parameter, si.Parameter):
             keyid = kwargs.get('id', cls._parameter)
             if isinstance(keyid, int):
-                cls._parameter = si.session.query(si.Parameter).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._parameter = session.query(si.Parameter).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=2)
@@ -79,27 +85,29 @@ class Parameter:
                 name = kwargs.get('name', args[0])
                 value = kwargs.get('value', args[1])
                 # querying the database for existing row or create
-                for retry in si.retrying_nested():
-                    with retry:
-                        this_nested = si.begin_nested()
-                        try:
-                            cls._parameter = si.session.query(si.Parameter).with_for_update(). \
+                with si.begin_session() as session:
+                    for retry in session.retrying_nested():
+                        with retry:
+                            this_nested = retry.retry_state.begin_nested()
+                            cls._parameter = this_nested.session.query(si.Parameter).with_for_update(). \
                                 filter_by(config_id=config.config_id). \
-                                filter_by(name=name).one()
-                            this_nested.rollback()
-                        except si.orm.exc.NoResultFound:
-                            cls._parameter = si.Parameter(name=name,
-                                                          value=str(value))
-                            config._configuration.parameters.append(cls._parameter)
-                            this_nested.commit()
-                        retry.retry_state.commit()
+                                filter_by(name=name).one_or_none()
+                            if cls._parameter is None:
+                                cls._parameter = si.Parameter(name=name,
+                                                              value=str(value))
+                                config._configuration.parameters.append(cls._parameter)
+                                this_nested.commit()
+                            else:
+                                this_nested.rollback()
+                            retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Parameter')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
         self._parameter.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
     @classmethod
     def select(cls, **kwargs):
@@ -116,8 +124,9 @@ class Parameter:
         out : list of Parameter object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Parameter).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Parameter).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -127,6 +136,7 @@ class Parameter:
         return self.config
 
     @property
+    @_in_session()
     def name(self):
         """
         str: Name of the parameter.
@@ -134,12 +144,14 @@ class Parameter:
         return self._parameter.name
 
     @name.setter
+    @_in_session()
     def name(self, name):
         self._parameter.name = name
         self._parameter.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
     @property
+    @_in_session()
     def parameter_id(self):
         """
         int: Primary key id of the table row.
@@ -147,28 +159,32 @@ class Parameter:
         return self._parameter.id
 
     @property
+    @_in_session()
     def timestamp(self):
         """
         :obj:`datetime.datetime`: Timestamp of last access to table row.
         """
-        si.refresh(self._parameter)
+        self._session.refresh(self._parameter)
         return self._parameter.timestamp
 
     @property
+    @_in_session()
     def value(self):
         """
         str: Value of the parameter.
         """
-        si.refresh(self._parameter)
+        self._session.refresh(self._parameter)
         return self._parameter.value
 
     @value.setter
+    @_in_session()
     def value(self, value):
         self._parameter.value = value
         self._parameter.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
     @property
+    @_in_session()
     def config(self):
         """
         :obj:`Configuration`: Configuration object corresponding to parent
@@ -181,6 +197,7 @@ class Parameter:
             return Configuration(self._parameter.config)
 
     @property
+    @_in_session()
     def config_id(self):
         """
         int: Primary key id of the table row of parent configuration.
@@ -191,5 +208,4 @@ class Parameter:
         """
         Delete corresponding row from the database.
         """
-        si.session.delete(self._parameter)
-        si.commit()
+        si.delete(self._parameter)

@@ -24,3 +24,6 @@ class User(Base):
     pipelines = orm.relationship("Pipeline", back_populates="user")
     __table_args__ = (sa.UniqueConstraint('name'),
                       )
+
+    def __repr__(self):  # TODO
+        return super(User, self).__repr__()

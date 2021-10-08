@@ -136,8 +136,7 @@ from .Mask import Mask
 from .Job import Job
 from .Event import Event
 from .scheduler import PbsScheduler
-from .scheduler.PbsConsumer import checkPbsConnection
-from .scheduler.PbsConsumer import sendJobToPbs
+from .scheduler import checkPbsConnection
 
 __all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
            'Option', 'Target', 'Configuration', 'Parameter', 'DataProduct',

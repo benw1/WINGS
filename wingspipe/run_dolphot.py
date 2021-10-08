@@ -3,6 +3,7 @@ import subprocess
 from shutil import which
 
 import wpipe as wp
+import importlib
 
 
 def register(task):
@@ -29,7 +30,6 @@ def run_dolphot(dp_id):
     command = "dolphot "+outfile+" -p"+parameter_file+" > "+ my_config.logpath + "/" + logfile
     pars = "-p"+parameter_file
     print(logfile)
-    #subprocess.run([dolphot,outfile,pars,">"+my_config.logpath + '/' + logfile],cwd=my_config.procpath,shell=True)
     _p=subprocess.run(command,cwd=my_config.procpath,shell=True)
     print(_p)
     _p.check_returncode()

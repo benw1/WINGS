@@ -6,10 +6,15 @@ Please note that this module is private. The DataProduct class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, shutil, datetime, si
-from .core import return_dict_of_attrs, initialize_args, wpipe_to_sqlintf_connection, clean_path, remove_path
+from .core import return_dict_of_attrs, initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import clean_path, remove_path, split_path
 from .OptOwner import OptOwner
 
 __all__ = ['DataProduct']
+
+
+def _in_session(**local_kw):
+    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
 
 
 class DataProduct(OptOwner):
@@ -165,7 +170,8 @@ class DataProduct(OptOwner):
         if not isinstance(cls._dataproduct, si.DataProduct):
             keyid = kwargs.get('id', cls._dataproduct)
             if isinstance(keyid, int):
-                cls._dataproduct = si.session.query(si.DataProduct).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._dataproduct = session.query(si.DataProduct).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=9)
@@ -182,41 +188,43 @@ class DataProduct(OptOwner):
                 dec = kwargs.get('dec', 0 if args[7] is None else args[7])
                 pointing_angle = kwargs.get('pointing_angle', 0 if args[8] is None else args[8])
                 # querying the database for existing row or create
-                for retry in si.retrying_nested():
-                    with retry:
-                        this_nested = si.begin_nested()
-                        try:
-                            cls._dataproduct = si.session.query(si.DataProduct).with_for_update(). \
+                with si.begin_session() as session:
+                    for retry in session.retrying_nested():
+                        with retry:
+                            this_nested = retry.retry_state.begin_nested()
+                            cls._dataproduct = this_nested.session.query(si.DataProduct).with_for_update(). \
                                 filter_by(dpowner_id=dpowner.dpowner_id). \
                                 filter_by(group=group). \
-                                filter_by(filename=filename).one()
-                            this_nested.rollback()
-                        except si.orm.exc.NoResultFound:
-                            if '.' in filename:
-                                _suffix = filename.split('.')[-1]
+                                filter_by(filename=filename).one_or_none()
+                            if cls._dataproduct is None:
+                                if '.' in filename:
+                                    _suffix = filename.split('.')[-1]
+                                else:
+                                    _suffix = ' '
+                                if _suffix not in ['fits', 'txt', 'head', 'cl',
+                                                   'py', 'pyc', 'pl', 'phot', 'png', 'jpg', 'ps',
+                                                   'gz', 'dat', 'lst', 'sh']:
+                                    _suffix = 'other'
+                                cls._dataproduct = si.DataProduct(filename=filename,
+                                                                  relativepath=relativepath,
+                                                                  suffix=_suffix,
+                                                                  data_type=data_type,
+                                                                  subtype=subtype,
+                                                                  group=group,
+                                                                  filtername=filtername,
+                                                                  ra=ra,
+                                                                  dec=dec,
+                                                                  pointing_angle=pointing_angle)
+                                dpowner._dpowner.dataproducts.append(cls._dataproduct)
+                                this_nested.commit()
                             else:
-                                _suffix = ' '
-                            if _suffix not in ['fits', 'txt', 'head', 'cl',
-                                               'py', 'pyc', 'pl', 'phot', 'png', 'jpg', 'ps',
-                                               'gz', 'dat', 'lst', 'sh']:
-                                _suffix = 'other'
-                            cls._dataproduct = si.DataProduct(filename=filename,
-                                                              relativepath=relativepath,
-                                                              suffix=_suffix,
-                                                              data_type=data_type,
-                                                              subtype=subtype,
-                                                              group=group,
-                                                              filtername=filtername,
-                                                              ra=ra,
-                                                              dec=dec,
-                                                              pointing_angle=pointing_angle)
-                            dpowner._dpowner.dataproducts.append(cls._dataproduct)
-                            this_nested.commit()
-                        retry.retry_state.commit()
+                                this_nested.rollback()
+                            retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'DataProduct')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_optowner'):
             self._optowner = self._dataproduct
@@ -237,8 +245,9 @@ class DataProduct(OptOwner):
         out : list of DataProduct object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.DataProduct).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.DataProduct).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -249,21 +258,28 @@ class DataProduct(OptOwner):
         return self.dpowner
 
     @property
+    @_in_session()
     def filename(self):
         """
         str: Name of the file the dataproduct points to.
         """
-        si.refresh(self._dataproduct)
+        self._session.refresh(self._dataproduct)
         return self._dataproduct.filename
 
     @filename.setter
+    @_in_session()
     def filename(self, filename):
         os.rename(self.relativepath + '/' + self._dataproduct.filename, self.relativepath + '/' + filename)
         self._dataproduct.name = filename
         self._dataproduct.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
     @property
+    def filesplitext(self):
+        return os.path.splitext(self.filename)
+
+    @property
+    @_in_session()
     def dp_id(self):
         """
         int: Primary key id of the table row.
@@ -271,6 +287,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.id
 
     @property
+    @_in_session()
     def relativepath(self):
         """
         str: Path of the directory in which the file the dataproduct points to
@@ -286,6 +303,7 @@ class DataProduct(OptOwner):
         return self.relativepath + '/' + self.filename
 
     @property
+    @_in_session()
     def suffix(self):
         """
         str: Extension of the file the dataproduct points to.
@@ -293,6 +311,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.suffix
 
     @property
+    @_in_session()
     def data_type(self):
         """
         str: Type of the data.
@@ -300,6 +319,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.data_type
 
     @property
+    @_in_session()
     def subtype(self):
         """
         str: Subtype of the data.
@@ -307,6 +327,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.subtype
 
     @property
+    @_in_session()
     def group(self):
         """
         str: Group of the dataproduct ('raw', 'conf', 'log' or 'proc').
@@ -314,6 +335,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.group
 
     @property
+    @_in_session()
     def filtername(self):
         """
         str: Name of the filter of the data.
@@ -321,6 +343,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.filtername
 
     @property
+    @_in_session()
     def ra(self):
         """
         int: Right ascension coordinate of the data.
@@ -328,6 +351,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.ra
 
     @property
+    @_in_session()
     def dec(self):
         """
         int: Declination coordinate of the data.
@@ -335,6 +359,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.dec
 
     @property
+    @_in_session()
     def pointing_angle(self):
         """
         int: Pointing angle coordinate of the data.
@@ -342,6 +367,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.pointing_angle
 
     @property
+    @_in_session()
     def dpowner_id(self):
         """
         int: Primary key id of the table row of parent pipeline, input or
@@ -350,6 +376,7 @@ class DataProduct(OptOwner):
         return self._dataproduct.dpowner_id
 
     @property
+    @_in_session()
     def config_id(self):
         """
         int: Primary key id of the table row of parent configuration - raise
@@ -361,6 +388,7 @@ class DataProduct(OptOwner):
             raise AttributeError
 
     @property
+    @_in_session()
     def input_id(self):
         """
         int: Primary key id of the table row of parent input - raise an
@@ -372,6 +400,7 @@ class DataProduct(OptOwner):
             raise AttributeError
 
     @property
+    @_in_session()
     def pipeline_id(self):
         """
         int: Primary key id of the table row of parent pipeline.
@@ -382,6 +411,7 @@ class DataProduct(OptOwner):
             return self.dpowner.pipeline_id
 
     @property
+    @_in_session()
     def dpowner(self):
         """
         :obj:`Input` or :obj:`Configuration`: Input or Configuration object
@@ -401,6 +431,7 @@ class DataProduct(OptOwner):
                 return Pipeline(self._dataproduct.dpowner)
 
     @property
+    @_in_session()
     def config(self):
         """
         :obj:`Configuration`: Configuration object corresponding to parent
@@ -413,6 +444,7 @@ class DataProduct(OptOwner):
             raise AttributeError
 
     @property
+    @_in_session()
     def input(self):
         """
         :obj:`Input`: Input object corresponding to parent input - raise an
@@ -424,6 +456,7 @@ class DataProduct(OptOwner):
             raise AttributeError
 
     @property
+    @_in_session()
     def pipeline(self):
         """
         :obj:`Pipeline`: Pipeline object corresponding to parent pipeline.
@@ -467,6 +500,7 @@ class DataProduct(OptOwner):
 
     def _copy_symlink(self, path, kwargs, func):
         dpowner = kwargs.pop('dpowner', self.dpowner)
+        return_dp = kwargs.pop('return_dp', True)
         kwargs = self._prep_copy_symlink(path, kwargs)
         filename = kwargs['filename']
         path = kwargs['relativepath']
@@ -475,11 +509,14 @@ class DataProduct(OptOwner):
             if len(selection):  # TAKE OLDEST ONE? CHECK TIMESTAMPS?
                 new_dp = selection[0]
         if 'new_dp' not in locals():
+            new_dp = None
             if '.'.join(type(dpowner).__module__.split('.')[:-1]) == 'wpipe.sqlintf':
                 dpowner.dataproducts.append(si.DataProduct(**kwargs))
-                new_dp = DataProduct(dpowner.dataproducts[-1])
+                if return_dp:
+                    new_dp = DataProduct(dpowner.dataproducts[-1])
             elif '.'.join(type(dpowner).__module__.split('.')[:-1]) == 'wpipe':
-                new_dp = dpowner.dataproduct(**kwargs)
+                if return_dp:
+                    new_dp = dpowner.dataproduct(**kwargs)
             else:
                 raise TypeError
         if not os.path.exists(path + '/' + filename):
@@ -550,7 +587,7 @@ class DataProduct(OptOwner):
         """
         return open(self.path, *args, **kwargs)
 
-    def remove(self):
+    def remove_data(self):
         """
         Remove dataproduct's file.
         """
@@ -560,5 +597,5 @@ class DataProduct(OptOwner):
         """
         Delete corresponding row from the database.
         """
-        self.remove()
+        self.remove_data()
         super(DataProduct, self).delete()

@@ -6,11 +6,16 @@ Please note that this module is private. The Target class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import os, datetime, json, si
-from .core import ChildrenProxy
-from .core import initialize_args, wpipe_to_sqlintf_connection, remove_path
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import remove_path, split_path
+from .proxies import ChildrenProxy
 from .OptOwner import OptOwner
 
 __all__ = ['Target']
+
+
+def _in_session(**local_kw):
+    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
 
 
 class Target(OptOwner):
@@ -112,43 +117,46 @@ class Target(OptOwner):
         if not isinstance(cls._target, si.Target):
             keyid = kwargs.get('id', cls._target)
             if isinstance(keyid, int):
-                cls._target = si.session.query(si.Target).filter_by(id=keyid).one()
+                with si.begin_session() as session:
+                    cls._target = session.query(si.Target).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
                 wpargs, args, kwargs = initialize_args(args, kwargs, nargs=1)
                 input = kwargs.get('input', wpargs.get('Input', None))
                 name = kwargs.get('name', input.name if args[0] is None else args[0])
+                datapath = input.pipeline.data_root+'/'+name
+                dataraws = input.rawspath
                 # querying the database for existing row or create
-                for retry in si.retrying_nested():
-                    with retry:
-                        this_nested = si.begin_nested()
-                        try:
-                            cls._target = si.session.query(si.Target).with_for_update(). \
+                with si.begin_session() as session:
+                    for retry in session.retrying_nested():
+                        with retry:
+                            this_nested = retry.retry_state.begin_nested()
+                            cls._target = this_nested.session.query(si.Target).with_for_update(). \
                                 filter_by(input_id=input.input_id). \
-                                filter_by(name=name).one()
-                            this_nested.rollback()
-                        except si.orm.exc.NoResultFound:
-                            cls._target = si.Target(name=name,
-                                                    datapath=input.pipeline.data_root+'/'+name,
-                                                    dataraws=input.rawspath)
-                            input._input.targets.append(cls._target)
-                            this_nested.commit()
-                            if not os.path.isdir(cls._target.datapath):
-                                os.mkdir(cls._target.datapath)
-                            if not os.path.isdir(cls._target.dataraws):
-                                os.mkdir(cls._target.dataraws)
-                        retry.retry_state.commit()
+                                filter_by(name=name).one_or_none()
+                            if cls._target is None:
+                                cls._target = si.Target(name=name,
+                                                        datapath=datapath,
+                                                        dataraws=dataraws)
+                                input._input.targets.append(cls._target)
+                                this_nested.commit()
+                                if not os.path.isdir(cls._target.datapath):
+                                    os.mkdir(cls._target.datapath)
+                                if not os.path.isdir(cls._target.dataraws):
+                                    os.mkdir(cls._target.dataraws)
+                            else:
+                                this_nested.rollback()
+                            retry.retry_state.commit()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Target')
         return cls._inst
 
+    @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_configurations_proxy'):
             self._configurations_proxy = ChildrenProxy(self._target, 'configurations', 'Configuration')
         if not hasattr(self, '_optowner'):
             self._optowner = self._target
-        if not hasattr(self, '_default_conf'):
-            self._default_conf = self.configuration()
         self.configure_target()
         super(Target, self).__init__(kwargs.get('options', {}))
 
@@ -167,8 +175,9 @@ class Target(OptOwner):
         out : list of Target object
             list of objects fulfilling the kwargs filter.
         """
-        cls._temp = si.session.query(si.Target).filter_by(**kwargs)
-        return list(map(cls, cls._temp.all()))
+        with si.begin_session() as session:
+            cls._temp = session.query(si.Target).filter_by(**kwargs)
+            return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -178,20 +187,23 @@ class Target(OptOwner):
         return self.input
 
     @property
+    @_in_session()
     def name(self):
         """
         str: Name of the target.
         """
-        si.refresh(self._target)
+        self._session.refresh(self._target)
         return self._target.name
 
     @name.setter
+    @_in_session()
     def name(self, name):
         self._target.name = name
         self._target.timestamp = datetime.datetime.utcnow()
-        si.commit()
+        self._session.commit()
 
     @property
+    @_in_session()
     def target_id(self):
         """
         int: Primary key id of the table row.
@@ -199,6 +211,7 @@ class Target(OptOwner):
         return self._target.id
 
     @property
+    @_in_session()
     def datapath(self):
         """
         str: Path to the target data sub-directory.
@@ -206,6 +219,7 @@ class Target(OptOwner):
         return self._target.datapath
 
     @property
+    @_in_session()
     def dataraws(self):
         """
         str: Path to the target parent input directory specific to raw data
@@ -214,6 +228,7 @@ class Target(OptOwner):
         return self._target.dataraws
 
     @property
+    @_in_session()
     def input_id(self):
         """
         int: Primary key id of the table row of parent input.
@@ -221,6 +236,7 @@ class Target(OptOwner):
         return self._target.input_id
 
     @property
+    @_in_session()
     def input(self):
         """
         :obj:`Input`: Input object corresponding to parent input.
@@ -287,11 +303,16 @@ class Target(OptOwner):
             self.configuration(os.path.splitext(confdp.filename)[0],
                                parameters=json.load(open(confdp.relativepath+'/'+confdp.filename))[0])
 
+    def remove_data(self):
+        """
+        Remove target's directories.
+        """
+        remove_path(self.datapath)
+
     def delete(self):
         """
         Delete corresponding row from the database.
         """
-        for item in self.configurations:
-            item.delete()
+        self.configurations.delete()
+        self.remove_data()
         super(Target, self).delete()
-        remove_path(self.datapath)
