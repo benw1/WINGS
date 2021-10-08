@@ -1,0 +1,19 @@
+name: roman
+channels:
+  - conda-forge
+  - defaults
+  - ska
+dependencies:
+  - python=3.7
+  - pytables
+  #  - sphinx-autoapi
+  - numpy
+  - pandas
+  - tenacity
+  - sqlalchemy
+  - mysql-connector-python
+  - mysqlclient
+  - astropy 
+  - jinja2
+  
+  
