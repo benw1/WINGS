@@ -14,9 +14,11 @@ from .Option import Option
 
 __all__ = ['OptOwner']
 
+CLASS_LOW = split_path(__file__)[1].lower()
+
 
 def _in_session(**local_kw):
-    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' % CLASS_LOW, **local_kw)
 
 
 class OptOwner:
@@ -28,15 +30,14 @@ class OptOwner:
         capability to parent options. Please refer to their respective
         documentation for specific instructions.
     """
-    @_in_session()
+    # @_in_session()
     def __init__(self, options):
         if not hasattr(self, '_optowner'):
             self._optowner = si.OptOwner()
         if not hasattr(self, '_options_proxy'):
             self._options_proxy = DictLikeChildrenProxy(self._optowner, 'options', 'Option')
         self.options = options
-        self._optowner.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        # self.update_timestamp()
 
     @property
     @_in_session()
@@ -84,6 +85,14 @@ class OptOwner:
             Option corresponding to given kwargs.
         """
         return Option(self, *args, **kwargs)
+
+    @_in_session()
+    def update_timestamp(self):
+        """
+
+        """
+        self._optowner.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     def delete(self):
         """

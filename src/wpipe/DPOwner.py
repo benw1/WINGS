@@ -13,9 +13,11 @@ from .proxies import ChildrenProxy
 
 __all__ = ['DPOwner']
 
+CLASS_LOW = split_path(__file__)[1].lower()
+
 
 def _in_session(**local_kw):
-    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' % CLASS_LOW, **local_kw)
 
 
 class DPOwner:
@@ -27,15 +29,14 @@ class DPOwner:
         capability to parent dataproducts. Please refer to their respective
         documentation for specific instructions.
     """
-    @_in_session()
+    # @_in_session()
     def __init__(self):
         if not hasattr(self, '_dpowner'):
             self._dpowner = si.DPOwner()
         if not hasattr(self, '_dataproducts_proxy'):
             self._dataproducts_proxy = ChildrenProxy(self._dpowner, 'dataproducts', 'DataProduct',
                                                      child_attr='filename')
-        self._dpowner.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        # self.update_timestamp()
 
     @property
     @_in_session()
@@ -108,7 +109,8 @@ class DPOwner:
         dataproducts : list of :obj:`DataProduct`
             Filtered list of dataproducts.
         """
-        return self.dataproducts[self.dataproducts.group == group]
+        with self.dataproducts.hold_structure():
+            return self.dataproducts[self.dataproducts.group == group]
 
     def dataproduct(self, *args, **kwargs):
         """
@@ -126,6 +128,14 @@ class DPOwner:
         """
         from .DataProduct import DataProduct
         return DataProduct(self, *args, **kwargs)
+
+    @_in_session()
+    def update_timestamp(self):
+        """
+
+        """
+        self._dpowner.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
 
     def delete(self, *predeletes):
         """

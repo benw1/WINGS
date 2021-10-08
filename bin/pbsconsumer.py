@@ -1,9 +1,7 @@
 #! /usr/bin/env python
 import argparse
-import subprocess
-from wpipe.scheduler.PbsConsumer import sendJobToPbs
-from wpipe.scheduler.PbsConsumer import checkPbsConnection
 
+from wpipe.scheduler import pbsconsumer
 
 
 if __name__ == '__main__':
@@ -18,20 +16,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     if hasattr(args, 'which'):
-        if args.which == 'start':
-            connection = checkPbsConnection()
-            if connection != 0:
-                print("Starting PbsConsumer ...")
-                subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"])
-            else:
-                print("PbsConsumer is already running ...")
-        elif args.which == 'stop':
-            connection = checkPbsConnection()
-            if connection == 0:
-                print("Shutting down PbsConsumer ...")
-                sendJobToPbs('poisonpill')
-            else:
-                print("No server found, nothing to do ...")
-
+        pbsconsumer(args.which)
     else:
         parser.print_help()

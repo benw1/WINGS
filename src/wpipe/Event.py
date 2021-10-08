@@ -5,7 +5,8 @@ Contains the Event class definition
 Please note that this module is private. The Event class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import datetime, subprocess, si
+from .core import os, datetime, subprocess, pd, si
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import as_int, split_path
 from .core import PARSER
@@ -14,9 +15,18 @@ from .OptOwner import OptOwner
 
 __all__ = ['Event']
 
+KEYID_ATTR = 'event_id'
+UNIQ_ATTRS = ['parent_job_id', 'name', 'tag']
+CLASS_LOW = split_path(__file__)[1].lower()
+
 
 def _in_session(**local_kw):
-    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' % CLASS_LOW, **local_kw)
+
+
+_check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
+
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW)
 
 
 class Event(OptOwner):
@@ -125,14 +135,32 @@ class Event(OptOwner):
         owns an option named 'config_id' in which case the job is owned by the
         corresponding configuration.
     """
+    __cache__ = pd.DataFrame(columns=[KEYID_ATTR]+UNIQ_ATTRS+[CLASS_LOW])
+
+    @classmethod
+    def _check_in_cache(cls, kind, loc):
+        return _check_in_cache(cls, kind, loc)
+
+    @classmethod
+    def _sqlintf_instance_argument(cls):
+        if hasattr(cls, '_%s' % CLASS_LOW):
+            for _session in cls._check_in_cache(kind='keyid',
+                                                loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
+                pass
 
     def __new__(cls, *args, **kwargs):
+        if hasattr(cls, '_inst'):
+            old_cls_inst = cls._inst
+            delattr(cls, '_inst')
+        else:
+            old_cls_inst = None
+        cls._to_cache = {}
         # checking if given argument is sqlintf object or existing id
         cls._event = args[0] if len(args) else as_int(PARSER.parse_known_args()[0].event_id)
         if not isinstance(cls._event, si.Event):
             keyid = kwargs.get('id', cls._event)
             if isinstance(keyid, int):
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='keyid', loc=keyid):
                     cls._event = session.query(si.Event).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
@@ -143,7 +171,7 @@ class Event(OptOwner):
                 jargs = kwargs.get('jargs', '' if args[2] is None else args[2])
                 value = kwargs.get('value', '' if args[3] is None else args[3])
                 # querying the database for existing row or create
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='args', loc=(job.job_id, name, tag)):
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
@@ -161,9 +189,19 @@ class Event(OptOwner):
                             else:
                                 this_nested.rollback()
                             retry.retry_state.commit()
+        else:
+            cls._sqlintf_instance_argument()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Event')
-        return cls._inst
+        # add instance to cache dataframe
+        if cls._to_cache:
+            cls._to_cache[CLASS_LOW] = cls._inst
+            cls.__cache__.loc[len(cls.__cache__)] = cls._to_cache
+        new_cls_inst = cls._inst
+        delattr(cls, '_inst')
+        if old_cls_inst is not None:
+            cls._inst = old_cls_inst
+        return new_cls_inst
 
     @_in_session()
     def __init__(self, *args, **kwargs):
@@ -175,7 +213,7 @@ class Event(OptOwner):
         super(Event, self).__init__(kwargs.get('options', {}))
 
     @classmethod
-    def select(cls, **kwargs):
+    def select(cls, *args, **kwargs):
         """
         Returns a list of Event objects fulfilling the kwargs filter.
 
@@ -191,6 +229,8 @@ class Event(OptOwner):
         """
         with si.begin_session() as session:
             cls._temp = session.query(si.Event).filter_by(**kwargs)
+            for arg in args:
+                cls._temp = cls._temp.filter(arg)
             return list(map(cls, cls._temp.all()))
 
     @property
@@ -207,14 +247,16 @@ class Event(OptOwner):
         str: Name of the mask which task is meant to be the fired job task.
         """
         self._session.refresh(self._event)
-        return self._event.name
+        return _query_return_and_update_cached_row(self, 'name')
 
     @name.setter
     @_in_session()
     def name(self, name):
         self._event.name = name
-        self._event.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        _temp = _query_return_and_update_cached_row(self, 'name')
+        self.update_timestamp()
+        # self._event.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -224,14 +266,16 @@ class Event(OptOwner):
         the same task.
         """
         self._session.refresh(self._event)
-        return self._event.tag
+        return _query_return_and_update_cached_row(self, 'tag')
 
     @tag.setter
     @_in_session()
     def tag(self, tag):
         self._event.tag = tag
-        self._event.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        _temp = _query_return_and_update_cached_row(self, 'tag')
+        self.update_timestamp()
+        # self._event.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -262,8 +306,9 @@ class Event(OptOwner):
     @_in_session()
     def value(self, value):
         self._event.value = value
-        self._event.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._event.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -352,7 +397,7 @@ class Event(OptOwner):
                 if fired_job.is_active:
                     print()  # fired_job keep going
                 else:
-                    if fired_job.task_changed:
+                    if fired_job.has_expired or fired_job.task_changed:
                         self.__fire(fired_job.task)
                     else:
                         print()  # task will produce same error
@@ -384,18 +429,19 @@ class Event(OptOwner):
                 submission_type = options['submission_type']
             except KeyError:
                 pass
-            if submission_type is None:
+            if 'pbs' == submission_type and 'WPIPE_NO_PBS_SCHEDULER' not in os.environ.keys():
+                from .scheduler import pbsconsumer, sendJobToPbs
+                pbsconsumer('start')
+                sendJobToPbs(self._generate_new_job(task))
+                return
+            elif 'hyak' == submission_type:  # TODO and 'WPIPE_NO_SLURM_SCHEDULER' not in os.environ.keys():
+                pass
+            else:  # TODO elif submission_type is None:
                 print(task.executable, '-e', str(self.event_id), ''+si.core.verbose*'-v')
                 subprocess.Popen([task.executable, '-e', str(self.event_id)]+si.core.verbose*['-v'],
                                  cwd=my_pipe.pipe_root, stdout=stdouterr, stderr=stdouterr)
-            elif 'pbs' == submission_type:
-                from .scheduler import sendJobToPbs
-                sendJobToPbs(self._generate_new_job(task))
-                return
-            elif 'hyak' == submission_type:
-                pass
-            else:
-                raise ValueError("'%s' isn't a valid 'submission_type'" % submission_type)
+            # else:
+            #     raise ValueError("'%s' isn't a valid 'submission_type'" % submission_type)
 
     def _generate_new_job(self, task):
         return self.fired_job(len(self.fired_jobs) + 1, task, self.config)
@@ -406,3 +452,4 @@ class Event(OptOwner):
         """
         self.fired_jobs.delete()
         super(Event, self).delete()
+        self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]

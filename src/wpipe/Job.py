@@ -5,22 +5,33 @@ Contains the Job class definition
 Please note that this module is private. The Job class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import sys, logging, datetime, si
+from .core import sys, logging, datetime, pd, si
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import as_int, split_path
 from .core import PARSER
 from .proxies import ChildrenProxy
 from .OptOwner import OptOwner
 
-__all__ = ['Job', 'JOBINITSTATE', 'JOBSUBMSTATE', 'JOBCOMPSTATE']
+__all__ = ['Job', 'JOBINITSTATE', 'JOBSUBMSTATE', 'JOBCOMPSTATE', 'JOBEXPISTATE']
 
 JOBINITSTATE = "Initialized"
 JOBSUBMSTATE = "Submitted"
 JOBCOMPSTATE = "Completed"
+JOBEXPISTATE = "Expired"
+
+KEYID_ATTR = 'job_id'
+UNIQ_ATTRS = ['task_id', 'config_id', 'firing_event_id', 'attempt']
+CLASS_LOW = split_path(__file__)[1].lower()
 
 
 def _in_session(**local_kw):
-    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' % CLASS_LOW, **local_kw)
+
+
+_check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
+
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW)
 
 
 class Job(OptOwner):
@@ -97,6 +108,8 @@ class Job(OptOwner):
             True if job is active, False if not.
         has_completed : boolean
             True if job has ended, False if not.
+        has_expired : boolean
+            True if job has expired, False if not.
         task_changed : boolean
             True if task was modified since job started, False if not.
         task_id : int
@@ -178,14 +191,32 @@ class Job(OptOwner):
          - Job.child_event is the Event-generating object method of Job, which
            handles the starting of new jobs from an existing job,
     """
+    __cache__ = pd.DataFrame(columns=[KEYID_ATTR]+UNIQ_ATTRS+[CLASS_LOW])
+
+    @classmethod
+    def _check_in_cache(cls, kind, loc):
+        return _check_in_cache(cls, kind, loc)
+
+    @classmethod
+    def _sqlintf_instance_argument(cls):
+        if hasattr(cls, '_%s' % CLASS_LOW):
+            for _session in cls._check_in_cache(kind='keyid',
+                                                loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
+                pass
 
     def __new__(cls, *args, **kwargs):
+        if hasattr(cls, '_inst'):
+            old_cls_inst = cls._inst
+            delattr(cls, '_inst')
+        else:
+            old_cls_inst = None
+        cls._to_cache = {}
         # checking if given argument is sqlintf object or existing id
         cls._job = args[0] if len(args) else as_int(PARSER.parse_known_args()[0].job_id)
         if not isinstance(cls._job, si.Job):
             keyid = kwargs.get('id', cls._job)
             if isinstance(keyid, int):
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='keyid', loc=keyid):
                     cls._job = session.query(si.Job).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
@@ -202,7 +233,10 @@ class Job(OptOwner):
                                   wpargs.get('Node', None))
                 attempt = kwargs.get('attempt', 1 if args[0] is None else args[0])
                 # querying the database for existing row or create
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='args', loc=(task.task_id,
+                                                                     None if config is None else config.config_id,
+                                                                     None if event is None else event.event_id,
+                                                                     attempt)):
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
@@ -230,9 +264,19 @@ class Job(OptOwner):
                             else:
                                 this_nested.rollback()
                             retry.retry_state.commit()
+        else:
+            cls._sqlintf_instance_argument()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Job')
-        return cls._inst
+        # add instance to cache dataframe
+        if cls._to_cache:
+            cls._to_cache[CLASS_LOW] = cls._inst
+            cls.__cache__.loc[len(cls.__cache__)] = cls._to_cache
+        new_cls_inst = cls._inst
+        delattr(cls, '_inst')
+        if old_cls_inst is not None:
+            cls._inst = old_cls_inst
+        return new_cls_inst
 
     @_in_session()
     def __init__(self, *args, **kwargs):
@@ -252,7 +296,7 @@ class Job(OptOwner):
         super(Job, self).__init__(kwargs.get('options', {}))
 
     @classmethod
-    def select(cls, **kwargs):
+    def select(cls, *args, **kwargs):
         """
         Returns a list of Job objects fulfilling the kwargs filter.
 
@@ -268,6 +312,8 @@ class Job(OptOwner):
         """
         with si.begin_session() as session:
             cls._temp = session.query(si.Job).filter_by(**kwargs)
+            for arg in args:
+                cls._temp = cls._temp.filter(arg)
             return list(map(cls, cls._temp.all()))
 
     @property
@@ -300,8 +346,9 @@ class Job(OptOwner):
     @_in_session()
     def state(self, state):
         self._job.state = state
-        self._job.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._job.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -349,6 +396,13 @@ class Job(OptOwner):
         bool: True if job has ended, False if not.
         """
         return self.state == JOBCOMPSTATE
+
+    @property
+    def has_expired(self):
+        """
+        bool: True if job has expired, False if not.
+        """
+        return self.state == JOBEXPISTATE
 
     @property
     def task_changed(self):
@@ -548,8 +602,9 @@ class Job(OptOwner):
             logging.basicConfig(filename=logprint.path, format="%(asctime)s %(levelname)s %(name)s %(message)s")
         self.state = JOBSUBMSTATE
         self._job.starttime = datetime.datetime.utcnow()
-        self._job.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._job.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @_in_session()
     def _ending_todo(self):
@@ -558,8 +613,17 @@ class Job(OptOwner):
         else:
             self.state = JOBCOMPSTATE
             self._job.endtime = datetime.datetime.utcnow()
-        self._job.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        self.update_timestamp()
+        # self._job.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
+
+    @_in_session()
+    def expire(self):
+        self.state = JOBEXPISTATE
+        self._job.endtime = datetime.datetime.utcnow()
+        self.update_timestamp()
+        # self._job.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     def reset(self):
         """
@@ -578,3 +642,4 @@ class Job(OptOwner):
         self._log_dp.delete()
         self.child_events.delete()
         super(Job, self).delete()
+        self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]

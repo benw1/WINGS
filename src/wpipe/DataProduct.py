@@ -5,16 +5,26 @@ Contains the DataProduct class definition
 Please note that this module is private. The DataProduct class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import os, shutil, datetime, si
-from .core import return_dict_of_attrs, initialize_args, wpipe_to_sqlintf_connection, in_session
+from .core import os, shutil, datetime, pd, si
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd
+from .core import initialize_args, wpipe_to_sqlintf_connection, in_session, return_dict_of_attrs
 from .core import clean_path, remove_path, split_path
 from .OptOwner import OptOwner
 
 __all__ = ['DataProduct']
 
+KEYID_ATTR = 'dp_id'
+UNIQ_ATTRS = ['dpowner_id', 'group', 'filename']
+CLASS_LOW = split_path(__file__)[1].lower()
+
 
 def _in_session(**local_kw):
-    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' % CLASS_LOW, **local_kw)
+
+
+_check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
+
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW)
 
 
 class DataProduct(OptOwner):
@@ -164,13 +174,32 @@ class DataProduct(OptOwner):
         or
         >>> my_dp = wp.DataProduct(my_config, filename, group)
     """
+    __cache__ = pd.DataFrame(columns=[KEYID_ATTR]+UNIQ_ATTRS+[CLASS_LOW])
+
+    @classmethod
+    def _check_in_cache(cls, kind, loc):
+        return _check_in_cache(cls, kind, loc)
+
+    @classmethod
+    def _sqlintf_instance_argument(cls):
+        if hasattr(cls, '_%s' % CLASS_LOW):
+            for _session in cls._check_in_cache(kind='keyid',
+                                                loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
+                pass
+
     def __new__(cls, *args, **kwargs):
+        if hasattr(cls, '_inst'):
+            old_cls_inst = cls._inst
+            delattr(cls, '_inst')
+        else:
+            old_cls_inst = None
+        cls._to_cache = {}
         # checking if given argument is sqlintf object or existing id
         cls._dataproduct = args[0] if len(args) else None
         if not isinstance(cls._dataproduct, si.DataProduct):
             keyid = kwargs.get('id', cls._dataproduct)
             if isinstance(keyid, int):
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='keyid', loc=keyid):
                     cls._dataproduct = session.query(si.DataProduct).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
@@ -180,7 +209,7 @@ class DataProduct(OptOwner):
                 dpowner = kwargs.get('dpowner', wpargs.get('DPOwner', None))
                 filename = kwargs.get('filename', args[0])
                 relativepath = clean_path(kwargs.get('relativepath', args[1]))
-                group = kwargs.get('group', args[2])
+                group = kwargs.get('group', args[2])  # TODO: Switch group and relativepath args order
                 data_type = kwargs.get('data_type', '' if args[3] is None else args[3])
                 subtype = kwargs.get('subtype', '' if args[4] is None else args[4])
                 filtername = kwargs.get('filtername', '' if args[5] is None else args[5])
@@ -188,7 +217,7 @@ class DataProduct(OptOwner):
                 dec = kwargs.get('dec', 0 if args[7] is None else args[7])
                 pointing_angle = kwargs.get('pointing_angle', 0 if args[8] is None else args[8])
                 # querying the database for existing row or create
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='args', loc=(dpowner.dpowner_id, group, filename)):
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
@@ -220,18 +249,28 @@ class DataProduct(OptOwner):
                             else:
                                 this_nested.rollback()
                             retry.retry_state.commit()
+        else:
+            cls._sqlintf_instance_argument()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'DataProduct')
-        return cls._inst
+        # add instance to cache dataframe
+        if cls._to_cache:
+            cls._to_cache[CLASS_LOW] = cls._inst
+            cls.__cache__.loc[len(cls.__cache__)] = cls._to_cache
+        new_cls_inst = cls._inst
+        delattr(cls, '_inst')
+        if old_cls_inst is not None:
+            cls._inst = old_cls_inst
+        return new_cls_inst
 
-    @_in_session()
+    # @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_optowner'):
             self._optowner = self._dataproduct
         super(DataProduct, self).__init__(kwargs.get('options', {}))
 
     @classmethod
-    def select(cls, **kwargs):
+    def select(cls, *args, **kwargs):
         """
         Returns a list of DataProduct objects fulfilling the kwargs filter.
 
@@ -247,6 +286,8 @@ class DataProduct(OptOwner):
         """
         with si.begin_session() as session:
             cls._temp = session.query(si.DataProduct).filter_by(**kwargs)
+            for arg in args:
+                cls._temp = cls._temp.filter(arg)
             return list(map(cls, cls._temp.all()))
 
     @property
@@ -264,15 +305,18 @@ class DataProduct(OptOwner):
         str: Name of the file the dataproduct points to.
         """
         self._session.refresh(self._dataproduct)
-        return self._dataproduct.filename
+        return _query_return_and_update_cached_row(self, 'filename')
 
     @filename.setter
     @_in_session()
     def filename(self, filename):
-        os.rename(self.relativepath + '/' + self._dataproduct.filename, self.relativepath + '/' + filename)
+        temp = self.relativepath
+        os.rename(temp + '/' + self._dataproduct.filename, temp + '/' + filename)
         self._dataproduct.name = filename
-        self._dataproduct.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        _temp = _query_return_and_update_cached_row(self, 'filename')
+        self.update_timestamp()
+        # self._dataproduct.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     def filesplitext(self):
@@ -599,3 +643,4 @@ class DataProduct(OptOwner):
         """
         self.remove_data()
         super(DataProduct, self).delete()
+        self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]

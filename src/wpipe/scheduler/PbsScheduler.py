@@ -6,12 +6,17 @@ Please note that this module is private. The scheduler.PbsScheduler class is
 available in the ``wpipe.scheduler`` namespace - use that instead.
 """
 import datetime
+import math
 
 from .BaseScheduler import BaseScheduler
 from .TemplateFactory import TemplateFactory
 import subprocess
 
-__all__ = ['PbsScheduler']
+__all__ = ['DEFAULT_NODE_MODEL', 'DEFAULT_WALLTIME', 'PbsScheduler']
+
+DEFAULT_NODE_MODEL = 'has'
+DEFAULT_WALLTIME = '24:00:00'
+NODE_CORES_DICT = {'bro': 2 * 14, 'has': 2 * 12, 'ivy': 2 * 10, 'san': 2 * 8}
 
 
 class PbsScheduler(BaseScheduler):
@@ -20,7 +25,8 @@ class PbsScheduler(BaseScheduler):
 
     def __init__(self, jobdata):
 
-        super().__init__(jobdata.getTime() if jobdata.getTime() is not None else 20) # passed in value or default timer amount (seconds).
+        super().__init__(
+            jobdata.getTime() if jobdata.getTime() is not None else 20)  # passed in value or default timer amount (seconds).
         print("Creating a new scheduler ...")
 
         self._key = self.PbsKey(jobdata)
@@ -87,11 +93,18 @@ class PbsScheduler(BaseScheduler):
 
         # Make job list into a dictionary to pass to jinja2
         jobsForJinja = list()
+        node_cores = NODE_CORES_DICT
+        node_model = self._jobList[0].getNodemodel()
+        omp_threads = self._jobList[0].getJobOpenMP()
+        n_cpus = node_cores[node_model]
         for jobdata in self._jobList:
             jobsForJinja.append(
-                {'command': jobdata.getTaskExecutable() + ' -p ' + str(jobdata.getPipelineId()) +
-                 ' -u ' + str(jobdata.getPipelineUserName()) + ' -j ' + str(jobdata.getJobId()) +
-                 bool(jobdata.getVerbose())*' -v'})
+                {'command': ("export OMP_NUM_THREADS=%d && " % n_cpus if omp_threads else "")
+                            + jobdata.getTaskExecutable()
+                            + ' -p ' + str(jobdata.getPipelineId())
+                            + ' -u ' + str(jobdata.getPipelineUserName())
+                            + ' -j ' + str(jobdata.getJobId())
+                            + bool(jobdata.getVerbose()) * ' -v'})
 
         output = template.render(jobs=jobsForJinja)
         print()
@@ -104,8 +117,23 @@ class PbsScheduler(BaseScheduler):
 
         template = TemplateFactory.getPbsFileTemplate()
 
+        node_cores = NODE_CORES_DICT
+        node_model = self._jobList[0].getNodemodel()
+        omp_threads = self._jobList[0].getJobOpenMP()
+        n_jobs = len(self._jobList)
+        n_nodes = [math.ceil(n_jobs / node_cores[node_model]), n_jobs][omp_threads]
+        n_cpus = node_cores[node_model]
+        n_jobs_per_node = [n_cpus, 1][omp_threads]
+        omp_threads = ['', 'ompthreads=%d:' % n_cpus][omp_threads]
+
         # create a dictionary
-        pbsDict = {'njobs': len(self._jobList), 'pipe_root': self._jobList[0].getPipelinePipeRoot(),
+        pbsDict = {'model': node_model,
+                   'nnodes': n_nodes,
+                   'ncpus': n_cpus,
+                   'ompthreads': omp_threads,
+                   'njobs': n_jobs_per_node,
+                   'walltime': self._jobList[0].getWalltime(),
+                   'pipe_root': self._jobList[0].getPipelinePipeRoot(),
                    'executables_list_path': executablesListPath}
 
         output = template.render(pbs=pbsDict)
@@ -141,8 +169,9 @@ class PbsScheduler(BaseScheduler):
     class PbsKey(object):
 
         def __init__(self, jobdata):
-            #self._key = jobdata.getTaskName()  # For debugging
-            self._key = str(jobdata.getPipelineId()) + jobdata.getTaskName()
+            # self._key = jobdata.getTaskName()  # For debugging
+            self._key = str(jobdata.getPipelineId()) + jobdata.getTaskName() + jobdata.getNodemodel() +\
+                        jobdata.getWalltime() + ['', 'OpenMP'][jobdata.getJobOpenMP()]
 
         def equals(self, other):
             if self._key == other.getKey():

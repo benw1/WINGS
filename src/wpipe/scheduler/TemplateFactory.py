@@ -25,12 +25,12 @@ class TemplateFactory(object):
         templateString = \
             """#PBS -S /bin/bash
 #PBS -j oe
-#PBS -l select=1:ncpus=6:model=has
+#PBS -l select={{pbs.nnodes}}:ncpus={{pbs.ncpus}}:{{pbs.ompthreads}}model={{pbs.model}}
 #PBS -W group_list=s1692
-#PBS -l walltime=24:00:00
+#PBS -l walltime={{pbs.walltime}}
 source ~/.bashrc
 cd {{pbs.pipe_root}}
-parallel --jobs 6 --sshloginfile $PBS_NODEFILE --workdir $PWD < {{pbs.executables_list_path}}
+parallel --jobs {{pbs.njobs}} --sshloginfile $PBS_NODEFILE --workdir $PWD < {{pbs.executables_list_path}}
 
 """
 

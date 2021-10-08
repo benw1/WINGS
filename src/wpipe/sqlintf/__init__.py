@@ -65,6 +65,8 @@ COMMIT_FLAG = True
 boolean: flag to control the automatic committing.
 """
 
+INSTANCES = []
+
 
 def deactivate_commit():
     global COMMIT_FLAG
@@ -95,12 +97,13 @@ def hold_commit():
 
 class BeginSession:
     def __init__(self, **local_kw):
-        global SESSION
+        global SESSION, INSTANCES
         self.EXISTING_SESSION = SESSION is not None
         if self.EXISTING_SESSION:
             self.SESSION = SESSION
         else:
             SESSION = self.SESSION = Session(**local_kw)
+            self.add_all(INSTANCES)
 
     def __dir__(self):
         return super(BeginSession, self).__dir__() + self.SESSION.__dir__()
@@ -111,8 +114,9 @@ class BeginSession:
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        global SESSION
+        global SESSION, INSTANCES
         if not self.EXISTING_SESSION:
+            INSTANCES = self.identity_map.values()[:]
             self.close()
             SESSION = None
             del self.SESSION

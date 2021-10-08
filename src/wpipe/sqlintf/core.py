@@ -69,6 +69,13 @@ Base = declarative_base()
 sqlalchemy.ext.declarative.api.Base class: Base class to sqlintf classes.
 """
 
+
+def _get_id(self):
+    return self._sa_instance_state.key[1][0]
+
+
+setattr(Base, 'get_id', _get_id)
+
 Session = orm.sessionmaker(bind=Engine)
 """
 sqlalchemy.orm.session.Session class: initiates new sessions bound to the engine. 
