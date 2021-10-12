@@ -17,11 +17,12 @@ from .JobData import JobData
 from .PbsScheduler import PbsScheduler
 from wpipe.sqlintf import SESSION
 
-__all__ = ['checkPbsConnection', 'sendJobToPbs']
+__all__ = ['DEFAULT_PORT', 'checkPbsConnection', 'sendJobToPbs']
 
 # TODO: Make this not hardcoded
 HOST_MACHINE = '10.150.27.94'
 DEFAULT_PORT = 5000
+
 
 # HOST_MACHINE = '127.0.0.1' # For debugging
 
@@ -104,7 +105,7 @@ def periodicLog():
 
 
 if __name__ == "__main__":
-
+    from wpipe.scheduler.PbsConsumer import DEFAULT_PORT
     # Setup the logging
     logging.basicConfig(filename='PbsConsumerLog-{}.log'.format(datetime.today().strftime('%m-%d-%Y-%H-%M-%S')),
                         level=logging.DEBUG, filemode='a',
