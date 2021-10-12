@@ -39,8 +39,9 @@ __all__ = ['importlib', 'contextlib', 'os', 'sys', 'types', 'datetime',
 PARSER = si.PARSER
 PARSER.add_argument('--user', '-u', dest='user_name', type=str,
                     default=os.environ['WPIPE_USER'] if 'WPIPE_USER' in os.environ.keys()
-                    else [warnings.warn("Set environment variable $WPIPE_USER to associate a default username"),
-                          'default'][1],  # TODO change to $USER
+                    else [warnings.warn("Set environment variable $WPIPE_USER if you wish to define your username"),
+                          os.environ['USER'] if 'USER' in os.environ.keys()
+                          else 'default'][1],
                     help='Name of user - default to WPIPE_USER environment variable')
 PARSER.add_argument('--pipeline', '-p', dest='pipeline', type=str, default=os.getcwd(),
                     help='Path or ID of pipeline - default to current working directory')

@@ -16,18 +16,12 @@ from .StreamToLogger import StreamToLogger
 from .JobData import JobData
 from .PbsScheduler import PbsScheduler
 from wpipe.sqlintf import SESSION
-# from wpipe import DefaultUser
 
 __all__ = ['checkPbsConnection', 'sendJobToPbs']
 
 # TODO: Make this not hardcoded
 HOST_MACHINE = '10.150.27.94'
-# DEFAULT_PORT = 5000 + DefaultUser.user_id
-# 1024 -> 49451
-#
-# Port number = 5000 + user.id
-#
-# care of user 'default'
+DEFAULT_PORT = 5000
 
 # HOST_MACHINE = '127.0.0.1' # For debugging
 
@@ -69,7 +63,7 @@ class PipelineObjectProtocol(asyncio.Protocol):
 
 def checkPbsConnection():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    connected = s.connect_ex((HOST_MACHINE, 5000))
+    connected = s.connect_ex((HOST_MACHINE, DEFAULT_PORT))
     s.close()
     logging.info("Checking connection: {} ...".format(connected))
     return connected  # non zero for unconnected
@@ -99,7 +93,7 @@ def sendJobToPbs(pipejob):
 
     # open TCP connection and sendall bytes
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((HOST_MACHINE, 5000))
+        s.connect((HOST_MACHINE, DEFAULT_PORT))
         s.sendall(serialized)
         s.close()
 
@@ -130,8 +124,8 @@ if __name__ == "__main__":
     logging.info("Setting up asyncio loop ...")
     loop = asyncio.get_event_loop()
 
-    logging.info('Creating PbsConsumer server on {}:{} ...'.format(HOST_MACHINE, 5000))
-    coroutine = loop.create_server(lambda: PipelineObjectProtocol(), HOST_MACHINE, 5000)
+    logging.info('Creating PbsConsumer server on {}:{} ...'.format(HOST_MACHINE, DEFAULT_PORT))
+    coroutine = loop.create_server(lambda: PipelineObjectProtocol(), HOST_MACHINE, DEFAULT_PORT)
     server = loop.run_until_complete(coroutine)
 
     # log_loop_task = loop.create_task(periodicLog())

@@ -135,7 +135,7 @@ from .Task import Task
 from .Mask import Mask
 from .Job import Job
 from .Event import Event
-from .scheduler import pbsconsumer
+from .scheduler import pbsconsumer, PbsConsumer
 
 __all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
            'Option', 'Target', 'Configuration', 'Parameter', 'DataProduct',
@@ -148,6 +148,8 @@ DefaultUser = User()
 """
 User object: User object constructed at wpipe importation (see User doc Notes)
 """
+
+PbsConsumer.DEFAULT_PORT += DefaultUser.user_id
 
 DefaultNode = Node()
 """
