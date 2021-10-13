@@ -268,7 +268,9 @@ def wingspipe(args=None):
     """
     if args is not None:
         sys.argv += args  # MEH
+    _temp = PbsConsumer.DEFAULT_PORT
     importlib.reload(sys.modules[__name__])
+    PbsConsumer.DEFAULT_PORT = _temp
     parent_parser = si.argparse.ArgumentParser(parents=[PARSER], add_help=False)
     parser = si.argparse.ArgumentParser(prog='wingspipe', parents=[si.PARSER], add_help=False)
     subparsers = parser.add_subparsers()
