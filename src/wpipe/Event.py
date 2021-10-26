@@ -429,6 +429,10 @@ class Event(OptOwner):
                 submission_type = options['submission_type']
             except KeyError:
                 pass
+            if self.parent_job.has_a_node:
+                # if not self.parent_job.node.is_head:  # TODO
+                if self.parent_job.node.name[:1] == 'r':
+                    submission_type = 'pbs'
             if 'pbs' == submission_type and 'WPIPE_NO_PBS_SCHEDULER' not in os.environ.keys():
                 from .scheduler import pbsconsumer, sendJobToPbs
                 pbsconsumer('start')
