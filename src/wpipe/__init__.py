@@ -298,6 +298,8 @@ def wingspipe(args=None):
     parser_clean = subparsers.add_parser('clean', parents=[parent_parser_with_yes_flag], add_help=False)
     parser_clean.set_defaults(which='clean')
     parser_delete = subparsers.add_parser('delete', parents=[parent_parser_with_yes_flag], add_help=False)
+    parser_delete.add_argument('--force', '-f', dest='force', action='store_true',  # TODO
+                               help="Force deletion of every files")
     parser_delete.set_defaults(which='delete')
     args = parser.parse_args()
     if hasattr(args, 'which'):
@@ -310,6 +312,7 @@ def wingspipe(args=None):
         elif args.which == 'run':
             if not ('WPIPE_NO_PBS_SCHEDULER' in os.environ.keys()):
                 pbsconsumer('start')
+            # TODO if args.event_id or args.job_id
             my_pipe.run()
 
         elif args.which == 'diagnose':
@@ -328,6 +331,6 @@ def wingspipe(args=None):
             if True if args.yes \
                     else input(command + ': confirm deletion of pipeline at ' +
                                my_pipe.pipe_root + '? [y/yes] ') in ['y', 'yes']:
-                my_pipe.delete()
+                my_pipe.delete()  # TODO: my_pipe.delete(force = args.force)
     else:
         parser.print_help()
