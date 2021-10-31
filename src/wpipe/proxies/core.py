@@ -41,4 +41,4 @@ def try_scalar(string):
     try:
         return ast.literal_eval(string)
     except (ValueError, NameError, SyntaxError):
-        return _try_scalar_nan_dict.get(string.lower(), string)
+        return _try_scalar_nan_dict.get(string.lower() if isinstance(string, str) else None, string)
