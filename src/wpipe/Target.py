@@ -25,7 +25,7 @@ def _in_session(**local_kw):
 
 _check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
 
-_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW)
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW, KEYID_ATTR, UNIQ_ATTRS)
 
 
 class Target(OptOwner):

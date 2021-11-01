@@ -164,11 +164,23 @@ def make_yield_session_if_not_cached(keyid_attr, uniq_attrs, class_low):
     return yield_session_if_not_cached
 
 
-def make_query_rtn_upd(class_low):
+def make_query_rtn_upd(class_low, keyid_attr, uniq_attrs):
     def query_return_and_update_cached_row(self, value_attr):
-        value = getattr(getattr(self, '_%s' % class_low), value_attr)
+        _sqlintf = getattr(self, '_%s' % class_low)
+        value = getattr(_sqlintf, value_attr)
         temp = self.__cache__[class_low] == self
-        if (getattr(self.__cache__[temp], value_attr) != value).iloc[0]:
+        # SOMEHOW, THIS BLOC BELOW IS NECESSARY
+        if temp.sum() == 0:
+            keyid = _sqlintf
+            temp = self.__cache__[keyid_attr] == keyid
+        if temp.sum() == 0:
+            _to_cache = {keyid_attr: keyid}
+            for attr in uniq_attrs:
+                _to_cache[attr] = getattr(_sqlintf, attr)
+            _to_cache[class_low] = self
+            self.__class__.__cache__.loc[len(self.__cache__)] = _to_cache
+        ########################################
+        elif (getattr(self.__cache__[temp], value_attr) != value).iloc[0]:
             self.__cache__.loc[temp, value_attr] = value
         return value
     return query_return_and_update_cached_row
