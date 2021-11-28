@@ -172,8 +172,31 @@ class BeginSession:
                            after=after)
 
 
+import contextlib
+
+
+@contextlib.contextmanager
+def retrying_session(retry, session):
+    with retry, session:
+        yield session
+
+
 def begin_session(**local_kw):
-    return BeginSession(**local_kw)
+    for retry in tn.Retrying(retry=tn.retry_if_exception_type(exc.OperationalError)):
+        retry.session = BeginSession(**local_kw)
+        yield retrying_session(retry, retry.session)
+
+
+# def begin_session(**local_kw):
+#     for retry in tn.Retrying(retry=tn.retry_if_exception_type(exc.OperationalError)):
+#         retry.session = BeginSession(**local_kw)
+#         with retry:
+#             with retry.session:
+#                 yield retry.session
+
+
+# def begin_session(**local_kw):
+#     return BeginSession(**local_kw)
 
 
 def delete(entry):
@@ -185,14 +208,16 @@ def delete(entry):
     entry : sqlintf object
         Proxy of entry to delete.
     """
-    with begin_session() as session:
-        session.delete(entry)
-        session.commit()
+    for session in begin_session():
+        with session as session:
+            session.delete(entry)
+            session.commit()
 
 
 def show_engine_status():
-    with begin_session() as session:
-        a = session.execute("SHOW ENGINE INNODB STATUS;").fetchall()
+    for session in begin_session():
+        with session as session:
+            a = session.execute("SHOW ENGINE INNODB STATUS;").fetchall()
     return a[0][2]
 
 

@@ -176,11 +176,12 @@ class Node:
         out : list of Node object
             list of objects fulfilling the kwargs filter.
         """
-        with si.begin_session() as session:
-            cls._temp = session.query(si.Node).filter_by(**kwargs)
-            for arg in args:
-                cls._temp = cls._temp.filter(arg)
-            return list(map(cls, cls._temp.all()))
+        for session in si.begin_session():
+            with session as session:
+                cls._temp = session.query(si.Node).filter_by(**kwargs)
+                for arg in args:
+                    cls._temp = cls._temp.filter(arg)
+                return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
