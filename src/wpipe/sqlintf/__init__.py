@@ -30,7 +30,7 @@ COMMIT_FLAG
 commit
     Flush and commit pending changes if COMMIT_FLAG is True
 """
-from .core import argparse, tn, sa, orm, exc, PARSER, Engine, Base, Session
+from .core import contextlib, argparse, tn, sa, orm, exc, PARSER, Engine, Base, Session
 from .User import User
 from .Node import Node
 from .Pipeline import Pipeline
@@ -172,9 +172,6 @@ class BeginSession:
                            after=after)
 
 
-import contextlib
-
-
 @contextlib.contextmanager
 def retrying_session(retry, session):
     with retry, session:
@@ -182,7 +179,11 @@ def retrying_session(retry, session):
 
 
 def begin_session(**local_kw):
-    for retry in tn.Retrying(retry=tn.retry_if_exception_type(exc.OperationalError)):
+    for retry in tn.Retrying(retry=tn.retry_if_exception_type(exc.OperationalError),
+                             after=lambda retry_state:
+                             print("Failed attempt to access database; entering retrying loop")
+                             if retry_state.attempt_number == 1 else None,
+                             wait=tn.wait_random()):
         retry.session = BeginSession(**local_kw)
         yield retrying_session(retry, retry.session)
 
