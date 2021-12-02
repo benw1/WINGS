@@ -122,10 +122,13 @@ class BeginSession:
             del self.SESSION
 
     def __getattr__(self, item):
-        if item in self.SESSION.__dir__():
+        if (item in self.SESSION.__dir__() if self.is_alive() else False) if item != 'SESSION' else False:
             return getattr(self.SESSION, item)
         else:
             raise AttributeError("'%s' object has no attribute '%s'" % (self.__class__.__name__, item))
+
+    def is_alive(self):
+        return hasattr(self, 'SESSION')
 
     def commit(self):
         if COMMIT_FLAG:
@@ -179,12 +182,25 @@ def retrying_session(retry, session):
 
 
 def begin_session(**local_kw):
-    for retry in tn.Retrying(retry=tn.retry_if_exception_type(exc.OperationalError),
-                             after=lambda retry_state:
-                             print("Failed attempt to access database; entering retrying loop")
-                             if retry_state.attempt_number == 1 else None,
+    def __before(retry_state):
+        retry_state.session = BeginSession(**local_kw)
+
+    def __after(retry_state):
+        if retry_state.attempt_number == 1:
+            try:
+                retry_state.outcome.result()
+            except (exc.OperationalError, exc.PendingRollbackError) as Err:
+                print("Failed attempt to access database due to \n%s\n%s\nEntering retrying loop" % (Err.orig,
+                                                                                                     Err.statement))
+        if retry_state.session.is_alive():
+            retry_state.session.rollback()
+
+    for retry in tn.Retrying(retry=(tn.retry_if_exception_type(exc.OperationalError) |
+                                    tn.retry_if_exception_type(exc.PendingRollbackError)),
+                             before=__before,
+                             after=__after,
                              wait=tn.wait_random()):
-        retry.session = BeginSession(**local_kw)
+        retry.session = retry.retry_state.session  # BeginSession(**local_kw)
         yield retrying_session(retry, retry.session)
 
 
