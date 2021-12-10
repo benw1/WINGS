@@ -149,7 +149,7 @@ DefaultUser = User()
 User object: User object constructed at wpipe importation (see User doc Notes)
 """
 
-PbsConsumer.DEFAULT_PORT += DefaultUser.user_id
+PbsConsumer.DEFAULT_PORT = PbsConsumer.BASE_PORT + DefaultUser.user_id
 
 DefaultNode = Node()
 """
@@ -268,9 +268,9 @@ def wingspipe(args=None):
     """
     if args is not None:
         sys.argv += args  # MEH
-    _temp = PbsConsumer.DEFAULT_PORT
+    # _temp = PbsConsumer.DEFAULT_PORT
     importlib.reload(sys.modules[__name__])
-    PbsConsumer.DEFAULT_PORT = _temp
+    # PbsConsumer.DEFAULT_PORT = _temp
     parent_parser = si.argparse.ArgumentParser(parents=[PARSER], add_help=False)
     parser = si.argparse.ArgumentParser(prog='wingspipe', parents=[si.PARSER], add_help=False)
     subparsers = parser.add_subparsers()

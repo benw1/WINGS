@@ -17,11 +17,11 @@ from .JobData import JobData
 from .PbsScheduler import PbsScheduler
 from wpipe.sqlintf import SESSION
 
-__all__ = ['DEFAULT_PORT', 'checkPbsConnection', 'sendJobToPbs']
+__all__ = ['BASE_PORT', 'DEFAULT_PORT', 'checkPbsConnection', 'sendJobToPbs']
 
 # TODO: Make this not hardcoded
 HOST_MACHINE = '10.150.27.94'
-DEFAULT_PORT = 5000
+BASE_PORT = DEFAULT_PORT = 5000
 
 
 # HOST_MACHINE = '127.0.0.1' # For debugging
