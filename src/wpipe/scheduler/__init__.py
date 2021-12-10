@@ -35,8 +35,10 @@ __all__ = ['pbsconsumer', 'JobData', 'checkPbsConnection', 'sendJobToPbs']
 
 
 def pbsconsumer(which):
-    if which == 'start':
-        connection = checkPbsConnection()
+    connection = checkPbsConnection()
+    if which == 'check':
+        return print(connection)
+    elif which == 'start':
         if connection != 0:
             print("Starting PbsConsumer ...")
             homedir = os.path.expanduser('~/.pbsconsumer')
@@ -50,7 +52,6 @@ def pbsconsumer(which):
         else:
             print("PbsConsumer is already running ...")
     else:
-        connection = checkPbsConnection()
         if connection == 0:
             if which == 'stop':
                 print("Shutting down PbsConsumer ...")

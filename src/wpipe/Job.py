@@ -554,6 +554,20 @@ class Job(OptOwner):
                 return Event(self._job.firing_event)
 
     @property
+    def parent_job_id(self):
+        """
+        int: Primary key id of the table row of parent job.
+        """
+        return self.firing_event.parent_job_id
+
+    @property
+    def parent_job(self):
+        """
+        :obj:`Job`: Job object corresponding to parent job.
+        """
+        return self.firing_event.parent_job
+
+    @property
     def child_events(self):
         """
         :obj:`core.ChildrenProxy`: List of Event objects owned by the job.
