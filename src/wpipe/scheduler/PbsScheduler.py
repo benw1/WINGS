@@ -133,6 +133,7 @@ class PbsScheduler(BaseScheduler):
                    'ompthreads': omp_threads,
                    'njobs': n_jobs_per_node,
                    'walltime': self._jobList[0].getWalltime(),
+                   'condaenv': self._jobList[0].getCondaEnv(),
                    'pipe_root': self._jobList[0].getPipelinePipeRoot(),
                    'executables_list_path': executablesListPath}
 

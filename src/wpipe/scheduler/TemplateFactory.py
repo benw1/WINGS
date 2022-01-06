@@ -29,6 +29,7 @@ class TemplateFactory(object):
 #PBS -W group_list=s1692
 #PBS -l walltime={{pbs.walltime}}
 source ~/.bashrc
+source activate {{pbs.condaenv}}
 cd {{pbs.pipe_root}}
 parallel --jobs {{pbs.njobs}} --sshloginfile $PBS_NODEFILE --workdir $PWD < {{pbs.executables_list_path}}
 
