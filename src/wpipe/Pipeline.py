@@ -26,7 +26,7 @@ def _in_session(**local_kw):
 
 _check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
 
-_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW)
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW, KEYID_ATTR, UNIQ_ATTRS)
 
 
 class Pipeline(DPOwner):
@@ -324,11 +324,12 @@ class Pipeline(DPOwner):
         out : list of Pipeline object
             list of objects fulfilling the kwargs filter.
         """
-        with si.begin_session() as session:
-            cls._temp = session.query(si.Pipeline).filter_by(**kwargs)
-            for arg in args:
-                cls._temp = cls._temp.filter(arg)
-            return list(map(cls, cls._temp.all()))
+        for session in si.begin_session():
+            with session as session:
+                cls._temp = session.query(si.Pipeline).filter_by(**kwargs)
+                for arg in args:
+                    cls._temp = cls._temp.filter(arg)
+                return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):

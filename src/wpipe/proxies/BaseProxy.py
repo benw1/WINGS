@@ -38,9 +38,10 @@ class BaseProxy:
     def __new__(cls, *args, **kwargs):
         if cls is BaseProxy:
             parent = kwargs.pop('parent', None)
-            with si.begin_session() as session:
-                session.add(parent)
-                proxy = getattr(parent, kwargs.pop('attr_name', ''))
+            for session in si.begin_session():
+                with session as session:
+                    session.add(parent)
+                    proxy = getattr(parent, kwargs.pop('attr_name', ''))
             if kwargs.pop('try_scalar', False):
                 proxy = try_scalar(proxy)
             if proxy is None:

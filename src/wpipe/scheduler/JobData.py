@@ -5,6 +5,7 @@ Contains the scheduler.JobData class definition
 Please note that this module is private. The scheduler.JobData class is
 available in the ``wpipe.scheduler`` namespace - use that instead.
 """
+import os
 from .. import si
 from .PbsScheduler import DEFAULT_NODE_MODEL, DEFAULT_WALLTIME
 
@@ -46,6 +47,10 @@ class JobData:
             self._job_openmp = bool(event_options['job_openmp'])
         except KeyError:
             self._job_openmp = False
+        try:
+            self._job_condaenv = str(event_options['conda_environment'])
+        except KeyError:
+            self._job_condaenv = os.environ.get('CONDA_DEFAULT_ENV', '')
 
     # These are required
     def validate(self):
@@ -107,6 +112,9 @@ class JobData:
     def getJobOpenMP(self):
         return self._job_openmp
 
+    def getCondaEnv(self):
+        return self._job_condaenv
+
     # For pretty printing or logging
     def toString(self):
         string = 'JobData:\n'
@@ -126,4 +134,6 @@ class JobData:
             string += '\tRequested Wall time: {}\n'.format(self.getWalltime())
         if self.getJobOpenMP():
             string += '\tJob requires OpenMP resources\n'
+        if self.getCondaEnv():
+            string += '\tJob requires conda environment "{}"\n'.format(self.getCondaEnv())
         return string

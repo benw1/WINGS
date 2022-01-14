@@ -24,8 +24,8 @@ if __name__ == '__main__':
                                    options={'config_id': my_conf.config_id,
                                             'submission_type': 'pbs',
                                             'job_time': 5}).fire()
-                my_job.child_event('add_prefix', tag="config_id2_#" + str(my_conf.config_id),
-                                   options={'config_id': my_conf.config_id,
-                                            'submission_type': 'pbs',
-                                            'job_time': 5}).fire()
+                # my_job.child_event('add_prefix', tag="config_id2_#" + str(my_conf.config_id),
+                #                    options={'config_id': my_conf.config_id,
+                #                             'submission_type': 'pbs',
+                #                             'job_time': 5}).fire()
 

@@ -31,7 +31,7 @@ def _in_session(**local_kw):
 
 _check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
 
-_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW)
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW, KEYID_ATTR, UNIQ_ATTRS)
 
 
 class Job(OptOwner):
@@ -310,11 +310,12 @@ class Job(OptOwner):
         out : list of Job object
             list of objects fulfilling the kwargs filter.
         """
-        with si.begin_session() as session:
-            cls._temp = session.query(si.Job).filter_by(**kwargs)
-            for arg in args:
-                cls._temp = cls._temp.filter(arg)
-            return list(map(cls, cls._temp.all()))
+        for session in si.begin_session():
+            with session as session:
+                cls._temp = session.query(si.Job).filter_by(**kwargs)
+                for arg in args:
+                    cls._temp = cls._temp.filter(arg)
+                return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -551,6 +552,20 @@ class Job(OptOwner):
             else:
                 from .Event import Event
                 return Event(self._job.firing_event)
+
+    @property
+    def parent_job_id(self):
+        """
+        int: Primary key id of the table row of parent job.
+        """
+        return self.firing_event.parent_job_id
+
+    @property
+    def parent_job(self):
+        """
+        :obj:`Job`: Job object corresponding to parent job.
+        """
+        return self.firing_event.parent_job
 
     @property
     def child_events(self):

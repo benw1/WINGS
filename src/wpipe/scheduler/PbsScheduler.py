@@ -100,6 +100,7 @@ class PbsScheduler(BaseScheduler):
         for jobdata in self._jobList:
             jobsForJinja.append(
                 {'command': ("export OMP_NUM_THREADS=%d && " % n_cpus if omp_threads else "")
+                            + "source activate %s &&" % jobdata.getCondaEnv()
                             + jobdata.getTaskExecutable()
                             + ' -p ' + str(jobdata.getPipelineId())
                             + ' -u ' + str(jobdata.getPipelineUserName())
@@ -133,6 +134,7 @@ class PbsScheduler(BaseScheduler):
                    'ompthreads': omp_threads,
                    'njobs': n_jobs_per_node,
                    'walltime': self._jobList[0].getWalltime(),
+                   # 'condaenv': self._jobList[0].getCondaEnv(),
                    'pipe_root': self._jobList[0].getPipelinePipeRoot(),
                    'executables_list_path': executablesListPath}
 

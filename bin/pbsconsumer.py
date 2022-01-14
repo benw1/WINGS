@@ -8,6 +8,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers()
 
+    parser_start = subparsers.add_parser('check', add_help=False)
+    parser_start.set_defaults(which='check')
+
     parser_start = subparsers.add_parser('start', add_help=False)
     parser_start.set_defaults(which='start')
 
