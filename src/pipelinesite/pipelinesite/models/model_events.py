@@ -16,6 +16,9 @@ class Events(models.Model):
     value = models.CharField(max_length=256, blank=True, null=True)
     parent_job = models.ForeignKey('Jobs', models.DO_NOTHING, blank=True, null=True)
 
+    def __str__(self):
+        return "<{} ({})>".format(self.name, self.id)
+
     class Meta:
         managed = False
         db_table = 'events'

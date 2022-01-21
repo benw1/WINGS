@@ -12,6 +12,9 @@ class Dpowners(models.Model):
     timestamp = models.DateTimeField(blank=True, null=True)
     type = models.CharField(max_length=256, blank=True, null=True)
 
+    def __str__(self):
+        return str(self.pk)
+
     class Meta:
         managed = False
         db_table = 'dpowners'

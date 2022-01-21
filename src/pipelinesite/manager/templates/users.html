@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block body %}
+<head>
+<!--    <meta charset="UTF-8">-->
+<!--&lt;!&ndash;    {%load static%}&ndash;&gt;-->
+<!--&lt;!&ndash;    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">&ndash;&gt;-->
+<!--&lt;!&ndash;    <link rel="stylesheet" href="{% static 'css/bootstrap.css' %}">&ndash;&gt;-->
+    <title>Users</title>
+</head>
+<body>
+
+<table class="table table-striped">
+  <tr>
+      <th>Name</th>
+      <th>Timestamp</th>
+  </tr>
+{% for user in users %}
+  <tr>
+      <th>{{user.name}}</th>
+      <th>{{user.timestamp}}</th>
+  </tr>
+{% endfor %}
+</table>
+
+<!--{% for pipe in pipelines %}-->
+<!--     <h2>{{pipe.name}} </h2>-->
+<!--{% endfor %}-->
+
+{% endblock %}

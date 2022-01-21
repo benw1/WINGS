@@ -14,6 +14,12 @@ class Nodes(models.Model):
     int_ip = models.CharField(max_length=256, blank=True, null=True)
     ext_ip = models.CharField(max_length=256, blank=True, null=True)
 
+    def __str__(self):
+        string = "{}".format(self.name)
+        if self.int_ip:
+            string = "{} (init_ip: {})".format(string, self.init_ip)
+        return string
+
     class Meta:
         managed = False
         db_table = 'nodes'

@@ -16,6 +16,9 @@ class Tasks(models.Model):
     is_exclusive = models.IntegerField(blank=True, null=True)
     pipeline = models.ForeignKey('Pipelines', models.DO_NOTHING, blank=True, null=True)
 
+    def __str__(self):
+        return "<{} ({})>".format(self.name, self.id)
+
     class Meta:
         managed = False
         db_table = 'tasks'
