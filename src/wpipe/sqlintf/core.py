@@ -6,6 +6,7 @@ Please note that this module is private. All functions and objects
 are available in the main ``wpipe.sqlintf`` namespace - use that instead.
 """
 import os
+import contextlib
 import argparse
 
 import tenacity as tn
@@ -13,8 +14,8 @@ import sqlalchemy as sa
 from sqlalchemy import orm, exc, pool
 from sqlalchemy.ext.declarative import declarative_base
 
-__all__ = ['argparse', 'tn', 'sa', 'orm', 'exc', 'pool', 'PARSER', 'verbose',
-           'Engine', 'Base', 'Session']
+__all__ = ['contextlib','argparse', 'tn', 'sa', 'orm', 'exc', 'pool', 'PARSER',
+           'verbose', 'Engine', 'Base', 'Session']
 
 PARSER = argparse.ArgumentParser()
 """
@@ -68,6 +69,13 @@ Base = declarative_base()
 """
 sqlalchemy.ext.declarative.api.Base class: Base class to sqlintf classes.
 """
+
+
+def _get_id(self):
+    return self._sa_instance_state.key[1][0]
+
+
+setattr(Base, 'get_id', _get_id)
 
 Session = orm.sessionmaker(bind=Engine)
 """

@@ -9,6 +9,7 @@ the schedulers subpackage.
 import abc
 import threading
 
+
 class BaseScheduler(abc.ABC):
     """
     Inherit this abstract class for a non-blocking timer.  Call reset() to
@@ -18,15 +19,15 @@ class BaseScheduler(abc.ABC):
     """
 
     def __init__(self, timer=20):
-        self.timer = timer
-        self.reset = False
+        self._timer = timer
+        self._reset = False
 
-        threading.Timer(self.timer, self._middleman).start()
+        threading.Timer(self._timer, self._middleman).start()
 
     def _middleman(self):
-        if self.reset:
-            self.reset = False
-            threading.Timer(self.timer, self._middleman).start()
+        if self._reset:
+            self._reset = False
+            threading.Timer(self._timer, self._middleman).start()
         else:
             self._execute()
 
@@ -35,4 +36,4 @@ class BaseScheduler(abc.ABC):
         pass
 
     def reset(self):
-        self.reset = True
+        self._reset = True

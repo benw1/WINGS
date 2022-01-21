@@ -32,6 +32,7 @@ class ChildrenProxy:  # TODO: Generalize proxy object with the BaseProxy
         self._cls_name = cls_name
         self._child_attr = child_attr
         self._work_with_sqlintf = 0
+        self._hold_struct_children = None
         self._session = None
         self._parent_id = self._get_parent_id()
 
@@ -72,7 +73,7 @@ class ChildrenProxy:  # TODO: Generalize proxy object with the BaseProxy
         elif np.ndim(item) == 0:
             return self._get_child_of_index(item)
         elif hasattr(item, '__len__'):  # TODO: what about slices?
-            return [self[i] for i in np.arange(len(self))[item]]
+            return [self[i] for i in np.arange(len(self))[item]]  # TODO: cannot work well if collection change size
         else:
             raise TypeError  # TODO
 
@@ -85,16 +86,27 @@ class ChildrenProxy:  # TODO: Generalize proxy object with the BaseProxy
 
     @property
     def children(self):
-        return getattr(self._parent, self._children_attr)
+        if self._hold_struct_children is None:
+            return getattr(self._parent, self._children_attr)
+        else:
+            return self._hold_struct_children
 
     @in_session('_parent')
     def delete(self):
         while len(self):
-            self[0].delete()
+            self._get_child_of_index(0).delete()
 
-    @in_session('_parent')
+    @contextlib.contextmanager
+    @in_session('_parent', generator=True)
+    def hold_structure(self):
+        self._hold_struct_children = list(self.children)
+        try:
+            yield
+        finally:
+            self._hold_struct_children = None
+
     def _get_parent_id(self):
-        return int(self._parent.id)
+        return int(self._parent.get_id())
 
     @in_session('_parent')
     def _get_child_of_index(self, item):

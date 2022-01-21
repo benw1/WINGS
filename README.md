@@ -147,7 +147,7 @@ wingspipe delete
 ```
 
 
-###Stopping docker database
+### Stopping docker database
 
 
 For stopping the docker container use the normal Docker command line tools and look for the container named *wingsmysql*.

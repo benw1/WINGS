@@ -19,6 +19,10 @@ from ..core import si, in_session
 __all__ = ['contextlib', 'sys', 'itertools', 'numbers', 'datetime', 'np',
            'si', 'in_session', 'try_scalar']
 
+_try_scalar_nan_dict = {'nan': float('NaN'),
+                        'inf': float('Inf'),
+                        '-inf': -float('Inf')}
+
 
 def try_scalar(string):
     """
@@ -37,4 +41,4 @@ def try_scalar(string):
     try:
         return ast.literal_eval(string)
     except (ValueError, NameError, SyntaxError):
-        return string
+        return _try_scalar_nan_dict.get(string.lower() if isinstance(string, str) else None, string)

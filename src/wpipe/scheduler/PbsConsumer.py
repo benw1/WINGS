@@ -17,10 +17,11 @@ from .JobData import JobData
 from .PbsScheduler import PbsScheduler
 from wpipe.sqlintf import SESSION
 
-__all__ = ['checkPbsConnection', 'sendJobToPbs']
+__all__ = ['BASE_PORT', 'DEFAULT_PORT', 'checkPbsConnection', 'sendJobToPbs']
 
 # TODO: Make this not hardcoded
 HOST_MACHINE = '10.150.27.94'
+BASE_PORT = DEFAULT_PORT = 5000
 
 
 # HOST_MACHINE = '127.0.0.1' # For debugging
@@ -63,7 +64,7 @@ class PipelineObjectProtocol(asyncio.Protocol):
 
 def checkPbsConnection():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    connected = s.connect_ex((HOST_MACHINE, 5000))
+    connected = s.connect_ex((HOST_MACHINE, DEFAULT_PORT))
     s.close()
     logging.info("Checking connection: {} ...".format(connected))
     return connected  # non zero for unconnected
@@ -93,7 +94,7 @@ def sendJobToPbs(pipejob):
 
     # open TCP connection and sendall bytes
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((HOST_MACHINE, 5000))
+        s.connect((HOST_MACHINE, DEFAULT_PORT))
         s.sendall(serialized)
         s.close()
 
@@ -104,9 +105,9 @@ def periodicLog():
 
 
 if __name__ == "__main__":
-
+    from wpipe.scheduler.PbsConsumer import DEFAULT_PORT
     # Setup the logging
-    logging.basicConfig(filename='config/PbsConsumerLog-{}.log'.format(datetime.today().strftime('%m-%d-%Y-%H-%M-%S')),
+    logging.basicConfig(filename='PbsConsumerLog-{}.log'.format(datetime.today().strftime('%m-%d-%Y-%H-%M-%S')),
                         level=logging.DEBUG, filemode='a',
                         format="[%(asctime)s][%(levelname)s][%(name)s]: %(message)s")
 
@@ -124,8 +125,8 @@ if __name__ == "__main__":
     logging.info("Setting up asyncio loop ...")
     loop = asyncio.get_event_loop()
 
-    logging.info('Creating PbsConsumer server on {}:{} ...'.format(HOST_MACHINE, 5000))
-    coroutine = loop.create_server(lambda: PipelineObjectProtocol(), HOST_MACHINE, 5000)
+    logging.info('Creating PbsConsumer server on {}:{} ...'.format(HOST_MACHINE, DEFAULT_PORT))
+    coroutine = loop.create_server(lambda: PipelineObjectProtocol(), HOST_MACHINE, DEFAULT_PORT)
     server = loop.run_until_complete(coroutine)
 
     # log_loop_task = loop.create_task(periodicLog())

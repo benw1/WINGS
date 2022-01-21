@@ -6,6 +6,8 @@ Please note that this module is private. All functions and objects
 are available in the main ``wpipe`` namespace - use that instead.
 """
 import importlib
+import contextlib
+import functools
 import os
 import sys
 import types
@@ -25,18 +27,21 @@ import pandas as pd
 
 from . import sqlintf as si
 
-__all__ = ['importlib', 'os', 'sys', 'types', 'datetime', 'time', 'subprocess',
-           'logging', 'glob', 'shutil', 'warnings', 'json', 'ast', 'atexit',
-           'np', 'pd', 'si', 'PARSER', 'as_int',
-           'clean_path', 'split_path', 'remove_path', 'key_wpipe_separator',
-           'initialize_args', 'wpipe_to_sqlintf_connection', 'in_session',
+__all__ = ['importlib', 'contextlib', 'os', 'sys', 'types', 'datetime',
+           'time', 'subprocess', 'logging', 'glob', 'shutil', 'warnings',
+           'json', 'ast', 'atexit', 'np', 'pd', 'si', 'PARSER', 'as_int',
+           'clean_path', 'split_path', 'remove_path',
+           'make_yield_session_if_not_cached', 'make_query_rtn_upd',
+           'key_wpipe_separator', 'initialize_args',
+           'wpipe_to_sqlintf_connection', 'in_session',
            'return_dict_of_attrs', 'to_json']
 
 PARSER = si.PARSER
 PARSER.add_argument('--user', '-u', dest='user_name', type=str,
                     default=os.environ['WPIPE_USER'] if 'WPIPE_USER' in os.environ.keys()
-                    else [warnings.warn("Set environment variable $WPIPE_USER to associate a default username"),
-                          'default'][1],
+                    else [warnings.warn("Set environment variable $WPIPE_USER if you wish to define your username"),
+                          os.environ['USER'] if 'USER' in os.environ.keys()
+                          else 'default'][1],
                     help='Name of user - default to WPIPE_USER environment variable')
 PARSER.add_argument('--pipeline', '-p', dest='pipeline', type=str, default=os.getcwd(),
                     help='Path or ID of pipeline - default to current working directory')
@@ -141,6 +146,47 @@ def remove_path(*paths, hard=False):
         raise TypeError('remove_path expected at least 1 arguments, get 0')
 
 
+def make_yield_session_if_not_cached(keyid_attr, uniq_attrs, class_low):
+    def yield_session_if_not_cached(cls, kind, loc):
+        if kind not in ['keyid', 'args']:
+            raise KeyError(kind)
+        try:
+            cls._inst = cls.__cache__.set_index({'keyid': keyid_attr, 'args': uniq_attrs}[kind]).loc[loc][class_low]
+            setattr(cls, '_%s' % class_low, getattr(cls._inst, '_%s' % class_low))
+        except KeyError:
+            for session in si.begin_session():
+                with session as session:
+                    yield session
+                    if hasattr(cls, '_to_cache'):
+                        session.add(getattr(cls, '_%s' % class_low))
+                        cls._to_cache[keyid_attr] = getattr(cls, '_%s' % class_low).id
+                        for attr in uniq_attrs:
+                            cls._to_cache[attr] = getattr(getattr(cls, '_%s' % class_low), attr)
+    return yield_session_if_not_cached
+
+
+def make_query_rtn_upd(class_low, keyid_attr, uniq_attrs):
+    def query_return_and_update_cached_row(self, value_attr):
+        _sqlintf = getattr(self, '_%s' % class_low)
+        value = getattr(_sqlintf, value_attr)
+        temp = self.__cache__[class_low] == self
+        # SOMEHOW, THIS BLOC BELOW IS NECESSARY
+        if temp.sum() == 0:
+            keyid = _sqlintf
+            temp = self.__cache__[keyid_attr] == keyid
+        if temp.sum() == 0:
+            _to_cache = {keyid_attr: keyid}
+            for attr in uniq_attrs:
+                _to_cache[attr] = getattr(_sqlintf, attr)
+            _to_cache[class_low] = self
+            self.__class__.__cache__.loc[len(self.__cache__)] = _to_cache
+        ########################################
+        elif (getattr(self.__cache__[temp], value_attr) != value).iloc[0]:
+            self.__cache__.loc[temp, value_attr] = value
+        return value
+    return query_return_and_update_cached_row
+
+
 def key_wpipe_separator(obj):
     """
     Returns true if given object is a Wpipe object.
@@ -200,17 +246,18 @@ def wpipe_to_sqlintf_connection(cls, cls_name):
     cls_name : string
         Name of the class of the Wpipe object to be instantiated.
     """
-    cls_attr = '_' + cls_name.lower()
-    if hasattr(getattr(cls, cls_attr), '_wpipe_object'):
-        cls._inst = getattr(cls, cls_attr)._wpipe_object
-    else:
-        cls._inst = super(getattr(sys.modules['wpipe'], cls_name), cls).__new__(cls)
-        getattr(cls, cls_attr)._wpipe_object = cls._inst
-        setattr(cls._inst, cls_attr, getattr(cls, cls_attr))
-        setattr(cls._inst, '_session', None)
+    if not hasattr(cls, '_inst'):
+        cls_attr = '_' + cls_name.lower()
+        if hasattr(getattr(cls, cls_attr), '_wpipe_object'):
+            cls._inst = getattr(cls, cls_attr)._wpipe_object
+        else:
+            cls._inst = super(getattr(sys.modules['wpipe'], cls_name), cls).__new__(cls)
+            getattr(cls, cls_attr)._wpipe_object = cls._inst
+            setattr(cls._inst, cls_attr, getattr(cls, cls_attr))
+            setattr(cls._inst, '_session', None)
 
 
-def in_session(si_attr, **local_kw):
+def in_session(si_attr, generator=False, **local_kw):
     """
     Returns a decorator that places the modified function in a begin_session
     context manager statement. The modified must be defined around a first
@@ -224,6 +271,9 @@ def in_session(si_attr, **local_kw):
     si_attr : string
         Name of the attribute where to find the object to add to the Session.
 
+    generator : boolean
+        TODO
+
     local_kw : dict
         TODO
 
@@ -234,18 +284,65 @@ def in_session(si_attr, **local_kw):
     """
 
     def decor(func):
+        @functools.wraps(func)
         def wrapper(self_cls, *args, **kwargs):
-            with si.begin_session(**local_kw) as session:
-                _temp = self_cls._session
-                self_cls._session = session
-                session.add(getattr(self_cls, si_attr))
-                output = func(self_cls, *args, **kwargs)
-                self_cls._session = _temp
-                return output
+            for session in si.begin_session(**local_kw):
+                with session as session:
+                    # swap session in self_cls '_session' attribute if exists
+                    if hasattr(self_cls, '_session'):
+                        _temp = self_cls._session
+                        self_cls._session = session
+                    # attempt adding existing sqlintf instance if possible otherwise query and replace
+                    try:
+                        session.add(getattr(self_cls, si_attr))
+                    except si.exc.InvalidRequestError:
+                        warnings.warn("FIXING ENCOUNTERED BROKEN INSTANCE")
+                        broken_instance = getattr(self_cls, si_attr)
+                        setattr(self_cls, si_attr, session.query(broken_instance.__class__).
+                                filter_by(id=broken_instance._sa_instance_state.key[1][0]).one())
+                        if hasattr(broken_instance, '_wpipe_object'):
+                            setattr(getattr(self_cls, si_attr), '_wpipe_object', getattr(broken_instance, '_wpipe_object'))
+                    # execute wrapped function
+                    output = func(self_cls, *args, **kwargs)
+                    # return given session in self_cls '_session' attribute if exists
+                    if hasattr(self_cls, '_session'):
+                        self_cls._session = _temp
+                    return output
 
         return wrapper
 
-    return decor
+    def decor_gene(func):
+        @functools.wraps(func)
+        def wrapper(self_cls, *args, **kwargs):
+            for session in si.begin_session(**local_kw):
+                with session as session:
+                    # swap session in self_cls '_session' attribute if exists
+                    if hasattr(self_cls, '_session'):
+                        _temp = self_cls._session
+                        self_cls._session = session
+                    # attempt adding existing sqlintf instance if possible otherwise query and replace
+                    try:
+                        session.add(getattr(self_cls, si_attr))
+                    except si.exc.InvalidRequestError:
+                        warnings.warn("FIXING ENCOUNTERED BROKEN INSTANCE")
+                        broken_instance = getattr(self_cls, si_attr)
+                        setattr(self_cls, si_attr, session.query(broken_instance.__class__).
+                                filter_by(id=broken_instance._sa_instance_state.key[1][0]).one())
+                        if hasattr(broken_instance, '_wpipe_object'):
+                            setattr(getattr(self_cls, si_attr), '_wpipe_object', getattr(broken_instance, '_wpipe_object'))
+                    # execute wrapped function
+                    output = yield from func(self_cls, *args, **kwargs)
+                    # return given session in self_cls '_session' attribute if exists
+                    if hasattr(self_cls, '_session'):
+                        self_cls._session = _temp
+                    return output
+
+        return wrapper
+
+    if generator:
+        return decor_gene
+    else:
+        return decor
 
 
 def return_dict_of_attrs(obj):
@@ -263,14 +360,15 @@ def return_dict_of_attrs(obj):
     attrs : dict
         Dictionary of attributes of obj.
     """
-    with si.begin_session() as session:
-        session.add(obj)
-        session.refresh(obj)
-        return dict((attr, getattr(obj, attr))
-                    for attr in dir(obj) if attr[0] != '_'
-                    and getattr(obj, attr) is not None
-                    and type(getattr(obj, attr)).__module__.split('.')[0]
-                    not in ['sqlalchemy', 'wpipe'])
+    for session in si.begin_session():
+        with session as session:
+            session.add(obj)
+            session.refresh(obj)
+            return dict((attr, getattr(obj, attr))
+                        for attr in dir(obj) if attr[0] != '_'
+                        and getattr(obj, attr) is not None
+                        and type(getattr(obj, attr)).__module__.split('.')[0]
+                        not in ['sqlalchemy', 'wpipe'])
 
 
 def to_json(obj, *args, **kwargs):

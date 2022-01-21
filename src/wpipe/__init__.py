@@ -135,18 +135,21 @@ from .Task import Task
 from .Mask import Mask
 from .Job import Job
 from .Event import Event
-from .scheduler import PbsScheduler
-from .scheduler import checkPbsConnection
+from .scheduler import pbsconsumer, PbsConsumer
 
 __all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
            'Option', 'Target', 'Configuration', 'Parameter', 'DataProduct',
-           'Task', 'Mask', 'Job', 'Event', 'PbsScheduler', 'DefaultUser',
-           'DefaultNode', 'wingspipe']
+           'Task', 'Mask', 'Job', 'Event',
+           'DefaultUser', 'DefaultNode', 'wingspipe']
+
+warnings.filterwarnings("ignore", message=".*Cannot correctly sort tables;.*")
 
 DefaultUser = User()
 """
 User object: User object constructed at wpipe importation (see User doc Notes)
 """
+
+PbsConsumer.DEFAULT_PORT = PbsConsumer.BASE_PORT + DefaultUser.user_id
 
 DefaultNode = Node()
 """
@@ -265,7 +268,9 @@ def wingspipe(args=None):
     """
     if args is not None:
         sys.argv += args  # MEH
+    # _temp = PbsConsumer.DEFAULT_PORT
     importlib.reload(sys.modules[__name__])
+    # PbsConsumer.DEFAULT_PORT = _temp
     parent_parser = si.argparse.ArgumentParser(parents=[PARSER], add_help=False)
     parser = si.argparse.ArgumentParser(prog='wingspipe', parents=[si.PARSER], add_help=False)
     subparsers = parser.add_subparsers()
@@ -293,26 +298,21 @@ def wingspipe(args=None):
     parser_clean = subparsers.add_parser('clean', parents=[parent_parser_with_yes_flag], add_help=False)
     parser_clean.set_defaults(which='clean')
     parser_delete = subparsers.add_parser('delete', parents=[parent_parser_with_yes_flag], add_help=False)
+    parser_delete.add_argument('--force', '-f', dest='force', action='store_true',  # TODO
+                               help="Force deletion of every files")
     parser_delete.set_defaults(which='delete')
     args = parser.parse_args()
     if hasattr(args, 'which'):
         my_pipe = Pipeline()
-        command = parser.prog+" "+args.which
+        command = parser.prog + " " + args.which
         if args.which == 'init':
             my_pipe.description = args.description
             my_pipe.attach_tasks(args.tasks_path)
             my_pipe.attach_inputs(args.inputs_path, args.config_file)
         elif args.which == 'run':
-            if not('WPIPE_NO_PBS_SCHEDULER' in os.environ.keys()):
-                if checkPbsConnection() != 0:
-                    print("Starting a PBS scheduler ...")
-                    import subprocess
-                    # subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"],
-                                     # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    subprocess.Popen(["python", "-m", "wpipe.scheduler.PbsConsumer"]) # Have everything print to the main terminal for now
-                    time.sleep(1)
-                else:
-                    print("PBS scheduler already running ...")
+            if not ('WPIPE_NO_PBS_SCHEDULER' in os.environ.keys()):
+                pbsconsumer('start')
+            # TODO if args.event_id or args.job_id
             my_pipe.run()
 
         elif args.which == 'diagnose':
@@ -331,6 +331,6 @@ def wingspipe(args=None):
             if True if args.yes \
                     else input(command + ': confirm deletion of pipeline at ' +
                                my_pipe.pipe_root + '? [y/yes] ') in ['y', 'yes']:
-                my_pipe.delete()
+                my_pipe.delete()  # TODO: my_pipe.delete(force = args.force)
     else:
         parser.print_help()

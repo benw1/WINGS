@@ -5,7 +5,8 @@ Contains the Input class definition
 Please note that this module is private. The Input class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import os, glob, shutil, datetime, si
+from .core import os, glob, shutil, datetime, pd, si
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import clean_path, remove_path, split_path
 from .proxies import ChildrenProxy
@@ -13,9 +14,18 @@ from .DPOwner import DPOwner
 
 __all__ = ['Input']
 
+KEYID_ATTR = 'input_id'
+UNIQ_ATTRS = ['pipeline_id', 'name']
+CLASS_LOW = split_path(__file__)[1].lower()
+
 
 def _in_session(**local_kw):
-    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' % CLASS_LOW, **local_kw)
+
+
+_check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
+
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW, KEYID_ATTR, UNIQ_ATTRS)
 
 
 class Input(DPOwner):
@@ -127,13 +137,32 @@ class Input(DPOwner):
         >>> # else
         >>> new_target = my_input.target()
     """
+    __cache__ = pd.DataFrame(columns=[KEYID_ATTR]+UNIQ_ATTRS+[CLASS_LOW])
+
+    @classmethod
+    def _check_in_cache(cls, kind, loc):
+        return _check_in_cache(cls, kind, loc)
+
+    @classmethod
+    def _sqlintf_instance_argument(cls):
+        if hasattr(cls, '_%s' % CLASS_LOW):
+            for _session in cls._check_in_cache(kind='keyid',
+                                                loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
+                pass
+
     def __new__(cls, *args, **kwargs):
+        if hasattr(cls, '_inst'):
+            old_cls_inst = cls._inst
+            delattr(cls, '_inst')
+        else:
+            old_cls_inst = None
+        cls._to_cache = {}
         # checking if given argument is sqlintf object or existing id
         cls._input = args[0] if len(args) else None
         if not isinstance(cls._input, si.Input):
             keyid = kwargs.get('id', cls._input)
             if isinstance(keyid, int):
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='keyid', loc=keyid):
                     cls._input = session.query(si.Input).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
@@ -141,7 +170,7 @@ class Input(DPOwner):
                 pipeline = kwargs.get('pipeline', wpargs.get('Pipeline', None))
                 base, name = os.path.split(clean_path(kwargs.get('path', args[0])))
                 # querying the database for existing row or create
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='args', loc=(pipeline.pipeline_id, name)):
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
@@ -162,9 +191,19 @@ class Input(DPOwner):
                             else:
                                 this_nested.rollback()
                             retry.retry_state.commit()
+        else:
+            cls._sqlintf_instance_argument()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Input')
-        return cls._inst
+        # add instance to cache dataframe
+        if cls._to_cache:
+            cls._to_cache[CLASS_LOW] = cls._inst
+            cls.__cache__.loc[len(cls.__cache__)] = cls._to_cache
+        new_cls_inst = cls._inst
+        delattr(cls, '_inst')
+        if old_cls_inst is not None:
+            cls._inst = old_cls_inst
+        return new_cls_inst
 
     @_in_session()
     def __init__(self, *args, **kwargs):
@@ -176,7 +215,7 @@ class Input(DPOwner):
         self._verify_raws()
 
     @classmethod
-    def select(cls, **kwargs):
+    def select(cls, *args, **kwargs):
         """
         Returns a list of Input objects fulfilling the kwargs filter.
 
@@ -190,9 +229,12 @@ class Input(DPOwner):
         out : list of Input object
             list of objects fulfilling the kwargs filter.
         """
-        with si.begin_session() as session:
-            cls._temp = session.query(si.Input).filter_by(**kwargs)
-            return list(map(cls, cls._temp.all()))
+        for session in si.begin_session():
+            with session as session:
+                cls._temp = session.query(si.Input).filter_by(**kwargs)
+                for arg in args:
+                    cls._temp = cls._temp.filter(arg)
+                return list(map(cls, cls._temp.all()))
 
     @classmethod
     def _copy_data(cls, path):
@@ -227,14 +269,16 @@ class Input(DPOwner):
         str: Name of the input.
         """
         self._session.refresh(self._input)
-        return self._input.name
+        return _query_return_and_update_cached_row(self, 'name')
 
     @name.setter
     @_in_session()
     def name(self, name):
         self._input.name = name
-        self._input.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        _temp = _query_return_and_update_cached_row(self, 'name')
+        self.update_timestamp()
+        # self._input.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -336,3 +380,4 @@ class Input(DPOwner):
         """
         self.reset()
         super(Input, self).delete(self.remove_data)
+        self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]
