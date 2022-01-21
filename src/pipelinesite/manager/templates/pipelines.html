@@ -28,7 +28,6 @@
             {% for pipe in pipelines %}
               <tr>
                   <td><a href="{% url 'manager:pipeline_single' pipe.pk %}">{{pipe.id}}</a></td>
-            <!--      <td>{{pipe.id}}</td>-->
                   <td>{{pipe.name}}</td>
                   <td>{{pipe.pipe_root}}</td>
                   <td>{{pipe.description}}</td>

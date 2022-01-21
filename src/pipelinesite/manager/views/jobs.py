@@ -38,3 +38,9 @@ def jobs(request):
 
     context = {'jobs_page': page_obj, 'pagination_range': pagination_range, 'total_pages': paginator.num_pages}
     return render(request, 'jobs.html', context)
+
+def job_single_view(request, pk):
+    job = Jobs.objects.get(pk=pk)
+
+    context = {'job': job}
+    return render(request, 'job_single_view.html', context)

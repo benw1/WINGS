@@ -37,7 +37,7 @@
               </tr>
             {% for job in jobs_page %}
               <tr>
-                  <td>{{job.id}}</td>
+                  <td><a href="{% url 'manager:job_single_view' job.pk %}">{{job.id}}</a></td>
                   <td>{{job.attempt}}</td>
                   <td>{{job.state}}</td>
                   <td>{{job.starttime}}</td>
