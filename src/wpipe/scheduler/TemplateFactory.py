@@ -34,4 +34,26 @@ parallel --jobs {{pbs.njobs}} --sshloginfile $PBS_NODEFILE --workdir $PWD < {{pb
 
 """
 
+    def getSlurmFileTemplate():
+        templateString = \
+            """#!/bin/bash
+## Job Name
+#SBATCH --job-name=
+## Allocation Definition 
+#SBATCH --account={{slurm.account}}
+#SBATCH --partition={{slurm.partition}}
+## Resources
+## Nodes
+#SBATCH --nodes={{slurm.nnodes}} --ntasks-per-node={{slurm.njobs} 
+## Walltime (4 hours)
+#SBATCH --time={{slurm.walltime}}
+## Memory per node
+#SBATCH --mem={{slurm.mem}}
+## Specify the working directory for this job
+#SBATCH --chdir={{slurm.workingdir}}
+module load parallel-20170722 
+cat {{slurm.executables_list_path}} | parallel
+
+"""
+
         return Template(templateString)

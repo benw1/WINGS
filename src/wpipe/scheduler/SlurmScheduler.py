@@ -118,6 +118,8 @@ class SlurmScheduler(BaseScheduler):
 
         template = TemplateFactory.getSlurmFileTemplate()
 
+        slurm_account = 'astro'
+        slurm_partition = 'astro'
         node_cores = NODE_CORES_DICT
         node_model = self._jobList[0].getNodemodel()
         omp_threads = self._jobList[0].getJobOpenMP()
