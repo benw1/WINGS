@@ -137,6 +137,7 @@ from .Mask import Mask
 from .Job import Job
 from .Event import Event
 from .scheduler import pbsconsumer, PbsConsumer
+from .scheduler import slurmconsumer, SlurmConsumer
 from .scheduler.ConsumerFactory import get_consumer_factory
 
 __all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
@@ -154,6 +155,7 @@ User object: User object constructed at wpipe importation (see User doc Notes)
 """
 
 PbsConsumer.DEFAULT_PORT = PbsConsumer.BASE_PORT + DefaultUser.user_id
+SlurmConsumer.DEFAULT_PORT = SlurmConsumer.BASE_PORT + DefaultUser.user_id
 
 DefaultNode = Node()
 """
