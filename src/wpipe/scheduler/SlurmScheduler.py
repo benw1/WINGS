@@ -70,8 +70,8 @@ class SlurmScheduler(BaseScheduler):
             f.write(slurmFileOutput)
 
         # TODO: Test this out more
-        output = subprocess.run("qsub %s" % (slurmfilepath), shell=True, capture_output=True)
-        print("Qsub output:")
+        output = subprocess.run("sbatch %s" % (slurmfilepath), shell=True, capture_output=True)
+        print("Sbatch output:")
         print(output)
 
         # remove scheduler from list
