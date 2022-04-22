@@ -121,6 +121,7 @@ __version__
     Wpipe version string
 """
 from .__metadata__ import *
+from .constants import WPIPE_NO_SCHEDULER
 from .core import *
 from .User import User
 from .Node import Node
@@ -136,11 +137,14 @@ from .Mask import Mask
 from .Job import Job
 from .Event import Event
 from .scheduler import pbsconsumer, PbsConsumer
+from .scheduler.ConsumerFactory import get_consumer_factory
 
 __all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
            'Option', 'Target', 'Configuration', 'Parameter', 'DataProduct',
            'Task', 'Mask', 'Job', 'Event',
            'DefaultUser', 'DefaultNode', 'wingspipe']
+
+
 
 warnings.filterwarnings("ignore", message=".*Cannot correctly sort tables;.*")
 
@@ -177,6 +181,7 @@ if PARSER.parse_known_args()[0].event_id is not None or PARSER.parse_known_args(
     atexit.register(ThisJob._ending_todo)
 
 
+# TODO: Delete?
 # def sql_hyak(task, job_id, event_id):
 #     my_job = Job(job_id)
 #     my_pipe = my_job.pipeline
@@ -241,6 +246,7 @@ if PARSER.parse_known_args()[0].event_id is not None or PARSER.parse_known_args(
 #             'source /nobackupp11/bwilli24/miniconda3/bin/activate STIPS && ' +
 #             executable + ' -e ' + eidstr + ' -j ' + jidstr + '\n')
 #     subprocess.run(['qsub', pbsfile], cwd=my_config.confpath)
+
 
 def wingspipe(args=None):
     """
@@ -310,8 +316,10 @@ def wingspipe(args=None):
             my_pipe.attach_tasks(args.tasks_path)
             my_pipe.attach_inputs(args.inputs_path, args.config_file)
         elif args.which == 'run':
-            if not ('WPIPE_NO_PBS_SCHEDULER' in os.environ.keys()):
-                pbsconsumer('start')
+            # if not ('WPIPE_NO_PBS_SCHEDULER' in os.environ.keys()):
+            if not WPIPE_NO_SCHEDULER:
+                consumer = get_consumer_factory()
+                consumer('start')
             # TODO if args.event_id or args.job_id
             my_pipe.run()
 
