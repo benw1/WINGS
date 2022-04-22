@@ -34,6 +34,7 @@ parallel --jobs {{pbs.njobs}} --sshloginfile $PBS_NODEFILE --workdir $PWD < {{pb
 
 """
 
+    @staticmethod
     def getSlurmFileTemplate():
         templateString = \
             """#!/bin/bash
