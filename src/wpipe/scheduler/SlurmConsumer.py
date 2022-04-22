@@ -12,6 +12,8 @@ import socket
 import logging
 import sys
 from datetime import datetime
+from pathlib import Path
+
 from .StreamToLogger import StreamToLogger
 from .JobData import JobData
 from .SlurmScheduler import SlurmScheduler
