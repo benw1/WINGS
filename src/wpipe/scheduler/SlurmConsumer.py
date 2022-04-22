@@ -20,8 +20,12 @@ from wpipe.sqlintf import SESSION
 __all__ = ['BASE_PORT', 'DEFAULT_PORT', 'checkSlurmConnection', 'sendJobToSlurm']
 
 # TODO: Make this not hardcoded
-HOST_MACHINE = '10.64.57.85'
-BASE_PORT = DEFAULT_PORT = 5000
+my_file = Path("~/server.address")
+if  my_file.is_file():
+    HOST_MACHINE = my_file.read()
+else:
+    HOST_MACHINE = '10.64.57.84'
+BASE_PORT = DEFAULT_PORT = 8000
 
 
 # HOST_MACHINE = '127.0.0.1' # For debugging

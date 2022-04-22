@@ -136,6 +136,7 @@ from .Mask import Mask
 from .Job import Job
 from .Event import Event
 from .scheduler import pbsconsumer, PbsConsumer
+from .scheduler import slurmconsumer, SlurmConsumer
 
 __all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
            'Option', 'Target', 'Configuration', 'Parameter', 'DataProduct',
@@ -150,6 +151,7 @@ User object: User object constructed at wpipe importation (see User doc Notes)
 """
 
 PbsConsumer.DEFAULT_PORT = PbsConsumer.BASE_PORT + DefaultUser.user_id
+SlurmConsumer.DEFAULT_PORT = SlurmConsumer.BASE_PORT + DefaultUser.user_id
 
 DefaultNode = Node()
 """
@@ -310,8 +312,11 @@ def wingspipe(args=None):
             my_pipe.attach_tasks(args.tasks_path)
             my_pipe.attach_inputs(args.inputs_path, args.config_file)
         elif args.which == 'run':
-            if not ('WPIPE_NO_PBS_SCHEDULER' in os.environ.keys()):
+            if subprocess.getstatusoutput('which qsub')[0] == 0:
                 pbsconsumer('start')
+            if subprocess.getstatusoutput('which sbatch')[0] == 0:
+                slurmconsumer('start')
+
             # TODO if args.event_id or args.job_id
             my_pipe.run()
 
