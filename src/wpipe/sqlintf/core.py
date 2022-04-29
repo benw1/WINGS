@@ -8,7 +8,7 @@ are available in the main ``wpipe.sqlintf`` namespace - use that instead.
 import os
 import contextlib
 import argparse
-
+from pathlib import Path
 import tenacity as tn
 import sqlalchemy as sa
 from sqlalchemy import orm, exc, pool
@@ -36,15 +36,18 @@ boolean: flag to call with the parser to use the in-memory sql database.
 """
 
 verbose = PARSER.parse_known_args()[0].verbose
-
+my_file = Path("~/server.address")
 if sqlite:
     ENGINE_URL = 'sqlite:///:memory:'
 elif 'WPIPE_ENGINEURL' in os.environ.keys():
     ENGINE_URL = os.environ['WPIPE_ENGINEURL']
 elif PARSER.parse_known_args()[0].test:
     ENGINE_URL = "mysql+pymysql://root:password@localhost:8000/server"
+elif  my_file.is_file():
+     ip = my_file.read()
+     ENGINE_URL = f"mysql://wings:wings2025@{ip}:8020/server"
 else:
-    ENGINE_URL = 'mysql://wings:wings2025@10.150.27.94:8020/server'
+    ENGINE_URL = 'mysql://wings:wings2025@10.64.57.84:8020/server'
     # ENGINE_URL = 'mysql+mysqlconnector://root:password@localhost:8000/server'
 
 POOL_RECYLE = 3600
