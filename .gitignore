@@ -21,3 +21,6 @@ docs/_templates/
 docs/build/
 docs/source/_static
 docs/source/_templates
+
+# Ignore pycharm directory
+.idea
