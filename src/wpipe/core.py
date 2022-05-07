@@ -10,6 +10,7 @@ import contextlib
 import functools
 import os
 import sys
+import pathlib
 import types
 import datetime
 import time
@@ -27,10 +28,10 @@ import pandas as pd
 
 from . import sqlintf as si
 
-__all__ = ['importlib', 'contextlib', 'os', 'sys', 'types', 'datetime',
-           'time', 'subprocess', 'logging', 'glob', 'shutil', 'warnings',
-           'json', 'ast', 'atexit', 'np', 'pd', 'si', 'PARSER', 'as_int',
-           'clean_path', 'split_path', 'remove_path',
+__all__ = ['importlib', 'contextlib', 'os', 'sys', 'pathlib', 'types',
+           'datetime', 'time', 'subprocess', 'logging', 'glob', 'shutil',
+           'warnings', 'json', 'ast', 'atexit', 'np', 'pd', 'si', 'PARSER',
+           'as_int', 'clean_path', 'split_path', 'remove_path',
            'make_yield_session_if_not_cached', 'make_query_rtn_upd',
            'key_wpipe_separator', 'initialize_args',
            'wpipe_to_sqlintf_connection', 'in_session',

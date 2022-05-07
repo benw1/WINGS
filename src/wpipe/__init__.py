@@ -120,6 +120,9 @@ wingspipe
 __version__
     Wpipe version string
 """
+import pathlib
+import sys
+
 from .__metadata__ import *
 from .constants import WPIPE_NO_SCHEDULER
 from .core import *
@@ -146,7 +149,6 @@ __all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
            'DefaultUser', 'DefaultNode', 'wingspipe']
 
 
-
 warnings.filterwarnings("ignore", message=".*Cannot correctly sort tables;.*")
 
 DefaultUser = User()
@@ -162,25 +164,26 @@ DefaultNode = Node()
 Node object: Node object constructed at wpipe importation (see Node doc Notes)
 """
 
-if PARSER.parse_known_args()[0].event_id is not None or PARSER.parse_known_args()[0].job_id is not None:
-    if PARSER.parse_known_args()[0].event_id is not None:
-        ThisEvent = Event()
-        if ThisEvent.fired_jobs[-1].is_active if len(ThisEvent.fired_jobs) else False:
-            print("Event with id %d has a job attempt that is currently running - exiting" % ThisEvent.event_id)
-            sys.exit()
-        else:
-            ThisJob = ThisEvent._generate_new_job(Task(ThisEvent.pipeline, os.path.basename(sys.argv[0])))
-            sys.argv += ['-j', str(ThisJob.job_id)]  # MEH
-    elif PARSER.parse_known_args()[0].job_id is not None:
-        ThisJob = Job()
-        ThisEvent = ThisJob.firing_event
-        if ThisJob.is_active:
-            print("Job with id %d is currently running - exiting" % ThisJob.job_id)
-            sys.exit()
-        elif not ThisJob.not_submitted:
-            ThisJob.reset()
-    ThisJob._starting_todo()
-    atexit.register(ThisJob._ending_todo)
+if pathlib.Path(sys.argv[0]).resolve().name != 'wingspipe':
+    if PARSER.parse_known_args()[0].event_id is not None or PARSER.parse_known_args()[0].job_id is not None:
+        if PARSER.parse_known_args()[0].event_id is not None:
+            ThisEvent = Event()
+            if ThisEvent.fired_jobs[-1].is_active if len(ThisEvent.fired_jobs) else False:
+                print("Event with id %d has a job attempt that is currently running - exiting" % ThisEvent.event_id)
+                sys.exit()
+            else:
+                ThisJob = ThisEvent._generate_new_job(Task(ThisEvent.pipeline, os.path.basename(sys.argv[0])))
+                sys.argv += ['-j', str(ThisJob.job_id)]  # MEH
+        elif PARSER.parse_known_args()[0].job_id is not None:
+            ThisJob = Job()
+            ThisEvent = ThisJob.firing_event
+            if ThisJob.is_active:
+                print("Job with id %d is currently running - exiting" % ThisJob.job_id)
+                sys.exit()
+            elif not ThisJob.not_submitted:
+                ThisJob.reset()
+        ThisJob._starting_todo()
+        atexit.register(ThisJob._ending_todo)
 
 
 # TODO: Delete?
@@ -298,6 +301,8 @@ def wingspipe(args=None):
     parser_run.set_defaults(which='run')
     parser_diagnose = subparsers.add_parser('diagnose', parents=[parent_parser], add_help=False)
     parser_diagnose.set_defaults(which='diagnose')
+    parser_expire = subparsers.add_parser('expire', parents=[parent_parser], add_help=False)
+    parser_expire.set_defaults(which='expire')
     parent_parser_with_yes_flag = si.argparse.ArgumentParser(parents=[parent_parser], add_help=False)
     parent_parser_with_yes_flag.add_argument('--yes', '-y', dest='yes', action='store_true',
                                              help="Don't ask for confirmation")
@@ -311,36 +316,38 @@ def wingspipe(args=None):
     parser_delete.set_defaults(which='delete')
     args = parser.parse_args()
     if hasattr(args, 'which'):
-        my_pipe = Pipeline()
-        command = parser.prog + " " + args.which
-        if args.which == 'init':
-            my_pipe.description = args.description
-            my_pipe.attach_tasks(args.tasks_path)
-            my_pipe.attach_inputs(args.inputs_path, args.config_file)
-        elif args.which == 'run':
-            # if not ('WPIPE_NO_PBS_SCHEDULER' in os.environ.keys()):
-            if not WPIPE_NO_SCHEDULER:
-                consumer = get_consumer_factory()
-                consumer('start')
-            # TODO if args.event_id or args.job_id
-            my_pipe.run()
+        if args.which == 'expire':
+            Job(args.job_id).expire()
+        else:
+            my_pipe = Pipeline()
+            command = parser.prog + " " + args.which
+            if args.which == 'init':
+                my_pipe.description = args.description
+                my_pipe.attach_tasks(args.tasks_path)
+                my_pipe.attach_inputs(args.inputs_path, args.config_file)
+            elif args.which == 'run':
+                if not WPIPE_NO_SCHEDULER:
+                    consumer = get_consumer_factory()
+                    consumer('start')
+                # TODO if args.event_id or args.job_id
+                my_pipe.run()
 
-        elif args.which == 'diagnose':
-            my_pipe.diagnose()
-        elif args.which == 'reset':
-            if True if args.yes \
-                    else input(command + ': confirm reset of pipeline at ' +
-                               my_pipe.pipe_root + '? [y/yes] ') in ['y', 'yes']:
-                my_pipe.reset()
-        elif args.which == 'clean':
-            if True if args.yes \
-                    else input(command + ': confirm clean-up of pipeline at ' +
-                               my_pipe.pipe_root + '? [y/yes] ') in ['y', 'yes']:
-                my_pipe.clean()
-        elif args.which == 'delete':
-            if True if args.yes \
-                    else input(command + ': confirm deletion of pipeline at ' +
-                               my_pipe.pipe_root + '? [y/yes] ') in ['y', 'yes']:
-                my_pipe.delete()  # TODO: my_pipe.delete(force = args.force)
+            elif args.which == 'diagnose':
+                my_pipe.diagnose()
+            elif args.which == 'reset':
+                if True if args.yes \
+                        else input(command + ': confirm reset of pipeline at ' +
+                                   my_pipe.pipe_root + '? [y/yes] ') in ['y', 'yes']:
+                    my_pipe.reset()
+            elif args.which == 'clean':
+                if True if args.yes \
+                        else input(command + ': confirm clean-up of pipeline at ' +
+                                   my_pipe.pipe_root + '? [y/yes] ') in ['y', 'yes']:
+                    my_pipe.clean()
+            elif args.which == 'delete':
+                if True if args.yes \
+                        else input(command + ': confirm deletion of pipeline at ' +
+                                   my_pipe.pipe_root + '? [y/yes] ') in ['y', 'yes']:
+                    my_pipe.delete()  # TODO: my_pipe.delete(force = args.force)
     else:
         parser.print_help()
