@@ -36,7 +36,7 @@ boolean: flag to call with the parser to use the in-memory sql database.
 """
 
 verbose = PARSER.parse_known_args()[0].verbose
-my_file = Path("~/server.address")
+my_file = Path("/usr/lusers/benw1/server.address")
 if sqlite:
     ENGINE_URL = 'sqlite:///:memory:'
 elif 'WPIPE_ENGINEURL' in os.environ.keys():
@@ -44,11 +44,12 @@ elif 'WPIPE_ENGINEURL' in os.environ.keys():
 elif PARSER.parse_known_args()[0].test:
     ENGINE_URL = "mysql+pymysql://root:password@localhost:8000/server"
 elif  my_file.is_file():
-     ip = my_file.read()
-     ENGINE_URL = f"mysql://wings:wings2025@{ip}:8020/server"
-else:
-    ENGINE_URL = 'mysql://wings:wings2025@10.64.57.84:8020/server'
-    # ENGINE_URL = 'mysql+mysqlconnector://root:password@localhost:8000/server'
+     ip1 = my_file.read_text()
+     ip = ip1.strip()
+     ENGINE_URL = 'mysql://wings:wings2025@'+ip+':8020/server'
+#else:
+#    ENGINE_URL = 'mysql://wings:wings2025@10.64.57.84:8020/server'
+#    # ENGINE_URL = 'mysql+mysqlconnector://root:password@localhost:8000/server'
 
 POOL_RECYLE = 3600
 
