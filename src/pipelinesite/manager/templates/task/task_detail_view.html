@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block body %}
+<head>
+    <meta charset="UTF-8">
+
+    <title>Task - {{ task.id }}</title>
+</head>
+
+<div class="container">
+<!-- Build a nested tree for the pipeline -->
+    <div class="row">
+        <div class="col-md-12">
+            <h1>Task Name - {{ task.name }}</h1>
+        </div>
+    </div>
+
+    <hr>
+
+</div>
+
+{% endblock %}

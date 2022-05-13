@@ -1,13 +1,17 @@
-from django.db.models import F, Value, IntegerField, Case, When
+from django.db.models import Value, Case, When
 from django.shortcuts import render
 from django.core.paginator import Paginator
 
 from pipelinesite.models import Jobs
 from pipelinesite.utils import JobStates
+from manager.filters.job_filter import JobFilter
 
 def jobs(request):
 
     # TODO: Add child task.  The current task in job is the parent task.  Code for trying to get the child task
+    # Job is object and task is the script that the job runs
+    # Event deicdes what task should be assinged to jobs
+    # Parent event
     # -> my_job.parent_job.task
     # -> my_event.parent_job.task
 
@@ -20,7 +24,9 @@ def jobs(request):
             default=Value(JobStates.ERROR.value[1])
     )).order_by('state_integer', 'starttime')
 
-    paginator = Paginator(all_jobs, 20)
+    jobs_filter = JobFilter(request.GET, queryset=all_jobs)
+
+    paginator = Paginator(jobs_filter.qs, 20)
 
     page_number = request.GET.get('page')
     if not page_number:
@@ -34,13 +40,18 @@ def jobs(request):
         end_range = page_obj.end_index()
     pagination_range = range(int(page_number), end_range)
 
+    context = {'jobs_page': page_obj,
+               'pagination_range': pagination_range,
+               'total_pages': paginator.num_pages,
+               'jobs_filter': jobs_filter,
+               }
 
-
-    context = {'jobs_page': page_obj, 'pagination_range': pagination_range, 'total_pages': paginator.num_pages}
-    return render(request, 'jobs.html', context)
+    return render(request, 'job/job_list_view.html', context)
 
 def job_single_view(request, pk):
+    #TODO: Tree view of events and parent events
+    # Events page would have jobs that created it and teh job that came from it
     job = Jobs.objects.get(pk=pk)
 
     context = {'job': job}
-    return render(request, 'job_single_view.html', context)
+    return render(request, 'job/job_single_view.html', context)

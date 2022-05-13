@@ -16,17 +16,16 @@
   </button>
   <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
     <div class="navbar-nav">
-      <a class="nav-item nav-link" href="{% url 'manager:pipeline_list'%}">Pipelines</a>
-      <a class="nav-item nav-link" href="{% url 'manager:users'%}">Users</a>
-      <a class="nav-item nav-link" href="{% url 'manager:jobs'%}">Jobs</a>
+      <a class="nav-item nav-link" href="{% url 'manager:pipeline_list' %}">Pipelines</a>
+      <a class="nav-item nav-link" href="{% url 'manager:users' %}">Users</a>
+      <a class="nav-item nav-link" href="{% url 'manager:jobs' %}">Jobs</a>
+      <a class="nav-item nav-link" href="{% url 'manager:tasks' %}">Tasks</a>
+      <a class="nav-item nav-link" href="{% url 'manager:events' %}">Events</a>
     </div>
   </div>
 </nav>
 </div>
 {% block body %}
-<!--<body>-->
-<!--  <script src="{% static 'admin/js/admin/vendor/jquery/jquery.min.js' %}"></script>-->
-<!--  <script src="{% static 'js/boostrap.min.js' %}"></script>-->
-<!--</body>-->
+<!--nothing here-->
 {% endblock %}
 

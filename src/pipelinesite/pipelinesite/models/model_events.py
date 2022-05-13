@@ -17,7 +17,7 @@ class Events(models.Model):
     parent_job = models.ForeignKey('Jobs', models.DO_NOTHING, blank=True, null=True)
 
     def __str__(self):
-        return "<{} ({})>".format(self.name, self.id)
+        return f"<{self.name} ({self.id})>"
 
     class Meta:
         managed = False
