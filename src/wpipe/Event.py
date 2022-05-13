@@ -5,6 +5,7 @@ Contains the Event class definition
 Please note that this module is private. The Event class is
 available in the main ``wpipe`` namespace - use that instead.
 """
+from . import get_consumer_factory
 from .core import os, datetime, subprocess, pd, si
 from .core import make_yield_session_if_not_cached, make_query_rtn_upd
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
@@ -14,6 +15,8 @@ from .proxies import ChildrenProxy
 from .OptOwner import OptOwner
 
 __all__ = ['Event']
+
+from .scheduler.ConsumerFactory import get_send_job_factory
 
 KEYID_ATTR = 'event_id'
 UNIQ_ATTRS = ['parent_job_id', 'name', 'tag']
@@ -433,14 +436,14 @@ class Event(OptOwner):
             if self.parent_job.has_a_node:
                 # if not self.parent_job.node.is_head:  # TODO
                 if self.parent_job.node.name[:1] == 'r':
-                    submission_type = 'pbs'
-            if 'pbs' == submission_type and 'WPIPE_NO_PBS_SCHEDULER' not in os.environ.keys():
-                from .scheduler import pbsconsumer, sendJobToPbs
-                pbsconsumer('start')
-                sendJobToPbs(self._generate_new_job(task))
+                    submission_type = 'scheduler'
+            if 'scheduler' == submission_type and 'WPIPE_NO_SCHEDULER' not in os.environ.keys():
+                consumer = get_consumer_factory()
+                send_job = get_send_job_factory()
+
+                consumer('start')
+                send_job(self._generate_new_job(task))
                 return
-            elif 'hyak' == submission_type:  # TODO and 'WPIPE_NO_SLURM_SCHEDULER' not in os.environ.keys():
-                pass
             else:  # TODO elif submission_type is None:
                 print(task.executable, '-e', str(self.event_id), ''+si.core.verbose*'-v')
                 subprocess.Popen([task.executable, '-e', str(self.event_id)]+si.core.verbose*['-v'],
