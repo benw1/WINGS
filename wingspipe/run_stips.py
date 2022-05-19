@@ -5,8 +5,6 @@ from stips.observation_module import ObservationModule
 import numpy as np
 import wpipe as wp
 
-on_hyak = False
-on_pbs = False
 filtdict = {'R': 'F062',
             'Z': 'F087',
             'Y': 'F106',
@@ -110,7 +108,7 @@ if __name__ == '__main__':
             print(dps)
             dpid = dps.dp_id
             new_event = this_job.child_event('stips_done', tag=dpid,
-                                             options={'target_id': tid, 'dp_id': dpid, 'submission_type': 'pbs',
+                                             options={'target_id': tid, 'dp_id': dpid, 'submission_type': 'scheduler',
                                                       'name': comp_name, 'to_run': total, 'detname': detname})
             this_job.logprint(''.join(["event detname is ", str(detname)]))
             new_event.fire()

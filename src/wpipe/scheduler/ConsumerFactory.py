@@ -1,7 +1,7 @@
 from typing import Callable, Tuple
 import os
 
-from src.wpipe.scheduler.Utils import has_pbs_or_slurm, no_function_returned_related_to_scheduler
+from wpipe.scheduler.Utils import has_pbs_or_slurm, no_function_returned_related_to_scheduler
 from . import pbsconsumer, sendJobToPbs
 from . import slurmconsumer, sendJobToSlurm
 

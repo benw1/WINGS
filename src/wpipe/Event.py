@@ -5,7 +5,7 @@ Contains the Event class definition
 Please note that this module is private. The Event class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from . import get_consumer_factory
+from wpipe.scheduler.ConsumerFactory import get_send_job_factory, get_consumer_factory
 from .core import os, datetime, subprocess, pd, si
 from .core import make_yield_session_if_not_cached, make_query_rtn_upd
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session

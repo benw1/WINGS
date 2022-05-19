@@ -14,9 +14,11 @@ import subprocess
 
 __all__ = ['DEFAULT_NODE_MODEL', 'DEFAULT_WALLTIME', 'SlurmScheduler']
 
+DEFAULT_WALLTIME = '48:00:00'
+DEFAULT_MEMORY = '50G'
 DEFAULT_NODE_MODEL = 'has'
-DEFAULT_WALLTIME = '24:00:00'
 NODE_CORES_DICT = {'bro': 2 * 14, 'has': 2 * 12, 'ivy': 2 * 10, 'san': 2 * 8}
+
 
 
 class SlurmScheduler(BaseScheduler):
@@ -100,7 +102,7 @@ class SlurmScheduler(BaseScheduler):
         for jobdata in self._jobList:
             jobsForJinja.append(
                 {'command': ("export OMP_NUM_THREADS=%d && " % n_cpus if omp_threads else "")
-                            + "source activate %s &&" % jobdata.getCondaEnv()
+                            + "source ~/.bashrc && conda activate %s &&" % jobdata.getCondaEnv()
                             + jobdata.getTaskExecutable()
                             + ' -p ' + str(jobdata.getPipelineId())
                             + ' -u ' + str(jobdata.getPipelineUserName())
@@ -133,9 +135,10 @@ class SlurmScheduler(BaseScheduler):
         slurmDict = {'nnodes': n_nodes,
                    'njobs': n_jobs_per_node,
                    'walltime': self._jobList[0].getWalltime(),
-                   'mem' : memory_per_job,
+                   'mem' : self._jobList[0].getMemory(),
                    'account' : slurm_account,
                    'partition' : slurm_partition,
+                   'jobid' : self._jobList[0].getJobId(),
                    'pipe_root': self._jobList[0].getPipelinePipeRoot(),
                    'executables_list_path': executablesListPath}
 

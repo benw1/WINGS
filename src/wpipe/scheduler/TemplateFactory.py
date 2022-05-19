@@ -39,7 +39,7 @@ parallel --jobs {{pbs.njobs}} --sshloginfile $PBS_NODEFILE --workdir $PWD < {{pb
         templateString = \
             """#!/bin/bash
 ## Job Name
-#SBATCH --job-name=
+#SBATCH --job-name={{slurm.jobid}}
 ## Allocation Definition 
 #SBATCH --account={{slurm.account}}
 #SBATCH --partition={{slurm.partition}}
@@ -51,7 +51,7 @@ parallel --jobs {{pbs.njobs}} --sshloginfile $PBS_NODEFILE --workdir $PWD < {{pb
 ## Memory per node
 #SBATCH --mem={{slurm.mem}}
 ## Specify the working directory for this job
-#SBATCH --chdir={{slurm.workingdir}}
+#SBATCH --chdir={{slurm.pipe_root}}
 module load parallel-20170722 
 cat {{slurm.executables_list_path}} | parallel
 
