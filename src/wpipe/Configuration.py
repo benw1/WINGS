@@ -200,7 +200,18 @@ class Configuration(DPOwner):
                 description = kwargs.get('description', '' if args[1] is None else args[1])
                 # pre-loading dataproducts to avoid extra-querying in the middle
                 confdp = target.input.dataproduct(filename=name + '.conf', group='conf')
-                rawdps = [rawdp for rawdp in target.input.rawdataproducts]
+                rawdps_to_add = kwargs.get('rawdps_to_add', None)
+                if rawdps_to_add is None:
+                    rawdps = [rawdp for rawdp in target.input.rawdataproducts]
+                else:
+                    try:
+                        iter(rawdps_to_add)
+                    except TypeError:
+                        rawdps_to_add = [rawdps_to_add]
+                    from . import DataProduct
+                    rawdps = [target.input.dataproduct(filename=rawdp, group='conf') if isinstance(rawdp, str) else
+                              rawdp if isinstance(rawdp, DataProduct) else
+                              DataProduct(rawdp) for rawdp in rawdps_to_add]
                 # querying the database for existing row or create
                 for session in cls._check_in_cache(kind='args', loc=(target.target_id, name)):
                     for retry in session.retrying_nested():
@@ -227,14 +238,20 @@ class Configuration(DPOwner):
                                     os.mkdir(cls._configuration.logpath)
                                 if not os.path.isdir(cls._configuration.procpath):
                                     os.mkdir(cls._configuration.procpath)
-                                with si.hold_commit():
-                                    confdp.symlink(cls._configuration.confpath, return_dp=False,
-                                                   dpowner=cls._configuration, group='conf')
-                                    for rawdp in rawdps:
-                                        rawdp.symlink(cls._configuration.rawpath, return_dp=False,
-                                                      dpowner=cls._configuration, group='raw')
+                                # with si.hold_commit():
+                                #     confdp.symlink(cls._configuration.confpath, return_dp=False,
+                                #                    dpowner=cls._configuration, group='conf')
+                                #     for rawdp in rawdps:
+                                #         rawdp.symlink(cls._configuration.rawpath, return_dp=False,
+                                #                       dpowner=cls._configuration, group='raw')
                             else:
                                 this_nested.rollback()
+                            with si.hold_commit():
+                                confdp.symlink(cls._configuration.confpath, return_dp=False,
+                                               dpowner=cls._configuration, group='conf')
+                                for rawdp in rawdps:
+                                    rawdp.symlink(cls._configuration.rawpath, return_dp=False,
+                                                  dpowner=cls._configuration, group='raw')
                             retry.retry_state.commit()
         else:
             cls._sqlintf_instance_argument()
