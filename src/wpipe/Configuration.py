@@ -205,7 +205,10 @@ class Configuration(DPOwner):
                     rawdps = [rawdp for rawdp in target.input.rawdataproducts]
                 else:
                     try:
-                        iter(rawdps_to_add)
+                        if isinstance(rawdps_to_add, str):
+                            raise TypeError
+                        else:
+                            iter(rawdps_to_add)
                     except TypeError:
                         rawdps_to_add = [rawdps_to_add]
                     from . import DataProduct
@@ -238,20 +241,19 @@ class Configuration(DPOwner):
                                     os.mkdir(cls._configuration.logpath)
                                 if not os.path.isdir(cls._configuration.procpath):
                                     os.mkdir(cls._configuration.procpath)
-                                # with si.hold_commit():
-                                #     confdp.symlink(cls._configuration.confpath, return_dp=False,
-                                #                    dpowner=cls._configuration, group='conf')
-                                #     for rawdp in rawdps:
-                                #         rawdp.symlink(cls._configuration.rawpath, return_dp=False,
-                                #                       dpowner=cls._configuration, group='raw')
+                                with si.hold_commit():
+                                    confdp.symlink(cls._configuration.confpath, return_dp=False,
+                                                   dpowner=cls._configuration, group='conf')
+                                    for rawdp in rawdps:
+                                        rawdp.symlink(cls._configuration.rawpath, return_dp=False,
+                                                      dpowner=cls._configuration, group='raw')
                             else:
                                 this_nested.rollback()
-                            with si.hold_commit():
-                                confdp.symlink(cls._configuration.confpath, return_dp=False,
-                                               dpowner=cls._configuration, group='conf')
-                                for rawdp in rawdps:
-                                    rawdp.symlink(cls._configuration.rawpath, return_dp=False,
-                                                  dpowner=cls._configuration, group='raw')
+                            if rawdps_to_add is not None:
+                                with si.hold_commit():
+                                    for rawdp in rawdps:
+                                        rawdp.symlink(cls._configuration.rawpath, return_dp=False,
+                                                      dpowner=cls._configuration, group='raw')
                             retry.retry_state.commit()
         else:
             cls._sqlintf_instance_argument()
