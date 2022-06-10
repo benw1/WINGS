@@ -212,7 +212,7 @@ class Configuration(DPOwner):
                     except TypeError:
                         rawdps_to_add = [rawdps_to_add]
                     from . import DataProduct
-                    rawdps = [target.input.dataproduct(filename=rawdp, group='conf') if isinstance(rawdp, str) else
+                    rawdps = [target.input.dataproduct(filename=rawdp, group='raw') if isinstance(rawdp, str) else
                               rawdp if isinstance(rawdp, DataProduct) else
                               DataProduct(rawdp) for rawdp in rawdps_to_add]
                 # querying the database for existing row or create
