@@ -5,6 +5,7 @@ Contains the Job class definition
 Please note that this module is private. The Job class is
 available in the main ``wpipe`` namespace - use that instead.
 """
+from .constants import LOGPRINT_TIMESTAMP
 from .core import sys, logging, datetime, pd, si
 from .core import make_yield_session_if_not_cached, make_query_rtn_upd
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
@@ -602,8 +603,9 @@ class Job(OptOwner):
         """
         if log_text is not None:
             with self._log_dp.open("a") as log:
-                log.write(log_text)
-                log.write('\n')
+                if LOGPRINT_TIMESTAMP:
+                    log.write(f"{datetime.datetime.utcnow().isoformat()}: ")
+                log.write(f"{log_text}\n")
         return self._log_dp
 
     @_in_session()

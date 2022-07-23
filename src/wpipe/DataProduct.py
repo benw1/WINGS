@@ -527,7 +527,7 @@ class DataProduct(OptOwner):
         """
         return self.config.target_id
 
-    def _prep_copy_symlink(self, path, kwargs):
+    def _prep_copy_symlink(self, path, kwargs):  # TODO case if path is base+filename and if path is DP
         path = clean_path(path)
         if os.path.exists(path):
             filename = self.filename
@@ -542,7 +542,6 @@ class DataProduct(OptOwner):
         newkwargs['filename'] = filename
         newkwargs['relativepath'] = path
         return newkwargs
-
     def _copy_symlink(self, path, kwargs, func):
         dpowner = kwargs.pop('dpowner', self.dpowner)
         return_dp = kwargs.pop('return_dp', True)
