@@ -278,6 +278,10 @@ class Job(OptOwner):
         if old_cls_inst is not None:
             cls._inst = old_cls_inst
         return new_cls_inst
+    
+    @classmethod
+    def _return_cached_instances(cls):
+        return [getattr(obj, '_%s' % CLASS_LOW) for obj in cls.__cache__[CLASS_LOW]]
 
     @_in_session()
     def __init__(self, *args, **kwargs):

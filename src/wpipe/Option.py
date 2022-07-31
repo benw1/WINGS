@@ -86,6 +86,10 @@ class Option:
     @classmethod
     def _check_in_cache(cls, kind, loc):
         return _check_in_cache(cls, kind, loc)
+    
+    @classmethod
+    def _return_cached_instances(cls):
+        return [getattr(obj, '_%s' % CLASS_LOW) for obj in cls.__cache__[CLASS_LOW]]
 
     @classmethod
     def _sqlintf_instance_argument(cls):

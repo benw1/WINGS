@@ -30,6 +30,7 @@ COMMIT_FLAG
 commit
     Flush and commit pending changes if COMMIT_FLAG is True
 """
+import itertools
 from .core import contextlib, argparse, tn, sa, orm, exc, PARSER, Engine, Base, Session
 from .User import User
 from .Node import Node
@@ -65,7 +66,14 @@ COMMIT_FLAG = True
 boolean: flag to control the automatic committing.
 """
 
-INSTANCES = []
+# INSTANCES = []
+
+
+def _consolidate_cached_instances():
+    from .. import User, Node, Pipeline, Input, Option, Target, Configuration, Parameter, DataProduct, Task, Mask, Job, Event
+    return list(itertools.chain.from_iterable(
+        [cls._return_cached_instances()
+         for cls in [User, Node, Pipeline, Input, Option, Target, Configuration, Parameter, DataProduct, Task, Mask, Job, Event]]))
 
 
 def deactivate_commit():
@@ -97,13 +105,13 @@ def hold_commit():
 
 class BeginSession:
     def __init__(self, **local_kw):
-        global SESSION, INSTANCES
+        global SESSION  # , INSTANCES
         self.EXISTING_SESSION = SESSION is not None
         if self.EXISTING_SESSION:
             self.SESSION = SESSION
         else:
             SESSION = self.SESSION = Session(**local_kw)
-            self.add_all(INSTANCES)
+            self.add_all(_consolidate_cached_instances())
 
     def __dir__(self):
         return super(BeginSession, self).__dir__() + self.SESSION.__dir__()
@@ -114,9 +122,9 @@ class BeginSession:
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        global SESSION, INSTANCES
+        global SESSION  # , INSTANCES
         if not self.EXISTING_SESSION:
-            INSTANCES = self.identity_map.values()[:]
+            # INSTANCES = self.identity_map.values()[:]
             self.close()
             SESSION = None
             del self.SESSION

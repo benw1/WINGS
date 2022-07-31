@@ -150,6 +150,10 @@ class Event(OptOwner):
             for _session in cls._check_in_cache(kind='keyid',
                                                 loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
                 pass
+    
+    @classmethod
+    def _return_cached_instances(cls):
+        return [getattr(obj, '_%s' % CLASS_LOW) for obj in cls.__cache__[CLASS_LOW]]
 
     def __new__(cls, *args, **kwargs):
         if hasattr(cls, '_inst'):

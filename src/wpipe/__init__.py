@@ -120,9 +120,6 @@ wingspipe
 __version__
     Wpipe version string
 """
-import pathlib
-import sys
-
 from .__metadata__ import *
 from .constants import WPIPE_NO_SCHEDULER
 from .core import *
