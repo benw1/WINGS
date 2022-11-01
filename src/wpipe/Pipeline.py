@@ -348,17 +348,18 @@ class Pipeline(DPOwner):
         """
         str: Name of the pipeline.
         """
-        self._session.refresh(self._pipeline)
-        return _query_return_and_update_cached_row(self, 'name')
+        return self._pipeline.name
+        # self._session.refresh(self._pipeline)
+        # return _query_return_and_update_cached_row(self, 'name')
 
-    @name.setter
-    @_in_session()
-    def name(self, name):
-        self._pipeline.name = name
-        _temp = _query_return_and_update_cached_row(self, 'name')
-        self.update_timestamp()
-        # self._pipeline.timestamp = datetime.datetime.utcnow()
-        # self._session.commit()
+    # @name.setter
+    # @_in_session()
+    # def name(self, name):
+    #     self._pipeline.name = name
+    #     _temp = _query_return_and_update_cached_row(self, 'name')
+    #     self.update_timestamp()
+    #     # self._pipeline.timestamp = datetime.datetime.utcnow()
+    #     # self._session.commit()
 
     @property
     @_in_session()
@@ -374,7 +375,9 @@ class Pipeline(DPOwner):
         """
         str: Path to the pipeline directory.
         """
-        return self._pipeline.pipe_root
+        self._session.refresh(self._pipeline)
+        return _query_return_and_update_cached_row(self, 'pipe_root')
+        # return self._pipeline.pipe_root
 
     @property
     @_in_session()
