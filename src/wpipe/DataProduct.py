@@ -652,6 +652,9 @@ class DataProduct(OptOwner):
         """
         Delete corresponding row from the database.
         """
-        self.remove_data()
+        try:
+            self.remove_data()
+        except TypeError:
+            pass
         super(DataProduct, self).delete()
         self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]

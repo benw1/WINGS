@@ -201,7 +201,7 @@ class Target(OptOwner):
             self._configurations_proxy = ChildrenProxy(self._target, 'configurations', 'Configuration')
         if not hasattr(self, '_optowner'):
             self._optowner = self._target
-        self.configure_target()
+        self.configure_target(rawdps_to_add=kwargs.get('rawdps_to_add', None))
         super(Target, self).__init__(kwargs.get('options', {}))
 
     @_in_session()
@@ -349,14 +349,14 @@ class Target(OptOwner):
         from .Configuration import Configuration
         return Configuration(self, *args, **kwargs)
 
-    def configure_target(self):
+    def configure_target(self, **kwargs):
         """
         Generate configurations for each conf dataproduct owned by parent
         input.
         """
         for confdp in self.input.confdataproducts:
             self.configuration(os.path.splitext(confdp.filename)[0],
-                               parameters=json.load(open(confdp.relativepath+'/'+confdp.filename))[0])
+                               parameters=json.load(open(confdp.relativepath+'/'+confdp.filename))[0], **kwargs)
 
     def remove_data(self):
         """
