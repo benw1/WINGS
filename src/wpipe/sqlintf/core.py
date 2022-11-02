@@ -6,6 +6,7 @@ Please note that this module is private. All functions and objects
 are available in the main ``wpipe.sqlintf`` namespace - use that instead.
 """
 import os
+import typing
 import contextlib
 import argparse
 from pathlib import Path
@@ -75,11 +76,37 @@ sqlalchemy.ext.declarative.api.Base class: Base class to sqlintf classes.
 """
 
 
-def _get_id(self):
+def _base_get_id(self):
     return self._sa_instance_state.key[1][0]
 
 
-setattr(Base, 'get_id', _get_id)
+setattr(Base, 'get_id', _base_get_id)
+
+# adapted from https://stackoverflow.com/a/55749579
+def _base___repr__(self) -> str:
+        kwargs = {key: getattr(self, key) for key in ['id']+self.__UNIQ_ATTRS__}
+        return self._repr(**kwargs)
+
+def _base__repr(self, **fields: typing.Dict[str, typing.Any]) -> str:
+    '''
+    Helper for __repr__
+    '''
+    field_strings = []
+    at_least_one_attached_attribute = False
+    for key, field in fields.items():
+        try:
+            field_strings.append(f'{key}={field!r}')
+        except sa.orm.exc.DetachedInstanceError:
+            field_strings.append(f'{key}=DetachedInstanceError')
+        else:
+            at_least_one_attached_attribute = True
+    if at_least_one_attached_attribute:
+        return f"<{self.__class__.__name__}({', '.join(field_strings)})>"
+    return f"<{self.__class__.__name__} {id(self)}>"
+
+setattr(Base, '__UNIQ_ATTRS__', [])
+setattr(Base, '__repr__', _base___repr__)
+setattr(Base, '_repr', _base__repr)
 
 Session = orm.sessionmaker(bind=Engine)
 """

@@ -18,6 +18,7 @@ class Pipeline(DPOwner):
         DO NOT USE CONSTRUCTOR: constructing a Pipeline object adds a new row
         to the database: USE INSTEAD ITS WPIPE COUNTERPART.
     """
+    __UNIQ_ATTRS__ = ['user_id', 'pipe_root']
     __tablename__ = 'pipelines'
     id = sa.Column(sa.Integer, sa.ForeignKey('dpowners.id'), primary_key=True)
     name = sa.Column(sa.String(256))

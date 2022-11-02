@@ -17,6 +17,7 @@ class Task(Base):
         DO NOT USE CONSTRUCTOR: constructing a Task object adds a new row
         to the database: USE INSTEAD ITS WPIPE COUNTERPART.
     """
+    __UNIQ_ATTRS__ = ['pipeline_id', 'name']
     __tablename__ = 'tasks'
     id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.String(256))

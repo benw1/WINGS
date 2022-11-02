@@ -38,9 +38,8 @@ class ChildrenProxy:  # TODO: Generalize proxy object with the BaseProxy
 
     def __repr__(self):
         self._refresh()
-        return 'Children(' + ', '.join(
-            map(lambda child: self._cls_name + '(' + repr(getattr(child, self._child_attr)) + ')',
-                self.children)) + ')'
+        content = ', '.join(map(repr, self.children))
+        return f"Children({content})"
 
     @in_session('_parent')
     def __len__(self):

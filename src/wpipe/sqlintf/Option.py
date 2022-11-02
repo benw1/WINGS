@@ -17,6 +17,7 @@ class Option(Base):
         DO NOT USE CONSTRUCTOR: constructing a Option object adds a new row
         to the database: USE INSTEAD ITS WPIPE COUNTERPART.
     """
+    __UNIQ_ATTRS__ = ['optowner_id', 'name']
     __tablename__ = 'options'
     id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.String(256))

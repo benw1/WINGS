@@ -17,6 +17,7 @@ class Parameter(Base):
         DO NOT USE CONSTRUCTOR: constructing a Parameter object adds a new row
         to the database: USE INSTEAD ITS WPIPE COUNTERPART.
     """
+    __UNIQ_ATTRS__ = ['config_id', 'name']
     __tablename__ = 'parameters'
     id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.String(256))

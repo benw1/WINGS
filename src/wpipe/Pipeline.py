@@ -15,9 +15,10 @@ from .DPOwner import DPOwner
 
 __all__ = ['Pipeline']
 
+CLASS_NAME = split_path(__file__)[1]
 KEYID_ATTR = 'pipeline_id'
-UNIQ_ATTRS = ['user_id', 'pipe_root']
-CLASS_LOW = split_path(__file__)[1].lower()
+UNIQ_ATTRS = getattr(si, CLASS_NAME).__UNIQ_ATTRS__
+CLASS_LOW = CLASS_NAME.lower()
 
 
 def _in_session(**local_kw):
