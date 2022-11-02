@@ -154,8 +154,11 @@ class User:
             self._pipelines_proxy = ChildrenProxy(self._user, 'pipelines', 'Pipeline', child_attr='pipe_root')
         self.update_timestamp()
 
-    def __repr__(self):  # TODO
-        return super(User, self).__repr__()
+    @_in_session()
+    def __repr__(self):
+        cls = self.__class__.__name__
+        description = ', '.join([(f"{prop}={getattr(self, prop)}") for prop in [KEYID_ATTR]+UNIQ_ATTRS])
+        return f'{cls}({description})'
 
     @classmethod
     def select(cls, *args, **kwargs):

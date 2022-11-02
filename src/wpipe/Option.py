@@ -155,6 +155,12 @@ class Option:
         pass
         # self.update_timestamp()
 
+    @_in_session()
+    def __repr__(self):
+        cls = self.__class__.__name__
+        description = ', '.join([(f"{prop}={getattr(self, prop)}") for prop in [KEYID_ATTR]+UNIQ_ATTRS])
+        return f'{cls}({description})'
+
     @classmethod
     def select(cls, *args, **kwargs):
         """

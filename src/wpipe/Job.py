@@ -300,6 +300,12 @@ class Job(OptOwner):
             self._optowner = self._job
         super(Job, self).__init__(kwargs.get('options', {}))
 
+    @_in_session()
+    def __repr__(self):
+        cls = self.__class__.__name__
+        description = ', '.join([(f"{prop}={getattr(self, prop)}") for prop in [KEYID_ATTR]+UNIQ_ATTRS])
+        return f'{cls}({description})'
+
     @classmethod
     def select(cls, *args, **kwargs):
         """

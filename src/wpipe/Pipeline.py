@@ -313,6 +313,12 @@ class Pipeline(DPOwner):
             self._dummy_job = self.dummy_task.job()
         super(Pipeline, self).__init__()
 
+    @_in_session()
+    def __repr__(self):
+        cls = self.__class__.__name__
+        description = ', '.join([(f"{prop}={getattr(self, prop)}") for prop in [KEYID_ATTR]+UNIQ_ATTRS])
+        return f'{cls}({description})'
+
     @classmethod
     def select(cls, *args, **kwargs):
         """
