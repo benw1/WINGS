@@ -60,13 +60,20 @@ POOL_RECYLE = 3600
 
 def make_engine():
     url_parse_results = urllib.parse.urlparse(ENGINE_URL)
-    if Path(url_parse_results.hostname).is_file():
-        ip = Path(url_parse_results.hostname).read_text().strip()
-        engine_url = url_parse_results._replace(
-                            netloc=url_parse_results.netloc.replace(
-                                f"@{url_parse_results.hostname}:", f"@{ip}:")).get_url()
-    else:
-        engine_url = ENGINE_URL
+    engine_url = ENGINE_URL
+    if url_parse_results.hostname is not None:
+        if Path(url_parse_results.hostname).is_file():
+            ip = Path(url_parse_results.hostname).read_text().strip()
+            engine_url = url_parse_results._replace(
+                                netloc=url_parse_results.netloc.replace(
+                                    f"{url_parse_results.hostname}", f"{ip}")).geturl()
+    elif url_parse_results.path is not None:
+        potential_file = url_parse_results.path.split(':')[0]
+        if Path(potential_file).is_file():
+            ip = Path(potential_file).read_text().strip()
+            engine_url = url_parse_results._replace(
+                                path=url_parse_results.path.replace(
+                                    f"{potential_file}", f"{ip}")).geturl().replace('@/', '@')
     return sa.create_engine(engine_url, echo=verbose, pool_recycle=POOL_RECYLE)
 
 Engine = make_engine()
