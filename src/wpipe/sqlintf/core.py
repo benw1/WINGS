@@ -6,6 +6,7 @@ Please note that this module is private. All functions and objects
 are available in the main ``wpipe.sqlintf`` namespace - use that instead.
 """
 import os
+import urllib.parse
 import typing
 import contextlib
 import argparse
@@ -37,24 +38,38 @@ boolean: flag to call with the parser to use the in-memory sql database.
 """
 
 verbose = PARSER.parse_known_args()[0].verbose
-my_file = Path("/usr/lusers/benw1/server.address")
+# my_file = Path("/usr/lusers/benw1/server.address")
 if sqlite:
     ENGINE_URL = 'sqlite:///:memory:'
 elif 'WPIPE_ENGINEURL' in os.environ.keys():
     ENGINE_URL = os.environ['WPIPE_ENGINEURL']
 elif PARSER.parse_known_args()[0].test:
     ENGINE_URL = "mysql+pymysql://root:password@localhost:8000/server"
-elif  my_file.is_file():
-     ip1 = my_file.read_text()
-     ip = ip1.strip()
-     ENGINE_URL = 'mysql://wings:wings2025@'+ip+':8020/server'
+# elif my_file.is_file():
+#     ip1 = my_file.read_text()
+#     ip = ip1.strip()
+#     ENGINE_URL = 'mysql://wings:wings2025@'+ip+':8020/server'
+else:
+    raise ImportError("You must provide an engine URL via the environment variable WPIPE_ENGINEURL")
 #else:
 #    ENGINE_URL = 'mysql://wings:wings2025@10.64.57.84:8020/server'
 #    # ENGINE_URL = 'mysql+mysqlconnector://root:password@localhost:8000/server'
 
+
 POOL_RECYLE = 3600
 
-Engine = sa.create_engine(ENGINE_URL, echo=verbose, pool_recycle=POOL_RECYLE)
+def make_engine():
+    url_parse_results = urllib.parse.urlparse(ENGINE_URL)
+    if Path(url_parse_results.hostname).is_file():
+        ip = Path(url_parse_results.hostname).read_text().strip()
+        engine_url = url_parse_results._replace(
+                            netloc=url_parse_results.netloc.replace(
+                                f"@{url_parse_results.hostname}:", f"@{ip}:")).get_url()
+    else:
+        engine_url = ENGINE_URL
+    return sa.create_engine(engine_url, echo=verbose, pool_recycle=POOL_RECYLE)
+
+Engine = make_engine()
 """
 sqlalchemy.engine.base.Engine object: handles the connection to the database.
 """
@@ -68,7 +83,7 @@ if not sqlite:
     Engine.execute("USE wpipe")
     ENGINE_URL = ENGINE_URL.replace('server', 'wpipe')
     Engine.dispose()
-    Engine = sa.create_engine(ENGINE_URL, echo=verbose, pool_recycle=POOL_RECYLE)
+    Engine = make_engine()
 
 Base = declarative_base()
 """
