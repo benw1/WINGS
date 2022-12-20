@@ -136,8 +136,8 @@ from .Task import Task
 from .Mask import Mask
 from .Job import Job
 from .Event import Event
-from .scheduler import PbsConsumer
-from .scheduler import SlurmConsumer
+# from .scheduler import PbsConsumer, SlurmConsumer
+from .scheduler import BaseConsumer
 from .scheduler.ConsumerFactory import get_consumer_factory
 
 __all__ = ['__version__', 'PARSER', 'User', 'Node', 'Pipeline', 'Input',
@@ -153,8 +153,9 @@ DefaultUser = User()
 User object: User object constructed at wpipe importation (see User doc Notes)
 """
 
-PbsConsumer.DEFAULT_PORT = PbsConsumer.BASE_PORT + DefaultUser.user_id
-SlurmConsumer.DEFAULT_PORT = SlurmConsumer.BASE_PORT + DefaultUser.user_id
+BaseConsumer.DEFAULT_PORT = BaseConsumer.BASE_PORT + DefaultUser.user_id
+# PbsConsumer.DEFAULT_PORT = PbsConsumer.BASE_PORT + DefaultUser.user_id
+# SlurmConsumer.DEFAULT_PORT = SlurmConsumer.BASE_PORT + DefaultUser.user_id
 
 DefaultNode = Node()
 """
@@ -276,9 +277,7 @@ def wingspipe(args=None):
     """
     if args is not None:
         sys.argv += args  # MEH
-    # _temp = PbsConsumer.DEFAULT_PORT
     importlib.reload(sys.modules[__name__])
-    # PbsConsumer.DEFAULT_PORT = _temp
     parent_parser = si.argparse.ArgumentParser(parents=[PARSER], add_help=False)
     parser = si.argparse.ArgumentParser(prog='wingspipe', parents=[si.PARSER], add_help=False)
     subparsers = parser.add_subparsers()

@@ -15,28 +15,32 @@ Utilities
 pbsconsumer
     TODO
 
+slurmconsumer
+    TODO
+
 JobData
     TODO
 
-checkPbsConnection
+checkConsumerConnection
     TODO
 
-sendJobToPbs
+sendJobToConsumer
     TODO
 """
 import os
 import subprocess
 
-# from .PbsScheduler import PbsScheduler
-from .PbsConsumer import checkPbsConnection, sendJobToPbs
-from .SlurmConsumer import checkSlurmConnection, sendJobToSlurm
+# from .PbsConsumer import checkPbsConnection, sendJobToPbs
+# from .SlurmConsumer import checkSlurmConnection, sendJobToSlurm
+from .BaseConsumer import checkConsumerConnection, sendJobToConsumer
 from .JobData import JobData
 
-__all__ = ['pbsconsumer', 'JobData', 'checkPbsConnection', 'sendJobToPbs', 'slurmconsumer', 'JobData', 'checkSlurmConnection', 'sendJobToSlurm']
+# __all__ = ['pbsconsumer', 'checkPbsConnection', 'sendJobToPbs', 'slurmconsumer', 'checkSlurmConnection', 'sendJobToSlurm', 'checkConsumerConnection', 'sendJobToConsumer', 'JobData']
+__all__ = ['pbsconsumer', 'slurmconsumer', 'checkConsumerConnection', 'sendJobToConsumer', 'JobData']
 
 
 def pbsconsumer(which):
-    connection = checkPbsConnection()
+    connection = checkConsumerConnection()
     if which == 'check':
         return print(connection)
     elif which == 'start':
@@ -48,7 +52,7 @@ def pbsconsumer(which):
             elif not os.path.isdir(homedir):
                 raise FileExistsError("%s is not a directory" % homedir)
             subprocess.Popen(["nohup", "python", "-m", "wpipe.scheduler.PbsConsumer"], cwd=homedir)
-            while checkPbsConnection() != 0:
+            while checkConsumerConnection() != 0:
                 pass
         else:
             print("PbsConsumer is already running ...")
@@ -56,7 +60,7 @@ def pbsconsumer(which):
         if connection == 0:
             if which == 'stop':
                 print("Shutting down PbsConsumer ...")
-                sendJobToPbs('poisonpill')
+                sendJobToConsumer('poisonpill')
             elif which == 'log':
                 print("Printing current PbsConsumer log ...")
                 # TODO
@@ -64,7 +68,7 @@ def pbsconsumer(which):
             print("No server found, nothing to do ...")
 
 def slurmconsumer(which):
-    connection = checkSlurmConnection()
+    connection = checkConsumerConnection()
     if which == 'check':
         return print(connection)
     elif which == 'start':
@@ -76,7 +80,7 @@ def slurmconsumer(which):
             elif not os.path.isdir(homedir):
                 raise FileExistsError("%s is not a directory" % homedir)
             subprocess.Popen(["nohup", "python", "-m", "wpipe.scheduler.SlurmConsumer"], cwd=homedir)
-            while checkSlurmConnection() != 0:
+            while checkConsumerConnection() != 0:
                 pass
         else:
             print("SlurmConsumer is already running ...")
@@ -84,7 +88,7 @@ def slurmconsumer(which):
         if connection == 0:
             if which == 'stop':
                 print("Shutting down SlurmConsumer ...")
-                sendJobToSlurm('poisonpill')
+                sendJobToConsumer('poisonpill')
             elif which == 'log':
                 print("Printing current SlurmConsumer log ...")
                 # TODO
