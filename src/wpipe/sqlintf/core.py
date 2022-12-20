@@ -89,7 +89,6 @@ if not sqlite:
     Engine.execute("USE wpipe")
     url_parse_results = urllib.parse.urlparse(ENGINE_URL)
     ENGINE_URL = url_parse_results._replace(path=url_parse_results.path.replace('server', 'wpipe')).geturl()
-    # ENGINE_URL = ENGINE_URL.replace('server', 'wpipe')
     Engine.dispose()
     Engine = make_engine()
 
