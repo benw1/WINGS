@@ -61,19 +61,18 @@ POOL_RECYLE = 3600
 def make_engine():
     url_parse_results = urllib.parse.urlparse(ENGINE_URL)
     engine_url = ENGINE_URL
-    if url_parse_results.hostname is not None:
-        if Path(url_parse_results.hostname).is_file():
-            ip = Path(url_parse_results.hostname).read_text().strip()
-            engine_url = url_parse_results._replace(
-                                netloc=url_parse_results.netloc.replace(
-                                    f"{url_parse_results.hostname}", f"{ip}")).geturl()
-    elif url_parse_results.path is not None:
-        potential_file = url_parse_results.path.split(':')[0]
-        if Path(potential_file).is_file():
-            ip = Path(potential_file).read_text().strip()
-            engine_url = url_parse_results._replace(
-                                path=url_parse_results.path.replace(
-                                    f"{potential_file}", f"{ip}")).geturl().replace('@/', '@')
+    hostname = url_parse_results.hostname
+    if hostname is not None:
+        hostname = hostname.replace('.','/')
+        while '/' in hostname:
+            if Path(hostname).is_file():
+                ip = Path(hostname).read_text().strip()
+                engine_url = url_parse_results._replace(
+                                    netloc=url_parse_results.netloc.replace(
+                                        f"@{url_parse_results.hostname}", f"@{ip}")).geturl()
+                hostname = ''
+            else:
+                hostname = '.'.join(hostname.rsplit('/', 1))
     return sa.create_engine(engine_url, echo=verbose, pool_recycle=POOL_RECYLE)
 
 Engine = make_engine()
@@ -88,7 +87,9 @@ sqlalchemy.engine.base.Engine object: handles the connection to the database.
 if not sqlite:
     Engine.execute("CREATE DATABASE IF NOT EXISTS wpipe")
     Engine.execute("USE wpipe")
-    ENGINE_URL = ENGINE_URL.replace('server', 'wpipe')
+    url_parse_results = urllib.parse.urlparse(ENGINE_URL)
+    ENGINE_URL = url_parse_results._replace(path=url_parse_results.path.replace('server', 'wpipe')).geturl()
+    # ENGINE_URL = ENGINE_URL.replace('server', 'wpipe')
     Engine.dispose()
     Engine = make_engine()
 
