@@ -38,17 +38,12 @@ boolean: flag to call with the parser to use the in-memory sql database.
 """
 
 verbose = PARSER.parse_known_args()[0].verbose
-# my_file = Path("/usr/lusers/benw1/server.address")
 if sqlite:
     ENGINE_URL = 'sqlite:///:memory:'
 elif 'WPIPE_ENGINEURL' in os.environ.keys():
     ENGINE_URL = os.environ['WPIPE_ENGINEURL']
 elif PARSER.parse_known_args()[0].test:
     ENGINE_URL = "mysql+pymysql://root:password@localhost:8000/server"
-# elif my_file.is_file():
-#     ip1 = my_file.read_text()
-#     ip = ip1.strip()
-#     ENGINE_URL = 'mysql://wings:wings2025@'+ip+':8020/server'
 else:
     raise ImportError("You must provide an engine URL via the environment variable WPIPE_ENGINEURL")
 #else:
