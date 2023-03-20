@@ -191,6 +191,6 @@ if __name__ == '__main__':
     paramdp = write_dolphot_pars(this_target, this_config, this_job, detname)
     dpid = int(paramdp.dp_id)
     this_job.logprint(''.join(["Parameter file DPID ", str(dpid), "\n"]))
-    newevent = this_job.child_event('parameters_written', tag=dpid, options={'target_id': tid, 'dp_id': dpid, 'detname': detname,'submission_type': 'scheduler'})
+    newevent = this_job.child_event('parameters_written', tag=dpid, options={'target_id': tid, 'dp_id': dpid, 'detname': detname,'submission_type': 'pbs'})
     newevent.fire()
     this_job.logprint('parameters_written\n')

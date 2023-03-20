@@ -199,7 +199,7 @@ def process_match_catalog(my_job_id, my_dp_id):
         dpid = _dp.dp_id
         new_event = my_job.child_event('new_stips_catalog', tag=filtname,
                                        options={'dp_id': dpid, 'to_run': total, 'name': comp_name,
-                                                'submission_type' : 'scheduler'})
+                                                'submission_type' : 'pbs'})
         my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
         new_event.fire()
         i += 1
@@ -399,13 +399,13 @@ def link_stips_catalogs(my_config):
                     dec_dither = dither_size * (int(j))
                     eventtag = filtname+'_ra:'+str(k)+'/'+str(ra_dithers)+'_dec:'+str(j)+'/'+str(dec_dithers)
                     my_event = my_job.child_event('new_stips_catalog', tag=eventtag,
-                                                  options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'scheduler', 'ra_dither': ra_dither, 'dec_dither': dec_dither})
+                                                  options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'pbs', 'ra_dither': ra_dither, 'dec_dither': dec_dither})
                     my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
                     my_event.fire()
 
         except KeyError:
             my_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                          options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'scheduler'})
+                                          options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'pbs'})
             my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
             my_event.fire()
 
@@ -449,7 +449,7 @@ if __name__ == '__main__':
                 for i in range(ndetect):
                     dpid = dp_id
                     new_event = my_job.child_event('split_catalog', tag=i+1,
-                                       options={'dp_id': dpid,'submission_type':'scheduler'})
+                                       options={'dp_id': dpid,'submission_type':'pbs'})
                     my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  split_catalog"]))
                     new_event.fire()
         elif 'split' in event.name:

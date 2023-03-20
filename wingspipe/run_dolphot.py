@@ -102,7 +102,7 @@ if __name__ == '__main__':
     outfile = detname + '.phot'
     _dp = my_config.dataproduct(filename=outfile, relativepath=my_config.procpath, group='proc', subtype='photfile')
     dpid = _dp.dp_id
-    new_event = this_job.child_event('dolphot_done', tag=dpid, options={'dp_id': dpid,'submission_type':'scheduler'})
+    new_event = this_job.child_event('dolphot_done', tag=dpid, options={'dp_id': dpid,'submission_type':'pbs'})
     print("Firing dolphot_done event")
     this_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  dolphot_done"]))
     new_event.fire()
