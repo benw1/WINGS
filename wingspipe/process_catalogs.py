@@ -7,7 +7,7 @@ import pandas as pd
 import wpipe as wp
 import numpy as np
 if __name__ == '__main__':
-    from wingtips import WingTips as wtips #gives error
+    from wingtips import WingTips as wtips
 else:
     from wpipe.wingtips import WingTips as wtips
 
@@ -98,8 +98,9 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
                                         filtername=filtname, subtype='stips_input_catalog')
             dpid = _dp.dp_id
             new_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                           options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'submission_type' :
-                                                    'scheduler','ra_dither': 0.0, 'dec_dither': 0.0, 'detname': detname})
+                                           options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 
+                                                    'submission_type' : 'scheduler', 'ra_dither': 0.0, 'dec_dither': 0.0,
+                                                    'detname': detname})
             my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
             my_job.logprint(''.join(["event detname is ", str(detname)]))
             new_event.fire()
@@ -109,64 +110,64 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
 def read_fixed(filepath, my_config, my_job, racent, deccent):
     #data = pd.read_csv(filepath)
     #Fix line above to work for fits files
-    datafile = fits.open(filepath)
+    with fits.open(filepath) as datafile:
         #datafile[1].header['TTYPE1']
-    #data.columns = map(str.upper, data.columns)
-    nstars = len(datafile.data['ra'])
-    print(datafile.data.columns,"COLS")
-    my_params = my_config.parameters
-    #area = float(my_params["area"])
-    background = my_params["background_dir"]
-    #tot_dens = np.float(nstars) / area
-    #print("MAX TOTAL DENSITY = ", tot_dens)
-    filtsinm = []
-    allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
-    magni = np.arange(len(data))
-    for filt in allfilts:
+        #data.columns = map(str.upper, data.columns)
+        nstars = len(datafile.data['ra'])
+        print(datafile.data.columns,"COLS")
+        my_params = my_config.parameters
+        #area = float(my_params["area"])
+        background = my_params["background_dir"]
+        #tot_dens = np.float(nstars) / area
+        #print("MAX TOTAL DENSITY = ", tot_dens)
+        filtsinm = []
+        allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
+        magni = np.arange(len(data))
+        for filt in allfilts:
+            try:
+                test = datafile.data[filt]
+                filtsinm = np.append(filtsinm, filt)
+                magni = np.vstack((magni, test))
+            except KeyError:
+                print("NO ", filt, " data found")
+        print("FILTERS: ", filtsinm)
+        h = datafile.data['F158']
+        htot_keep = (h > 23.0) & (h < 24.0)
+        hkeep = h[htot_keep]
+        htot = len(hkeep)
+        #hden = np.float(htot) / area
+        del h
+        #my_job.logprint(''.join(["H(23-24) DENSITY = ", str(hden)]))
+        stips_in = []
+        ra = datafile.data['ra']
+        dec = datafile.data['dec']
+        my_job.logprint(''.join(
+            ["MIXMAX COO: ", str(np.min(ra)), " ", str(np.max(ra)), " ", str(np.min(dec)), " ", str(np.max(dec)), "\n"]))
+        if racent == 0.0:
+            racent = float(my_params['racent'])
+            deccent = float(my_params['deccent'])
+        if (racent < 0):
+            racent = (np.min(ra)+np.max(ra))/2.0
+            deccent = (np.min(dec)+np.max(dec))/2.0
+            my_params['racent'] = racent
+            my_params['deccent'] = deccent 
         try:
-            test = datafile.data[filt]
-            filtsinm = np.append(filtsinm, filt)
-            magni = np.vstack((magni, test))
-        except KeyError:
-            print("NO ", filt, " data found")
-    print("FILTERS: ", filtsinm)
-    h = datafile.data['F158']
-    htot_keep = (h > 23.0) & (h < 24.0)
-    hkeep = h[htot_keep] #should this be making a new column -- it would need ""
-    htot = len(hkeep)
-    #hden = np.float(htot) / area
-    del h
-    #my_job.logprint(''.join(["H(23-24) DENSITY = ", str(hden)]))
-    stips_in = []
-    ra = datafile.data['ra']
-    dec = datafile.data['dec']
-    my_job.logprint(''.join(
-        ["MIXMAX COO: ", str(np.min(ra)), " ", str(np.max(ra)), " ", str(np.min(dec)), " ", str(np.max(dec)), "\n"]))
-    if racent == 0.0:
-        racent = float(my_params['racent'])
-        deccent = float(my_params['deccent'])
-    if (racent < 0):
-        racent = (np.min(ra)+np.max(ra))/2.0
-        deccent = (np.min(dec)+np.max(dec))/2.0
-        my_params['racent'] = racent
-        my_params['deccent'] = deccent 
-    try:
-        starsonly = int(my_params['starsonly'])
-    except:
-        starsonly = 0
-    magni = magni[1:]
-    magni = magni.T
-    filename = filepath.split('/')[-1]
-    file1 = filename.split('.')
-    file2 = '.'.join(file1[0:len(file1) - 1])
-    #file3 = my_config.procpath + '/' + file2 + str(np.around(hden, decimals=5)) + '.' + file1[-1]
-    file3 = my_config.procpath + '/' + file2 + '.' + file1[-1]
-    galradec = getgalradec(file3, ra * 0.0 + racent, dec * 0.0 + deccent, magni, background, my_job)
-    stips_lists, filters = write_stips(file3, ra, dec, magni, background,
-                                       galradec, racent, deccent, starsonly, filtsinm, my_job)
-    del magni
-    gc.collect()
-    stips_in = np.append(stips_in, stips_lists)
+            starsonly = int(my_params['starsonly'])
+        except:
+            starsonly = 0
+        magni = magni[1:]
+        magni = magni.T
+        filename = filepath.split('/')[-1]
+        file1 = filename.split('.')
+        file2 = '.'.join(file1[0:len(file1) - 1])
+        #file3 = my_config.procpath + '/' + file2 + str(np.around(hden, decimals=5)) + '.' + file1[-1]
+        file3 = my_config.procpath + '/' + file2 + '.' + file1[-1]
+        galradec = getgalradec(file3, ra * 0.0 + racent, dec * 0.0 + deccent, magni, background, my_job)
+        stips_lists, filters = write_stips(file3, ra, dec, magni, background,
+                                           galradec, racent, deccent, starsonly, filtsinm, my_job)
+        del magni
+        gc.collect()
+        stips_in = np.append(stips_in, stips_lists)
     return stips_in, filters
 
 
@@ -197,8 +198,8 @@ def process_match_catalog(my_job_id, my_dp_id):
                                     filtername=filtname, subtype='stips_input_catalog')
         dpid = _dp.dp_id
         new_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                       options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type' : 
-                                                'scheduler'})
+                                       options={'dp_id': dpid, 'to_run': total, 'name': comp_name,
+                                                'submission_type' : 'scheduler'})
         my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
         new_event.fire()
         i += 1
@@ -210,7 +211,7 @@ def read_match(filepath, cols, my_config, my_job):
     np.random.shuffle(data)
     nstars = len(data[:, 0])
     my_params = my_config.parameters
-    area = float(my_params["area"])
+    #area = float(my_params["area"])
     imagesize = float(my_params["imagesize"])
     background = my_params["background_dir"]
     #tot_dens = np.float(nstars) / area
@@ -240,7 +241,7 @@ def read_match(filepath, cols, my_config, my_job):
     htot_keep = (h > 23.0) & (h < 24.0)
     hkeep = h[htot_keep]
     htot = len(hkeep)
-    hden = np.float(htot) / area
+    #hden = np.float(htot) / area
     del h
     my_job.logprint(''.join(["H(23-24) DENSITY = ", str(hden)]))
     stips_in = []
@@ -398,16 +399,13 @@ def link_stips_catalogs(my_config):
                     dec_dither = dither_size * (int(j))
                     eventtag = filtname+'_ra:'+str(k)+'/'+str(ra_dithers)+'_dec:'+str(j)+'/'+str(dec_dithers)
                     my_event = my_job.child_event('new_stips_catalog', tag=eventtag,
-                                                  options={'dp_id': dpid, 'to_run': total, 'name': 
-                                                           comp_name,'submission_type':'scheduler', 'ra_dither': ra_dither, 
-                                                           'dec_dither': dec_dither})
+                                                  options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'scheduler', 'ra_dither': ra_dither, 'dec_dither': dec_dither})
                     my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
                     my_event.fire()
 
         except KeyError:
             my_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                          options={'dp_id': dpid, 'to_run': total, 'name': 
-                                                   comp_name,'submission_type':'scheduler'})
+                                          options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'scheduler'})
             my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
             my_event.fire()
 

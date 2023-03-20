@@ -19,7 +19,7 @@ import numpy as np
 from astropy import wcs
 from astropy.io import fits, ascii
 from astropy.table import Table
-import dask.dataframe as dd 
+import dask.dataframe as dd
 
 import wpipe as wp
 
@@ -211,8 +211,8 @@ class WingTips:
         else:
             raise ValueError('Provide valid coordinate or center')
         #
-        if (len(Type) == 0) | (Type == 'point') | (Type == 'sersic'): #changed is for type to ==
-            if (len(Type) == 0) | (Type == 'point'):
+        if (len(Type) == 0) | (Type is 'point') | (Type is 'sersic'):
+            if (len(Type) == 0) | (Type is 'point'):
                 Type = np.repeat(np.array(['point']), len(flux))
                 _ones = np.ones_like(flux)
                 n, re, phi, ratio = _ones, _ones, _ones, _ones
@@ -339,7 +339,7 @@ class WingTips:
     @staticmethod
     def random_radec(n=10, center=[0, 0], shape=(4096, 4096), imfile=''):
         _xy = np.random.rand(n, 2) * shape
-        if imfile != '': #changed is not to !=
+        if imfile is not '':
             _w = WingTips.read_wcs(imfile)
         else:
             _w = WingTips.create_wcs(center)
