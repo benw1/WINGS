@@ -8,6 +8,7 @@ import pandas as pd
 import wpipe as wp
 import numpy as np
 import dask.dataframe as dd
+from astropy.io import fits
 
 if __name__ == '__main__':
     from wingtips import WingTips as wtips
@@ -70,10 +71,12 @@ def split_catalog(job_id, dp_id, detid):
         declim2 = detdeccent + 0.1
         # my_data = pd.read_csv(cat)
         my_data = dd.read_csv(cat)
+        #may need to change to my_datafile = fits.open(cat) and add line my_data=my_datafile[1]
         print(my_data.ra, my_data.dec, ralim1, ralim2, declim1, declim2)
         keep = (my_data.ra > ralim1) & (my_data.ra < ralim2) & (my_data.dec > declim1) & (my_data.dec < declim2)
         # my_data[keep].to_csv(outfile, index=False)
         my_data[keep].to_csv(outfile, index=False, single_file=True)
+        #do we want this to be '.to_csv' or should it be converting to a fits file?
         _dp = my_config.dataproduct(filename=filename, relativepath=my_config.procpath, group='proc',
                                     subtype='split_catalog')
         checksize = len(my_data[keep])
@@ -99,10 +102,10 @@ def split_catalog(job_id, dp_id, detid):
             
 
 def read_fixed(filepath, my_config, my_job, racent, deccent):
-    data = pd.read_csv(filepath)
+    datafile = fits.open(filepath)
     # data.columns = map(str.upper, data.columns)
-    nstars = len(data['ra'])
-    print(data.columns, "COLS")
+    nstars = len(datafile[1].data['ra'])
+    print(datafile[1].data.columns, "COLS")
     my_params = my_config.parameters
     # area = float(my_params["area"])
     background = my_params["background_dir"]
@@ -110,16 +113,16 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     # print("MAX TOTAL DENSITY = ", tot_dens)
     filtsinm = []
     allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
-    magni = np.arange(len(data))
+    magni = np.arange(len(datafile.data))
     for filt in allfilts:
         try:
-            test = data[filt]
+            test = datafile.data[filt]
             filtsinm = np.append(filtsinm, filt)
             magni = np.vstack((magni, test))
         except KeyError:
             print("NO ", filt, " data found")
     print("FILTERS: ", filtsinm)
-    h = data['F158']
+    h = datafile.data['F158']
     htot_keep = (h > 23.0) & (h < 24.0)
     hkeep = h[htot_keep]
     htot = len(hkeep)
@@ -127,8 +130,8 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     del h
     # my_job.logprint(''.join(["H(23-24) DENSITY = ", str(hden)]))
     stips_in = []
-    ra = data['ra']
-    dec = data['dec']
+    ra = datafile.data['ra']
+    dec = datafile.data['dec']
     my_job.logprint(''.join(
         ["MIXMAX COO: ", str(np.min(ra)), " ", str(np.max(ra)), " ", str(np.min(dec)), " ", str(np.max(dec)), "\n"]))
     # racent = float(my_params['racent'])

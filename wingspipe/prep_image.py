@@ -186,7 +186,7 @@ if __name__ == '__main__':
                     detname = this_target.name
                 print(detname)
          
-                new_event = this_job.child_event('images_prepped', tag=detname, options={'target_id': tid,'detname': detname,'submission_type': 'pbs'})
+                new_event = this_job.child_event('images_prepped', tag=detname, options={'target_id': tid,'detname': detname,'submission_type': 'scheduler'})
                 this_job.logprint('about to fire')
                 new_event.fire()
                 this_job.logprint('fired')
@@ -199,7 +199,7 @@ if __name__ == '__main__':
             except:
                 detname = this_target.name
                 my_job.logprint(''.join(["FAILED TEST event detname is ", str(detname)]))
-            new_event = this_job.child_event('images_prepped', tag=detname, options={'target_id': tid,'detname': detname,'submission_type': 'pbs'})
+            new_event = this_job.child_event('images_prepped', tag=detname, options={'target_id': tid,'detname': detname,'submission_type': 'scheduler'})
             this_job.logprint('about to fire')
             this_job.logprint(''.join(["event detname is ", str(detname)]))
             new_event.fire()

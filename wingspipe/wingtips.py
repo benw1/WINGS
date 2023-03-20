@@ -3,6 +3,14 @@
 WFIRST Infrared Nearby Galaxies Test Image Product Simulator
 Produces input files for the WFIRST STIPS simulator
 """
+# Error message when initializing pipeline:
+"""
+ /Users/kathrynwynn/miniconda3/envs/stips/lib/python3.10/site-packages/wpipe/Task.py:416: UserWarning: Task /Users/kathrynwynn/Documents/ASTR499/Minipipe/TestFolder/build/wingtips_copy.py cannot be registered: no 'register' function
+ warnings.warn("Task " + self.pipeline.software_root + '/' + self.name +
+
+In my wpipe/Task.py there is no register function, also the error message simply cuts off without closing parenthesis.
+"""
+
 import time
 import subprocess
 import resource
@@ -11,7 +19,7 @@ import numpy as np
 from astropy import wcs
 from astropy.io import fits, ascii
 from astropy.table import Table
-import dask.dataframe as dd
+import dask.dataframe as dd 
 
 import wpipe as wp
 
@@ -122,6 +130,7 @@ class WingTips:
         """
         Write out a STIPS input file
         """
+        #should change so that STIPS input file is fits rather than ascii
         gc.collect()
         _tab = WingTips.get_tabular(self.tab, hasID, hasCmnt, saveID)
         specialprint("After get_tabular %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
@@ -202,8 +211,8 @@ class WingTips:
         else:
             raise ValueError('Provide valid coordinate or center')
         #
-        if (len(Type) == 0) | (Type is 'point') | (Type is 'sersic'):
-            if (len(Type) == 0) | (Type is 'point'):
+        if (len(Type) == 0) | (Type == 'point') | (Type == 'sersic'): #changed is for type to ==
+            if (len(Type) == 0) | (Type == 'point'):
                 Type = np.repeat(np.array(['point']), len(flux))
                 _ones = np.ones_like(flux)
                 n, re, phi, ratio = _ones, _ones, _ones, _ones
@@ -265,6 +274,7 @@ class WingTips:
         Read in a STIPS input file in ascii format and
         return corresponding NumPy array
         """
+        #most likely need to change to read in a STIPS input file in fits format
         gc.collect()
         include_names = getID * ['id'] + \
                         getRADEC * ['ra', 'dec'] + \
@@ -329,7 +339,7 @@ class WingTips:
     @staticmethod
     def random_radec(n=10, center=[0, 0], shape=(4096, 4096), imfile=''):
         _xy = np.random.rand(n, 2) * shape
-        if imfile is not '':
+        if imfile != '': #changed is not to !=
             _w = WingTips.read_wcs(imfile)
         else:
             _w = WingTips.create_wcs(center)

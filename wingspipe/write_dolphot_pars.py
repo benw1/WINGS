@@ -62,9 +62,9 @@ def write_dolphot_pars(target, config, thisjob, detname):
     refdp = wp.DataProduct(hinds[0])
     refimage = str(refdp.filename)
     if "sim" in refimage:
-       refimage = target.name + '_' + detname + '_' + str(refdp.dp_id) + '_' + refdp.filtername + ".fits"
+        refimage = target.name + '_' + detname + '_' + str(refdp.dp_id) + '_' + refdp.filtername + ".fits"
     else:
-       print("No sim")
+        print("No sim")
     print(refimage)
     with open(parfile_path, 'w') as d:
         d.write("Nimg = " + str(nimg) + "\n" +
@@ -74,7 +74,7 @@ def write_dolphot_pars(target, config, thisjob, detname):
             imdp = wp.DataProduct(rind)
             image = str(imdp.filename)
             if 'sim' in image:
-               image = target.name + '_' + detname + '_' + str(imdp.dp_id) + '_' + imdp.filtername + ".fits"
+                image = target.name + '_' + detname + '_' + str(imdp.dp_id) + '_' + imdp.filtername + ".fits"
             rim = [rim, image]
         rim = rim[1:]
         zim = []
@@ -191,6 +191,6 @@ if __name__ == '__main__':
     paramdp = write_dolphot_pars(this_target, this_config, this_job, detname)
     dpid = int(paramdp.dp_id)
     this_job.logprint(''.join(["Parameter file DPID ", str(dpid), "\n"]))
-    newevent = this_job.child_event('parameters_written', tag=dpid, options={'target_id': tid, 'dp_id': dpid, 'detname': detname,'submission_type': 'pbs'})
+    newevent = this_job.child_event('parameters_written', tag=dpid, options={'target_id': tid, 'dp_id': dpid, 'detname': detname,'submission_type': 'scheduler'})
     newevent.fire()
     this_job.logprint('parameters_written\n')
