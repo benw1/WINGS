@@ -28,7 +28,6 @@ def send(dp, conf, comp_name, total, job):
     dpconfigid = dpconfig.config_id
     #data = np.loadtxt(filepath, dtype=str, usecols=0, encoding='utf-8')
     #data = fits.open(filepath)
-    #file_name, file_type = os.path.splitext(f"{dp.filename}")
     
     with fits.open(filepath) as data:
         

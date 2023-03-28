@@ -3,7 +3,7 @@
 WFIRST Infrared Nearby Galaxies Test Image Product Simulator
 Produces input files for the WFIRST STIPS simulator
 """
-# Error message when initializing pipeline:
+# warning message when initializing pipeline:
 """
  /Users/kathrynwynn/miniconda3/envs/stips/lib/python3.10/site-packages/wpipe/Task.py:416: UserWarning: Task /Users/kathrynwynn/Documents/ASTR499/Minipipe/TestFolder/build/wingtips_copy.py cannot be registered: no 'register' function
  warnings.warn("Task " + self.pipeline.software_root + '/' + self.name +
@@ -56,16 +56,16 @@ class WingTips:
         self.infile = infile
         gc.collect()
 
-    ''' Strip coordinates from WingTips object '''
 
     def strip_radec(self, hasID=False):
+        ''' Strip coordinates from WingTips object '''
         _i = int(hasID)
         self.tab = np.delete(self.tab, [_i, _i + 1], 1)
         return None
 
-    ''' Attach given RA-DEC to WingTips object'''
 
     def attach_radec(self, radec, hasID=False):
+        ''' Attach given RA-DEC to WingTips object'''
         if self.n != radec.shape[0]:
             raise ValueError('Number of RA-DEC does not match sources')
         _i = int(hasID)
@@ -73,19 +73,19 @@ class WingTips:
         self.center = WingTips.get_center(radec[:, 0 + _i], radec[:, 1 + _i])
         return None
 
-    ''' Replace RA-DEC of WingTips object '''
 
     def replace_radec(self, radec, hasID=False):
+        ''' Replace RA-DEC of WingTips object '''
         self.strip_radec(hasID)
         self.attach_radec(radec, hasID)
         return None
 
-    ''' 
-    Return random RA-DEC for given image or WingTips object
-    Optionally, specify center and image size desired
-    '''
 
     def random_radec_for(self, other, shape=(4096, 4096), sample=False, n=0, hasID=False):
+        ''' 
+    Return random RA-DEC for given image or WingTips object
+    Optionally, specify center and image size desired
+        '''
         _i = int(hasID)
         # try:
         #    if other.endswith('.fits'):
@@ -98,9 +98,9 @@ class WingTips:
         else:
             return WingTips.sample_radec(n=n, radec1=self.tab[:, _i:_i + 1], radec2=other.tab[:, _i:_i + 1])
 
-    ''' Merge two WingTips objects '''
 
     def merge_with(self, other, hasRADEC=True, hasID=False):
+        ''' Merge two WingTips objects '''
         if self.tab.shape[1] != other.tab.shape[1]:
             raise ValueError('Number of columns does not match', self.tab.shape[1], other.tab.shape[1])
         self.tab = np.vstack((self.tab, other.tab))
@@ -111,9 +111,9 @@ class WingTips:
             self.center = WingTips.get_center(self.tab[:, 0 + _i], self.tab[:, 1 + _i])
         return None
 
-    ''' Convert flux to surface brightness for sersic profile galaxies '''
 
     def flux_to_Sb(self, hasRADEC=True, hasID=False):
+        ''' Convert flux to surface brightness for sersic profile galaxies '''
         _i = int(hasID)
         if hasRADEC:
             _i = _i + 2
@@ -253,9 +253,9 @@ class WingTips:
                 index1 = (i+1)*10000000
                 index2 = (i+2)*10000000 
                 if index1 > check-1:
-                   continue
+                    continue
                 if index2 > check-1:
-                   index2 = check-1
+                    index2 = check-1
                 specialprint("INDEXES %i %i" % (index1,index2))
                 _tab = np.array([ra[index1:index2], dec[index1:index2], flux[index1:index2], Type[index1:index2], n[index1:index2], re[index1:index2], phi[index1:index2], ratio[index1:index2]], dtype='object').T
                 #print(ra[index1:index2])
