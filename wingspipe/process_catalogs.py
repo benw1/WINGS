@@ -196,7 +196,7 @@ def process_match_catalog(my_job_id, my_dp_id):
                                     filtername=filtname, subtype='stips_input_catalog')
         dpid = _dp.dp_id
         new_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                       options={'dp_id': dpid, 'to_run': total, 'name': comp_name,
+                                       options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'ra_dither': 0.0, 'dec_dither': 0.0,
                                                 'submission_type' : 'scheduler'})
         my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
         new_event.fire()
@@ -403,7 +403,7 @@ def link_stips_catalogs(my_config):
 
         except KeyError:
             my_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                          options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'scheduler'})
+                                          options={'dp_id': dpid, 'to_run': total, 'ra_dither': 0.0, 'dec_dither': 0.0, 'name': comp_name,'submission_type':'scheduler'})
             my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
             my_event.fire()
 

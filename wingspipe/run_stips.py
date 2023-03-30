@@ -23,8 +23,8 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
     catalog_dp = wp.DataProduct(dp_id)
     my_config = catalog_dp.config
     my_params = my_config.parameters
-    #racent = float(my_params['racent']) + (float(ra_dith) / 3600.0)
-    #deccent = float(my_params['deccent']) + (float(dec_dith) / 3600.0)
+    racent = float(my_params['racent']) + (float(ra_dith) / 3600.0)
+    deccent = float(my_params['deccent']) + (float(dec_dith) / 3600.0)
     try:
         pa = my_params['orientation']
     except KeyError:
