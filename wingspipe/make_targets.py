@@ -34,7 +34,7 @@ def send(dp, conf, comp_name, total, job):
         if 'type' in str(data[1].header):
             print('File ', filepath, ' has type keyword, assuming STIPS-ready')
             event = job.child_event('new_stips_catalog', jargs='0', value='0',
-                                    options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'config_id': confid})
+                                    options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'ra_dither': 0.0, 'dec_dither': 0.0, 'config_id': confid})
             event.fire()
         elif 'ra' in str(data[1].header):
             #want value corresponding to TTYPE keyword to be 'ra'
