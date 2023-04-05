@@ -1,9 +1,9 @@
 #! /usr/bin/env python
 import argparse
 
-# from wpipe.scheduler import slurmconsumer
-from wpipe.scheduler import base_consumer
+from wpipe.scheduler.ConsumerFactory import get_consumer_factory
 
+consumer = get_consumer_factory()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -20,7 +20,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     if hasattr(args, 'which'):
-        # slurmconsumer(args.which)
-        base_consumer(args.which, kind='Slurm')
+        consumer(args.which)
     else:
         parser.print_help()

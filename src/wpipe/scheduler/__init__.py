@@ -30,13 +30,13 @@ sendJobToConsumer
 import os
 import subprocess
 
-# from .PbsConsumer import checkPbsConnection, sendJobToPbs
-# from .SlurmConsumer import checkSlurmConnection, sendJobToSlurm
 from .BaseConsumer import checkConsumerConnection, sendJobToConsumer
 from .JobData import JobData
 
-# __all__ = ['pbsconsumer', 'checkPbsConnection', 'sendJobToPbs', 'slurmconsumer', 'checkSlurmConnection', 'sendJobToSlurm', 'checkConsumerConnection', 'sendJobToConsumer', 'JobData']
-__all__ = ['pbsconsumer', 'slurmconsumer', 'checkConsumerConnection', 'sendJobToConsumer', 'JobData']
+__all__ = ['pbsconsumer', 'slurmconsumer', 'base_consumer', 'checkConsumerConnection', 'sendJobToConsumer', 'JobData']
+
+
+SUPPORTED_SCHEDULERS = {'Pbs', 'Slurm'}
 
 
 def pbsconsumer(which):
@@ -95,3 +95,32 @@ def slurmconsumer(which):
         else:
             print("No server found, nothing to do ...")
 
+def base_consumer(which, kind: str):
+    if kind not in SUPPORTED_SCHEDULERS:
+        raise ValueError(f"Job scheduler '{kind}' is not supported: choose in {SUPPORTED_SCHEDULERS}")
+    connection = checkConsumerConnection()
+    if which == 'check':
+        return print(connection)
+    elif which == 'start':
+        if connection != 0:
+            print(f"Starting {kind}Consumer ...")
+            homedir = os.path.expanduser(f"~/.{kind.lower()}consumer")
+            if not os.path.exists(homedir):
+                os.mkdir(homedir)
+            elif not os.path.isdir(homedir):
+                raise FileExistsError("%s is not a directory" % homedir)
+            subprocess.Popen(["nohup", "python", "-m", f"wpipe.scheduler.{kind}Consumer"], cwd=homedir)
+            while checkConsumerConnection() != 0:
+                pass
+        else:
+            print(f"{kind}Consumer is already running ...")
+    else:
+        if connection == 0:
+            if which == 'stop':
+                print(f"Shutting down {kind}Consumer ...")
+                sendJobToConsumer('poisonpill')
+            elif which == 'log':
+                print(f"Printing current {kind}Consumer log ...")
+                # TODO
+        else:
+            print("No server found, nothing to do ...")

@@ -136,7 +136,6 @@ from .Task import Task
 from .Mask import Mask
 from .Job import Job
 from .Event import Event
-# from .scheduler import PbsConsumer, SlurmConsumer
 from .scheduler import BaseConsumer
 from .scheduler.ConsumerFactory import get_consumer_factory
 
@@ -154,8 +153,6 @@ User object: User object constructed at wpipe importation (see User doc Notes)
 """
 
 BaseConsumer.DEFAULT_PORT = BaseConsumer.BASE_PORT + DefaultUser.user_id
-# PbsConsumer.DEFAULT_PORT = PbsConsumer.BASE_PORT + DefaultUser.user_id
-# SlurmConsumer.DEFAULT_PORT = SlurmConsumer.BASE_PORT + DefaultUser.user_id
 
 DefaultNode = Node()
 """
@@ -217,38 +214,6 @@ if pathlib.Path(sys.argv[0]).resolve().name != 'wingspipe':
 #                 'source activate forSTIPS3' + '\n' +
 #                 executable + ' -e ' + eidstr + ' -j ' + jidstr)
 #     subprocess.run(['sbatch', slurmfile], cwd=my_config.confpath)
-#
-#
-# def sql_pbs(task, job_id, event_id):
-#     my_job = Job(job_id)
-#     my_pipe = my_job.pipeline
-#     swroot = my_pipe.software_root
-#     executable = swroot + '/' + task.name
-#     catalog_id = Event(event_id).options['dp_id']
-#     catalog_dp = DataProduct(catalog_id)
-#     my_config = catalog_dp.config
-#     # pbsfile = my_config.confpath + '/' + task.name + '_' + str(job_id) + '.pbs'
-#     pbsfile = '/home1/bwilli24/Wpipelines/' + task.name + '_jobs'
-#     # print(event_id,job_id,executable,type(executable))
-#     eidstr = str(event_id)
-#     jidstr = str(job_id)
-#     print("Submitting ", pbsfile)
-#     # with open(pbsfile, 'w') as f:
-#     with open(pbsfile, 'a') as f:
-#         f.write(  # '#PBS -S /bin/csh' + '\n'+
-#             # '#PBS -j oe' + '\n'+
-#             # '#PBS -l select=1:ncpus=4:model=san' + '\n'+
-#             # '#PBS -W group_list=s1692' + '\n'+
-#             # '#PBS -l walltime=10:00:00' + '\n'+
-#
-#             # 'cd ' + myConfig.procpath  + '\n'+
-#
-#             # 'source activate STIPS'+'\n'+
-#
-#             # executable+' -e '+eidstr+' -j '+jidstr)
-#             'source /nobackupp11/bwilli24/miniconda3/bin/activate STIPS && ' +
-#             executable + ' -e ' + eidstr + ' -j ' + jidstr + '\n')
-#     subprocess.run(['qsub', pbsfile], cwd=my_config.confpath)
 
 
 def wingspipe(args=None):

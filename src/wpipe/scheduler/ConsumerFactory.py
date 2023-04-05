@@ -2,7 +2,6 @@ from typing import Callable, Tuple
 import os
 
 from wpipe.scheduler.Utils import has_pbs_or_slurm, no_function_returned_related_to_scheduler
-# from . import pbsconsumer, slurmconsumer, sendJobToPbs, sendJobToSlurm
 from . import pbsconsumer, slurmconsumer, sendJobToConsumer
 
 
@@ -25,10 +24,8 @@ def get_send_job_factory() -> Callable:
     has_pbs, has_slurm = has_pbs_or_slurm()
 
     if has_pbs:
-        # return sendJobToPbs
         return sendJobToConsumer
     if has_slurm:
-        # return sendJobToSlurm
         return sendJobToConsumer
 
     no_function_returned_related_to_scheduler()
