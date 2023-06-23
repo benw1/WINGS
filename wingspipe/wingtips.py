@@ -130,7 +130,6 @@ class WingTips:
         """
         Write out a STIPS input file
         """
-        #should change so that STIPS input file is fits rather than ascii
         gc.collect()
         _tab = WingTips.get_tabular(self.tab, hasID, hasCmnt, saveID)
         specialprint("After get_tabular %f MB" % (resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024))
@@ -309,12 +308,13 @@ class WingTips:
                 _tab[:, 6].astype(float), _tab[:, 7].astype(float),
                 _tab[:, 8].astype(float), _tab[:, 9]]
 
-    ''' Build WCS coordinate system from scratch '''
+    
 
     @staticmethod
     def create_wcs(centers=[0, 0], crpix=[2048, 2048], cdelt=[-0.11 / 3600, 0.11 / 3600], cunit=['deg', 'deg'], \
                    ctype=['RA---TAN', 'DEC--TAN'], lonpole=180, latpole=24.333335, \
                    equinox=2000.0, radesys='ICRS'):
+        ''' Build WCS coordinate system from scratch '''
         _w = wcs.WCS()
         _w.wcs.cdelt = cdelt
         _w.wcs.crpix = crpix
@@ -327,17 +327,19 @@ class WingTips:
         _w.wcs.equinox = equinox
         return _w
 
-    ''' Return coordinate system for given image file'''
+    
 
     @staticmethod
     def read_wcs(imfile):
+        ''' Return coordinate system for given image file'''
         specialprint('Getting coordinates from %s \n' % imfile)
         return wcs.WCS(fits.open(imfile)[1].header)
 
-    ''' Return 'n' random radec for given image file or coordinate list '''
+    
 
     @staticmethod
     def random_radec(n=10, center=[0, 0], shape=(4096, 4096), imfile=''):
+        ''' Return 'n' random radec for given image file or coordinate list '''
         _xy = np.random.rand(n, 2) * shape
         if imfile is not '':
             _w = WingTips.read_wcs(imfile)
@@ -345,14 +347,15 @@ class WingTips:
             _w = WingTips.create_wcs(center)
         return _w.wcs_pix2world(_xy, 1)
 
-    '''
-    Return a random sample of 'n' RA-DEC coordinates from 'radec2'
-    If radec1 is specified, then replace 'n' radom coordinates
-    in 'radec1' with random sample from 'radec2'
-    '''
+   
 
     @staticmethod
     def sample_radec(n=10, radec1=False, radec2=[]):
+        '''
+        Return a random sample of 'n' RA-DEC coordinates from 'radec2'
+        If radec1 is specified, then replace 'n' radom coordinates
+        in 'radec1' with random sample from 'radec2'
+        '''
         in2 = np.random.randint(0, radec2.shape[0], n)
         if ~radec1:
             return radec2[in2, :]
@@ -361,21 +364,23 @@ class WingTips:
             radec1[in1, :] = radec2[in2, :]
             return radec1
 
-    ''' Return mean of RA-DEC positions given '''
+    
 
     @staticmethod
     def get_center(ra, dec):
+        ''' Return mean of RA-DEC positions given '''
         return [ra.astype(float).mean(), dec.astype(float).mean()]
 
-    '''
-    Convert mags to WFI instrument counts
-    Default is apparent AB mags
-    Specify 'dist' if absolute mags
-    Specify AB_Vega if Vega mags
-    '''
+
 
     @staticmethod
     def get_counts(mag, ZP, dist=0, AB_Vega=0):
+        '''
+        Convert mags to WFI instrument counts
+        Default is apparent AB mags
+        Specify 'dist' if absolute mags
+        Specify AB_Vega if Vega mags
+        '''
         if bool(dist):
             specialprint('\nDistance is d = %4.2f Mpc\n' % dist)
             u = 25 + 5 * np.log10(dist)

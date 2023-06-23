@@ -14,9 +14,10 @@ def register(task):
 
 
 def outimages(imgpath):
-    front = imgpath.split('.fits')[0]
+    front = imgpath.split('.fits')[0] +'.fits' + imgpath.split('.fits')[1]
+    #issue with file name-- data/targetname/proc etc. targetname has .fits
     print("FRONT: ", front)
-    chips = glob.glob(front + '.chip*.fits')
+    chips = glob.glob(front + '.chip*.fits') 
     print("CHIPS: ", chips, ". \n")
     return chips
 
@@ -57,16 +58,20 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
     incatname = dp.subtype
     incatpre = incatname.split('.')[0]
     my_params = config.parameters
-    dolphot_path = which('romanmask')
-    dolphot_path = dolphot_path[:-9]
+    dolphot_path = which('romanmask') 
+    print(dolphot_path) 
+    dolphot_path = dolphot_path[:-9] 
     target = config.target
     targetname = target.name
     print(targetname, " TARGET\n")
     #new_image_name = targetname + '_' + str(dp_id) + '_' + filtname + ".fits"
-    new_image_name = targetname + '_' + incatpre + '_' + str(dp_id) + '_' + filtname + ".fits"
+    #new_image_name = targetname + '_' + incatpre + '_' + str(dp_id) + '_' + filtname + ".fits" #why add target name? this doubles the '.fits'
+    new_image_name = incatpre + '_' + str(dp_id) + '_' + filtname + ".fits"
+    print("new image name = ", new_image_name)
     imgpath = config.procpath + '/' + new_image_name
-    outims = outimages(imgpath)
-    if len(outims) > 0:
+    print('imgpath =', imgpath)
+    outims = outimages(imgpath) #returns chips
+    if len(outims) > 0: # purpose?
         return 0
     try:
         dp.filename = new_image_name
@@ -79,13 +84,13 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
     print("T2 ", _t2)
     _t = subprocess.run(_t1, stdout=subprocess.PIPE)
     _t = subprocess.run(_t2, stdout=subprocess.PIPE)
-    outims = outimages(imgpath)
+    outims = outimages(imgpath) #returns chips
     if len(outims) > 1:
         print(len(outims), " Images\n")
         # for outimage in outimages:
         # placeholder for when there are 18 chips in each sim
     else:
-        filename = outims[0].split('/')[-1]
+        filename = outims[0].split('/')[-1] #list index out of range, outims is an empty set
         front = filename.split('.fits')[0]
         _t3 = [dolphot_path + 'calcsky', config.procpath + '/' + front, '15', '35', '-64', '2.25',
                '2.00']  # put in calcsky parameters
@@ -199,7 +204,7 @@ if __name__ == '__main__':
             except:
                 detname = this_target.name
                 my_job.logprint(''.join(["FAILED TEST event detname is ", str(detname)]))
-            new_event = this_job.child_event('images_prepped', tag=detname, options={'target_id': tid,'detname': detname,'submission_type': 'pbs'})
+            new_event = this_job.child_event('images_prepped', tag=detname, options={'target_id': tid,'detname': detname,'submission_type': 'scheduler'})
             this_job.logprint('about to fire')
             this_job.logprint(''.join(["event detname is ", str(detname)]))
             new_event.fire()

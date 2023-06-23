@@ -122,7 +122,7 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
         except KeyError:
             print("NO ", filt, " data found")
     print("FILTERS: ", filtsinm)
-    h = datafile.data['F158']
+    h = datafile.data['F158'] #what if the data doesn't have a F158 filter?
     htot_keep = (h > 23.0) & (h < 24.0)
     hkeep = h[htot_keep]
     htot = len(hkeep)
