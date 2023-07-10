@@ -14,9 +14,10 @@ def register(task):
 
 
 def outimages(imgpath):
-    front = imgpath.split('.fits')[0]
+    front = imgpath.split('.fits')[0] +'.fits' + imgpath.split('.fits')[1]
+    #issue with file name-- data/targetname/proc etc. targetname has .fits
     print("FRONT: ", front)
-    chips = glob.glob(front + '.chip*.fits')
+    chips = glob.glob(front + '.chip*.fits') 
     print("CHIPS: ", chips, ". \n")
     return chips
 
@@ -43,6 +44,7 @@ def send(dpid, conf, comp_name, total, job):
     dp = wp.DataProduct(int(dpid))
     target_id = conf.target_id
     filepath = dp.relativepath + '/' + dp.filename
+    print('send filepath = ', filepath)
     event = job.child_event('stips_done', tag=dpid,
                             options={'dp_id': dpid, 'target_id': target_id, 'to_run': total, 'name': comp_name})
     job.logprint(''.join(["Firing stips_done for ", str(filepath), " one of ", str(total), "\n"]))
@@ -57,16 +59,20 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
     incatname = dp.subtype
     incatpre = incatname.split('.')[0]
     my_params = config.parameters
-    dolphot_path = which('romanmask')
-    dolphot_path = dolphot_path[:-9]
+    dolphot_path = which('romanmask') 
+    print(dolphot_path) 
+    dolphot_path = dolphot_path[:-9] 
     target = config.target
     targetname = target.name
     print(targetname, " TARGET\n")
     #new_image_name = targetname + '_' + str(dp_id) + '_' + filtname + ".fits"
-    new_image_name = targetname + '_' + incatpre + '_' + str(dp_id) + '_' + filtname + ".fits"
+    #new_image_name = targetname + '_' + incatpre + '_' + str(dp_id) + '_' + filtname + ".fits" #why add target name? this doubles the '.fits'
+    new_image_name = incatpre + '_' + str(dp_id) + '_' + filtname + ".fits"
+    print("new image name = ", new_image_name)
     imgpath = config.procpath + '/' + new_image_name
-    outims = outimages(imgpath)
-    if len(outims) > 0:
+    print('imgpath =', imgpath)
+    outims = outimages(imgpath) #returns chips
+    if len(outims) > 0: # purpose?
         return 0
     try:
         dp.filename = new_image_name
@@ -79,13 +85,13 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
     print("T2 ", _t2)
     _t = subprocess.run(_t1, stdout=subprocess.PIPE)
     _t = subprocess.run(_t2, stdout=subprocess.PIPE)
-    outims = outimages(imgpath)
+    outims = outimages(imgpath) #returns chips
     if len(outims) > 1:
         print(len(outims), " Images\n")
         # for outimage in outimages:
         # placeholder for when there are 18 chips in each sim
     else:
-        filename = outims[0].split('/')[-1]
+        filename = outims[0].split('/')[-1] 
         front = filename.split('.fits')[0]
         _t3 = [dolphot_path + 'calcsky', config.procpath + '/' + front, '15', '35', '-64', '2.25',
                '2.00']  # put in calcsky parameters
@@ -186,7 +192,7 @@ if __name__ == '__main__':
                     detname = this_target.name
                 print(detname)
          
-                new_event = this_job.child_event('images_prepped', tag=detname, options={'target_id': tid,'detname': detname,'submission_type': 'scheduler'})
+                new_event = this_job.child_event('images_prepped', tag=detname, options={'target_id': tid,'detname': detname,'submission_type': 'pbs'})
                 this_job.logprint('about to fire')
                 new_event.fire()
                 this_job.logprint('fired')

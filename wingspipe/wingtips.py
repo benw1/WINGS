@@ -3,6 +3,14 @@
 WFIRST Infrared Nearby Galaxies Test Image Product Simulator
 Produces input files for the WFIRST STIPS simulator
 """
+# warning message when initializing pipeline:
+"""
+ /Users/kathrynwynn/miniconda3/envs/stips/lib/python3.10/site-packages/wpipe/Task.py:416: UserWarning: Task /Users/kathrynwynn/Documents/ASTR499/Minipipe/TestFolder/build/wingtips_copy.py cannot be registered: no 'register' function
+ warnings.warn("Task " + self.pipeline.software_root + '/' + self.name +
+
+In my wpipe/Task.py there is no register function, also the error message simply cuts off without closing parenthesis.
+"""
+
 import time
 import subprocess
 import resource
@@ -48,16 +56,16 @@ class WingTips:
         self.infile = infile
         gc.collect()
 
-    ''' Strip coordinates from WingTips object '''
 
     def strip_radec(self, hasID=False):
+        ''' Strip coordinates from WingTips object '''
         _i = int(hasID)
         self.tab = np.delete(self.tab, [_i, _i + 1], 1)
         return None
 
-    ''' Attach given RA-DEC to WingTips object'''
 
     def attach_radec(self, radec, hasID=False):
+        ''' Attach given RA-DEC to WingTips object'''
         if self.n != radec.shape[0]:
             raise ValueError('Number of RA-DEC does not match sources')
         _i = int(hasID)
@@ -65,19 +73,19 @@ class WingTips:
         self.center = WingTips.get_center(radec[:, 0 + _i], radec[:, 1 + _i])
         return None
 
-    ''' Replace RA-DEC of WingTips object '''
 
     def replace_radec(self, radec, hasID=False):
+        ''' Replace RA-DEC of WingTips object '''
         self.strip_radec(hasID)
         self.attach_radec(radec, hasID)
         return None
 
-    ''' 
-    Return random RA-DEC for given image or WingTips object
-    Optionally, specify center and image size desired
-    '''
 
     def random_radec_for(self, other, shape=(4096, 4096), sample=False, n=0, hasID=False):
+        ''' 
+    Return random RA-DEC for given image or WingTips object
+    Optionally, specify center and image size desired
+        '''
         _i = int(hasID)
         # try:
         #    if other.endswith('.fits'):
@@ -90,9 +98,9 @@ class WingTips:
         else:
             return WingTips.sample_radec(n=n, radec1=self.tab[:, _i:_i + 1], radec2=other.tab[:, _i:_i + 1])
 
-    ''' Merge two WingTips objects '''
 
     def merge_with(self, other, hasRADEC=True, hasID=False):
+        ''' Merge two WingTips objects '''
         if self.tab.shape[1] != other.tab.shape[1]:
             raise ValueError('Number of columns does not match', self.tab.shape[1], other.tab.shape[1])
         self.tab = np.vstack((self.tab, other.tab))
@@ -103,9 +111,9 @@ class WingTips:
             self.center = WingTips.get_center(self.tab[:, 0 + _i], self.tab[:, 1 + _i])
         return None
 
-    ''' Convert flux to surface brightness for sersic profile galaxies '''
 
     def flux_to_Sb(self, hasRADEC=True, hasID=False):
+        ''' Convert flux to surface brightness for sersic profile galaxies '''
         _i = int(hasID)
         if hasRADEC:
             _i = _i + 2
@@ -244,9 +252,9 @@ class WingTips:
                 index1 = (i+1)*10000000
                 index2 = (i+2)*10000000 
                 if index1 > check-1:
-                   continue
+                    continue
                 if index2 > check-1:
-                   index2 = check-1
+                    index2 = check-1
                 specialprint("INDEXES %i %i" % (index1,index2))
                 _tab = np.array([ra[index1:index2], dec[index1:index2], flux[index1:index2], Type[index1:index2], n[index1:index2], re[index1:index2], phi[index1:index2], ratio[index1:index2]], dtype='object').T
                 #print(ra[index1:index2])
@@ -265,6 +273,7 @@ class WingTips:
         Read in a STIPS input file in ascii format and
         return corresponding NumPy array
         """
+        #most likely need to change to read in a STIPS input file in fits format
         gc.collect()
         include_names = getID * ['id'] + \
                         getRADEC * ['ra', 'dec'] + \
@@ -299,12 +308,13 @@ class WingTips:
                 _tab[:, 6].astype(float), _tab[:, 7].astype(float),
                 _tab[:, 8].astype(float), _tab[:, 9]]
 
-    ''' Build WCS coordinate system from scratch '''
+    
 
     @staticmethod
     def create_wcs(centers=[0, 0], crpix=[2048, 2048], cdelt=[-0.11 / 3600, 0.11 / 3600], cunit=['deg', 'deg'], \
                    ctype=['RA---TAN', 'DEC--TAN'], lonpole=180, latpole=24.333335, \
                    equinox=2000.0, radesys='ICRS'):
+        ''' Build WCS coordinate system from scratch '''
         _w = wcs.WCS()
         _w.wcs.cdelt = cdelt
         _w.wcs.crpix = crpix
@@ -317,17 +327,19 @@ class WingTips:
         _w.wcs.equinox = equinox
         return _w
 
-    ''' Return coordinate system for given image file'''
+    
 
     @staticmethod
     def read_wcs(imfile):
+        ''' Return coordinate system for given image file'''
         specialprint('Getting coordinates from %s \n' % imfile)
         return wcs.WCS(fits.open(imfile)[1].header)
 
-    ''' Return 'n' random radec for given image file or coordinate list '''
+    
 
     @staticmethod
     def random_radec(n=10, center=[0, 0], shape=(4096, 4096), imfile=''):
+        ''' Return 'n' random radec for given image file or coordinate list '''
         _xy = np.random.rand(n, 2) * shape
         if imfile is not '':
             _w = WingTips.read_wcs(imfile)
@@ -335,14 +347,15 @@ class WingTips:
             _w = WingTips.create_wcs(center)
         return _w.wcs_pix2world(_xy, 1)
 
-    '''
-    Return a random sample of 'n' RA-DEC coordinates from 'radec2'
-    If radec1 is specified, then replace 'n' radom coordinates
-    in 'radec1' with random sample from 'radec2'
-    '''
+   
 
     @staticmethod
     def sample_radec(n=10, radec1=False, radec2=[]):
+        '''
+        Return a random sample of 'n' RA-DEC coordinates from 'radec2'
+        If radec1 is specified, then replace 'n' radom coordinates
+        in 'radec1' with random sample from 'radec2'
+        '''
         in2 = np.random.randint(0, radec2.shape[0], n)
         if ~radec1:
             return radec2[in2, :]
@@ -351,21 +364,23 @@ class WingTips:
             radec1[in1, :] = radec2[in2, :]
             return radec1
 
-    ''' Return mean of RA-DEC positions given '''
+    
 
     @staticmethod
     def get_center(ra, dec):
+        ''' Return mean of RA-DEC positions given '''
         return [ra.astype(float).mean(), dec.astype(float).mean()]
 
-    '''
-    Convert mags to WFI instrument counts
-    Default is apparent AB mags
-    Specify 'dist' if absolute mags
-    Specify AB_Vega if Vega mags
-    '''
+
 
     @staticmethod
     def get_counts(mag, ZP, dist=0, AB_Vega=0):
+        '''
+        Convert mags to WFI instrument counts
+        Default is apparent AB mags
+        Specify 'dist' if absolute mags
+        Specify AB_Vega if Vega mags
+        '''
         if bool(dist):
             specialprint('\nDistance is d = %4.2f Mpc\n' % dist)
             u = 25 + 5 * np.log10(dist)

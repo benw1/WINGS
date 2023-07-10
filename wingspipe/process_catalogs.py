@@ -2,7 +2,7 @@
 import gc
 import os
 import subprocess
-
+from astropy.io import fits
 import pandas as pd
 import wpipe as wp
 import numpy as np
@@ -31,7 +31,7 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
     filepath = fileroot + '/' + filename
     print(fileroot,my_config.procpath)
     if fileroot != my_config.procpath:
-       wp.shutil.copy2(filepath, my_config.procpath)
+        wp.shutil.copy2(filepath, my_config.procpath)
     #
     print("CONFIG PATH ",my_config.procpath)
     print("CONFIG ID ",my_config.config_id)
@@ -98,8 +98,7 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
                                         filtername=filtname, subtype='stips_input_catalog')
             dpid = _dp.dp_id
             new_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                           options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'submission_type' : 'scheduler',
-                                                    'ra_dither': 0.0, 'dec_dither': 0.0, 'detname': detname})
+                                           options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type' : 'scheduler', 'ra_dither': 0.0, 'dec_dither': 0.0,'detname': detname})
             my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
             my_job.logprint(''.join(["event detname is ", str(detname)]))
             new_event.fire()
@@ -107,10 +106,14 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
 
 
 def read_fixed(filepath, my_config, my_job, racent, deccent):
-    data = pd.read_csv(filepath)
+    #data = pd.read_csv(filepath)
     #data.columns = map(str.upper, data.columns)
-    nstars = len(data['ra'])
-    print(data.columns,"COLS")
+    data = fits.open(filepath)
+        #datafile[1].header['TTYPE1']
+        #nstars = len(datafile.data['ra'])
+    nstars = len(data[1].data['ra'])
+    print(data[1].columns,"COLS")
+    #print(datafile.data.columns,"COLS")
     my_params = my_config.parameters
     #area = float(my_params["area"])
     background = my_params["background_dir"]
@@ -118,16 +121,17 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     #print("MAX TOTAL DENSITY = ", tot_dens)
     filtsinm = []
     allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
-    magni = np.arange(len(data))
+    magni = np.arange(len(data[1].data))
     for filt in allfilts:
         try:
-            test = data[filt]
+            test = data[1].data[filt]
             filtsinm = np.append(filtsinm, filt)
             magni = np.vstack((magni, test))
+            #magni and test are not the same size
         except KeyError:
             print("NO ", filt, " data found")
     print("FILTERS: ", filtsinm)
-    h = data['F158']
+    h = data[1].data['F158']
     htot_keep = (h > 23.0) & (h < 24.0)
     hkeep = h[htot_keep]
     htot = len(hkeep)
@@ -135,8 +139,8 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     del h
     #my_job.logprint(''.join(["H(23-24) DENSITY = ", str(hden)]))
     stips_in = []
-    ra = data['ra']
-    dec = data['dec']
+    ra = data[1].data['ra']
+    dec = data[1].data['dec']
     my_job.logprint(''.join(
         ["MIXMAX COO: ", str(np.min(ra)), " ", str(np.max(ra)), " ", str(np.min(dec)), " ", str(np.max(dec)), "\n"]))
     if racent == 0.0:
@@ -164,6 +168,7 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     del magni
     gc.collect()
     stips_in = np.append(stips_in, stips_lists)
+    data.close()
     return stips_in, filters
 
 
@@ -171,7 +176,7 @@ def process_match_catalog(my_job_id, my_dp_id):
     my_job = wp.Job(my_job_id)
     catalog_dp = wp.DataProduct(my_dp_id)
     my_target = catalog_dp.target
-    # print("NAME",my_target.name)
+    print("NAME",my_target.name)
     my_config = catalog_dp.config
     fileroot = str(catalog_dp.relativepath)
     filename = str(catalog_dp.filename)  # For example:  'h15.shell.5Mpc.in'
@@ -194,7 +199,8 @@ def process_match_catalog(my_job_id, my_dp_id):
                                     filtername=filtname, subtype='stips_input_catalog')
         dpid = _dp.dp_id
         new_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                       options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type' : 'scheduler'})
+                                       options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'ra_dither': 0.0, 
+                                                'dec_dither': 0.0,'submission_type' : 'scheduler'})
         my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
         new_event.fire()
         i += 1
@@ -202,6 +208,7 @@ def process_match_catalog(my_job_id, my_dp_id):
 
 def read_match(filepath, cols, my_config, my_job):
     data = np.loadtxt(filepath)
+    #may need to change line above for fits files to datafile = fits.open(filepath)
     np.random.shuffle(data)
     nstars = len(data[:, 0])
     my_params = my_config.parameters
@@ -258,8 +265,7 @@ def read_match(filepath, cols, my_config, my_job):
     ra = 0.0
     dec = 0.0
     for k in range(len(coordlist)):
-        ra = np.append(ra,
-                       radist * coordlist + racent - (pix * imagesize / (np.cos(deccent * 3.14159 / 180.0) * 7200.0)))
+        ra = np.append(ra, radist * coordlist + racent - (pix * imagesize / (np.cos(deccent * 3.14159 / 180.0) * 7200.0)))
         dec = np.append(dec, np.repeat(decdist * coordlist[k] + deccent - (pix * imagesize / 7200.0), len(coordlist)))
     ra = ra[1:len(magni1) + 1]
     dec = dec[1:len(magni1) + 1]
@@ -298,8 +304,9 @@ def getgalradec(infile, ra, dec, magni, background, my_job):
     return radec
 
 
-def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, starsonly, filtsinm,my_job):
+def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, starsonly, filtsinm, my_job):
     filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
+    #Is this missing some filters? like F146? F213
     zp_ab = np.array([26.5, 26.365, 26.357, 26.320, 26.367, 25.913])
     zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588])
     starpre = '.'.join(infile.split('.')[:-1])
@@ -394,14 +401,16 @@ def link_stips_catalogs(my_config):
                     dec_dither = dither_size * (int(j))
                     eventtag = filtname+'_ra:'+str(k)+'/'+str(ra_dithers)+'_dec:'+str(j)+'/'+str(dec_dithers)
                     my_event = my_job.child_event('new_stips_catalog', tag=eventtag,
-                                                  options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'scheduler',
-                                                           'ra_dither': ra_dither, 'dec_dither': dec_dither})
+                                                  options={'dp_id': dpid, 'to_run': total, 'name': comp_name,
+                                                           'submission_type':'scheduler', 'ra_dither': ra_dither, 
+                                                           'dec_dither': dec_dither})
+                    #Should there be a detname key here (line above)?
                     my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
                     my_event.fire()
 
         except KeyError:
             my_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                          options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'scheduler'})
+                                          options={'dp_id': dpid, 'to_run': total, 'ra_dither': 0.0, 'dec_dither': 0.0, 'name': comp_name,'submission_type':'scheduler'})
             my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
             my_event.fire()
 
@@ -445,7 +454,7 @@ if __name__ == '__main__':
                 for i in range(ndetect):
                     dpid = dp_id
                     new_event = my_job.child_event('split_catalog', tag=i+1,
-                                       options={'dp_id': dpid,'submission_type':'scheduler'})
+                                       options={'dp_id': dpid,'submission_type':'scheduler', 'ra_dither': 0.0, 'dec_dither': 0.0})
                     my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  split_catalog"]))
                     new_event.fire()
         elif 'split' in event.name:

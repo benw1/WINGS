@@ -17,8 +17,11 @@ def run_dolphot(dp_id):
     my_config = param_dp.config
     targname = my_target.name
     dolphot_path = which('romanmask')
+    print(dolphot_path)
     dolphot_path = dolphot_path[:-9]
+    print(dolphot_path)
     dolphot = dolphot_path + "dolphot"
+    print(dolphot)
     parameter_file = param_dp.relativepath + '/' + param_dp.filename
     parfilename = param_dp.filename
     detname = parfilename.split('.')[0]

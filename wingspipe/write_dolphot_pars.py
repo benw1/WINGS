@@ -11,7 +11,7 @@ def write_dolphot_pars(target, config, thisjob, detname):
     #parfile_name = target.name + "_" + detname + ".param"
     parfile_name = detname + ".param"
     parfile_path = config.confpath + '/' + parfile_name
-    thisjob.logprint(''.join(["Writing dolphot pars now in ", parfile_path, "\n"]))
+    thisjob.logprint(''.join(["Writing dolphot pars now in ", parfile_path, "\n"])) #doesn't create this file
     #my_dp = config.dataproducts
     #datadp = my_dp[my_dp.subtype == 'dolphot_data']
     my_dp = [ _temp for _temp in config.dataproducts]
@@ -30,24 +30,31 @@ def write_dolphot_pars(target, config, thisjob, detname):
         dp_id = dp.dp_id
         filt = str(dp.filtername)
         fname = dp.filename
+        print('fname = ', fname)
         if "F062" in filt and detname in fname:
             rinds = [rinds, dp_id]
             count += 1
+            print('rinds = ', rinds[0])
         if "F087" in filt and detname in fname:
             zinds = [zinds, dp_id]
             count += 1
+            print('zinds = ', zinds[0])
         if "F106" in filt and detname in fname:
             yinds = [yinds, dp_id]
             count += 1
+            print('yinds = ', yinds[0])
         if "F129" in filt and detname in fname:
             jinds = [jinds, dp_id]
             count += 1
+            print('jinds = ', jinds[0])
         if "F158" in filt and detname in fname:
             hinds = [hinds, dp_id]
             count += 1
+            print('hinds = ', hinds[0])
         if "F184" in filt and detname in fname:
             finds = [finds, dp_id]
             count += 1
+            print('finds = ', finds[0])
     rinds = rinds[1:]
     zinds = zinds[1:]
     yinds = yinds[1:]
@@ -59,12 +66,12 @@ def write_dolphot_pars(target, config, thisjob, detname):
     nimg = count
     # my_params = config.parameters
     # refimage = my_params['refimage']  #will make this more flexible later
-    refdp = wp.DataProduct(hinds[0])
+    refdp = wp.DataProduct(hinds[0]) #hinds[0] is empty because there is no F158
     refimage = str(refdp.filename)
     if "sim" in refimage:
-       refimage = target.name + '_' + detname + '_' + str(refdp.dp_id) + '_' + refdp.filtername + ".fits"
+        refimage = target.name + '_' + detname + '_' + str(refdp.dp_id) + '_' + refdp.filtername + ".fits"
     else:
-       print("No sim")
+        print("No sim")
     print(refimage)
     with open(parfile_path, 'w') as d:
         d.write("Nimg = " + str(nimg) + "\n" +
@@ -74,7 +81,7 @@ def write_dolphot_pars(target, config, thisjob, detname):
             imdp = wp.DataProduct(rind)
             image = str(imdp.filename)
             if 'sim' in image:
-               image = target.name + '_' + detname + '_' + str(imdp.dp_id) + '_' + imdp.filtername + ".fits"
+                image = target.name + '_' + detname + '_' + str(imdp.dp_id) + '_' + imdp.filtername + ".fits"
             rim = [rim, image]
         rim = rim[1:]
         zim = []
