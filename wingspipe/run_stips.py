@@ -4,6 +4,7 @@ import os
 from stips.observation_module import ObservationModule
 import numpy as np
 import wpipe as wp
+from astropy.io import fits
 
 filtdict = {'R': 'F062',
             'Z': 'F087',
@@ -28,18 +29,41 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
         pa = my_params['orientation']
     except KeyError:
         pa = 0.0
+
     fileroot = str(catalog_dp.relativepath)
-    filename1 = str(catalog_dp.filename)  # for example, Mixed_h15_shell_3Mpc_Z.tbl
-    filtroot = filename1.split('_')[-1].split('.')[0]
+    #print('catalog_dp.procpath = ', catalog_dp.procpath) No attribute procpath
+    #fileroot = str(my_config.procpath)
+    print('fileroot = ', fileroot)
+    filename1 = str(catalog_dp.filename)  # for example, Mixed_h15_shell_3Mpc_F087.tbl
+    print('filename1 = ', filename1)
+    filtroot = filename1.split('_')[-1].split('.')[0] #filtroot should be filtername ie F087
+    print('filtroot = ', filtroot)
     filtername = filtroot
-    os.chdir(my_config.procpath)
+    os.chdir(my_config.procpath) #this is changing the working directory to the proc path
+    print('my_config.procpath = ', my_config.procpath)
     filename = fileroot + '/' + filename1 
+    filetype = filename1.split('.')[-1]
+    print('filetype = ', filetype)
     seed = np.random.randint(9999)+1000
-    with open(filename) as myfile:
-        head = [next(myfile) for x in range(3)]
-    pos = head[2].split(' ')
-    crud,ra = pos[2].split('(')
-    dec,crud =  pos[4].split(')')
+
+
+    
+    if 'fit' in filetype:
+        os.system('cp ' + str(filename) + ' ' + str(my_config.procpath) + '/' + str(filename1))
+        print('cp ' + str(filename) + ' ' + str(my_config.procpath) + '/' + str(filename1))
+        fileroot = my_config.procpath 
+        filename = fileroot + '/' + filename1
+
+        with fits.open(filename) as myfile:
+            ra = myfile[1].data['ra'][0]
+            dec = myfile[1].data['dec'][0]
+    else:
+        with open(filename) as myfile:
+            head = [next(myfile) for x in range(3)]
+        pos = head[2].split(' ')
+        crud,ra = pos[2].split('(')
+        dec,crud =  pos[4].split(')')
+
     print("Running ",filename,float(ra),float(dec))
     print("SEED ",seed)
     scene_general = {'ra': float(ra), 'dec': float(dec), 'pa': pa, 'seed': seed}
@@ -53,7 +77,7 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
     source_count_catalogues = obm.addCatalogue(str(filename))
     psf_file = obm.addError()
     fits_file, mosaic_file, params = obm.finalize(mosaic=False)
-    detname = filename1.split('_')[1]
+    detname = filename1.split('_')[1] 
     try:
         ndetect = my_params['ndetect']
     except:
@@ -64,9 +88,13 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
         detname = '.'.join(targname.split('.')[:-1])
 
     this_job.logprint(''.join(["Making DataProduct with DETNAME and confid", detname, str(my_config.config_id), "\n"]))
+
     _dp = my_config.dataproduct(filename='sim_' + str(dp_id) + '_0.fits', relativepath=fileroot,
                                 group='proc', data_type='stips_image', subtype=detname,
                                 filtername=filtername, ra=my_params['racent'], dec=my_params['deccent'])
+        #os.system('cp ' + fileroot + '/' + 'sim_' + str(dp_id) + '_0.fits ' + fileroot + '/' + 'sim_' + str(_dp.dp_id) + '_0.fits')
+    #print('mv ' + fileroot + '/' + 'sim_' + str(dp_id) + '_0.fits ' + fileroot + '/' + 'sim_' + str(_dp.dp_id) + '_0.fits')
+    
     return detname
 
 

@@ -31,9 +31,9 @@ def send(dp, conf, comp_name, total, job):
     
     with fits.open(filepath) as data:
         
-        if 'test' in str(data[1].header):
+        if  data[1].header['TFIELDS'] == 13:
             """
-            If the populations-based description is not sufficient, the user can have full control of the definition of the astronomical scene by providing one or more input catalogs specifying the properties of each individual source, including position, brightness, and, for extended sources, size, elongation, orientation, and light profile (in the form of a Sérsic index). When an input catalog is provided, the apparent brightness of each source needs to be specified in each filter; a future upgrade will allow spectral energy distributions to be specified instead.
+            Assumes file is STIPS ready if it has 13 columns - same as STIPS-created catalogues. Note: The file must have the format 'filename_filtername.fits'. The filtername must be of the form 'F087', though the extention may be '.fits' or '.fit'.
             """
             print('File ', filepath, ' has type keyword, assuming STIPS-ready')
             my_target = dp.target

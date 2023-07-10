@@ -44,6 +44,7 @@ def send(dpid, conf, comp_name, total, job):
     dp = wp.DataProduct(int(dpid))
     target_id = conf.target_id
     filepath = dp.relativepath + '/' + dp.filename
+    print('send filepath = ', filepath)
     event = job.child_event('stips_done', tag=dpid,
                             options={'dp_id': dpid, 'target_id': target_id, 'to_run': total, 'name': comp_name})
     job.logprint(''.join(["Firing stips_done for ", str(filepath), " one of ", str(total), "\n"]))
@@ -90,7 +91,7 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
         # for outimage in outimages:
         # placeholder for when there are 18 chips in each sim
     else:
-        filename = outims[0].split('/')[-1] #list index out of range, outims is an empty set
+        filename = outims[0].split('/')[-1] 
         front = filename.split('.fits')[0]
         _t3 = [dolphot_path + 'calcsky', config.procpath + '/' + front, '15', '35', '-64', '2.25',
                '2.00']  # put in calcsky parameters
