@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 import wpipe as wp
-
+import time
 
 def register(task):
     _temp = task.mask(source='*', name='start', value=task.name)
@@ -201,3 +201,4 @@ if __name__ == '__main__':
     newevent = this_job.child_event('parameters_written', tag=dpid, options={'target_id': tid, 'dp_id': dpid, 'detname': detname,'submission_type': 'scheduler'})
     newevent.fire()
     this_job.logprint('parameters_written\n')
+    time.sleep(300)

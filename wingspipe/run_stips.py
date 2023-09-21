@@ -5,6 +5,7 @@ from stips.observation_module import ObservationModule
 import numpy as np
 import wpipe as wp
 from astropy.io import fits
+import time
 
 filtdict = {'R': 'F062',
             'Z': 'F087',
@@ -72,9 +73,11 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
     try:
         os.symlink(my_params['psf_cache'],my_config.procpath+"/psf_cache")
     except:
-        pass
+        print("Try-except line 72 failed, config path error")
+    print("START obm.nextobservation")
     obm.nextObservation()
     source_count_catalogues = obm.addCatalogue(str(filename))
+    print("START psf_file")
     psf_file = obm.addError()
     fits_file, mosaic_file, params = obm.finalize(mosaic=False)
     detname = filename1.split('_')[1] 
@@ -117,6 +120,7 @@ if __name__ == '__main__':
     compname = this_event.options['name']
     ra_dither = this_event.options['ra_dither']
     dec_dither = this_event.options['dec_dither']
+    print('event', this_event_id, 'dp', this_dp_id)
     checkname = run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither))
     update_option = parent_job.options[compname]
     update_option += 1
@@ -168,3 +172,4 @@ if __name__ == '__main__':
             new_event.fire()
             #this_job.logprint('stips_done but not firing any events for now\n')
             this_job.logprint(''.join(["Event= ", str(this_event.event_id)]))
+        time.sleep(300)

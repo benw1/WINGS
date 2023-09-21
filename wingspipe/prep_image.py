@@ -213,3 +213,4 @@ if __name__ == '__main__':
             this_job.logprint('images_prepped\n')
             this_job.logprint(''.join(["Event= ", str(new_event.event_id),"\n",detname,"\n","images_prepped\n"]))
 
+            time.sleep(300)
