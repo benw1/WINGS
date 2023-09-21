@@ -7,6 +7,7 @@ import wpipe as wp
 from astropy.io import fits
 import time
 
+
 filtdict = {'R': 'F062',
             'Z': 'F087',
             'Y': 'F106',
@@ -80,7 +81,7 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
     print("START psf_file")
     psf_file = obm.addError()
     fits_file, mosaic_file, params = obm.finalize(mosaic=False)
-    detname = filename1.split('_')[1] 
+    detname = filename1.split('_')[1]
     try:
         ndetect = my_params['ndetect']
     except:
@@ -128,6 +129,7 @@ if __name__ == '__main__':
     catalogID = this_event.options['dp_id']
     detname = this_event.options['detname']
     detname = detname.replace(".cat","")
+    print("DETNAME ",detname)
     catalogDP = wp.DataProduct(catalogID)
     this_conf = catalogDP.config
     this_target = this_conf.target
