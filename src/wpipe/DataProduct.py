@@ -372,7 +372,14 @@ class DataProduct(OptOwner):
         """
         str: Type of the data.
         """
+        self._session.refresh(self._dataproduct)
         return self._dataproduct.data_type
+
+    @data_type.setter
+    @_in_session()
+    def data_type(self, data_type):
+        self._dataproduct.data_type = data_type
+        self.update_timestamp()
 
     @property
     @_in_session()
@@ -380,7 +387,14 @@ class DataProduct(OptOwner):
         """
         str: Subtype of the data.
         """
+        self._session.refresh(self._dataproduct)
         return self._dataproduct.subtype
+
+    @subtype.setter
+    @_in_session()
+    def subtype(self, subtype):
+        self._dataproduct.subtype = subtype
+        self.update_timestamp()
 
     @property
     @_in_session()
