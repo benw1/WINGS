@@ -14,7 +14,10 @@ def register(task):
 
 
 def outimages(imgpath):
-    front = imgpath.split('.fits')[0] +'.fits' + imgpath.split('.fits')[1]
+    if '.csv' in str(imgpath):
+        front = imgpath.split('.fits')[0] #for csv files
+    else:
+        front = imgpath.split('.fits')[0] +'.fits' + imgpath.split('.fits')[1] #for fits files
     #issue with file name-- data/targetname/proc etc. targetname has .fits
     print("FRONT: ", front)
     chips = glob.glob(front + '.chip*.fits') 
@@ -91,6 +94,7 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
         # for outimage in outimages:
         # placeholder for when there are 18 chips in each sim
     else:
+        print(outims)
         filename = outims[0].split('/')[-1] 
         front = filename.split('.fits')[0]
         _t3 = [dolphot_path + 'calcsky', config.procpath + '/' + front, '15', '35', '-64', '2.25',

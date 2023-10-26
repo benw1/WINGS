@@ -50,9 +50,11 @@ def hyak_dolphot(dp_id):
     targname = my_target.name
     outfile = targname + '.phot'
     logfile = outfile + ".log"
-    dolphot_path = which('wfirstmask')
+    dolphot_path = which('romanmask')
     dolphot_path = dolphot_path[:-10]
+    print('dolphot_path', dolphot_path)
     dolphot = dolphot_path + "dolphot"
+    print('dolphot_path', dolphot_path)
     slurmfile = parameter_file + '.slurm'
     with open(slurmfile, 'w') as f:
         f.write('#!/bin/bash' + '\n' +
@@ -71,7 +73,7 @@ def hyak_dolphot(dp_id):
                 '## Specify the working directory for this job' + '\n' +
                 '#SBATCH --workdir=' + my_config.procpath + '\n' +
                 '##turn on e-mail notification' + '\n' +
-                dolphot + " " + outfile + " -p" + parameter_file + " >" + my_config.logpath + '/' + logfile)
+                dolphot + " " + outfile + " -p" + parameter_file + " > " + my_config.logpath + '/' + logfile)
     subprocess.run(['sbatch', slurmfile], cwd=my_config.procpath)
 
 
@@ -95,8 +97,8 @@ if __name__ == '__main__':
     this_event_id = this_event.event_id
     this_dp_id = this_event.options['dp_id']
     
-    # hyak_dolphot(this_dp_id)
-    dpid = run_dolphot(this_dp_id)
+    hyak_dolphot(this_dp_id)
+    # dpid = run_dolphot(this_dp_id)
      
     param_dp = wp.DataProduct(this_dp_id)
     my_config = param_dp.config

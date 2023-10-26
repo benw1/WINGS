@@ -106,14 +106,17 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
 
 
 def read_fixed(filepath, my_config, my_job, racent, deccent):
-    #data = pd.read_csv(filepath)
-    #data.columns = map(str.upper, data.columns)
-    data = fits.open(filepath)
-        #datafile[1].header['TTYPE1']
-        #nstars = len(datafile.data['ra'])
-    nstars = len(data[1].data['ra'])
-    print(data[1].columns,"COLS")
-    #print(datafile.data.columns,"COLS")
+    if 'fit' in str(filepath):
+        data = fits.open(filepath)
+        print(data[1].columns,"COLS")
+        nstars = len(data[1].data['ra'])
+        magni = np.arange(len(data[1].data))
+    if '.csv' in str(filepath):
+        data = pd.read_csv(filepath)
+        print(data.columns, "COLS")
+        #data.columns = map(str.upper, data.columns)
+        nstars = len(data['ra'])
+        magni = np.arange(len(data))
     my_params = my_config.parameters
     #area = float(my_params["area"])
     background = my_params["background_dir"]
@@ -121,17 +124,21 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     #print("MAX TOTAL DENSITY = ", tot_dens)
     filtsinm = []
     allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
-    magni = np.arange(len(data[1].data))
     for filt in allfilts:
         try:
-            test = data[1].data[filt]
+            try:
+                test = data[1].data[filt]
+            except:
+                test = data[filt]
             filtsinm = np.append(filtsinm, filt)
             magni = np.vstack((magni, test))
-            #magni and test are not the same size
         except KeyError:
             print("NO ", filt, " data found")
     print("FILTERS: ", filtsinm)
-    h = data[1].data['F158']
+    try:
+        h = data[1].data['F158']
+    except:
+        h = data['F158']
     htot_keep = (h > 23.0) & (h < 24.0)
     hkeep = h[htot_keep]
     htot = len(hkeep)
@@ -139,8 +146,12 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     del h
     #my_job.logprint(''.join(["H(23-24) DENSITY = ", str(hden)]))
     stips_in = []
-    ra = data[1].data['ra']
-    dec = data[1].data['dec']
+    try:
+        ra = data[1].data['ra']
+        dec = data[1].data['dec']
+    except: 
+        ra = data['ra']
+        dec = data['dec']
     my_job.logprint(''.join(
         ["MIXMAX COO: ", str(np.min(ra)), " ", str(np.max(ra)), " ", str(np.min(dec)), " ", str(np.max(dec)), "\n"]))
     if racent == 0.0:
@@ -168,7 +179,6 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     del magni
     gc.collect()
     stips_in = np.append(stips_in, stips_lists)
-    data.close()
     return stips_in, filters
 
 
@@ -306,7 +316,6 @@ def getgalradec(infile, ra, dec, magni, background, my_job):
 
 def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, starsonly, filtsinm, my_job):
     filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
-    #Is this missing some filters? like F146? F213
     zp_ab = np.array([26.5, 26.365, 26.357, 26.320, 26.367, 25.913])
     zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588])
     starpre = '.'.join(infile.split('.')[:-1])
