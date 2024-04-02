@@ -45,13 +45,16 @@ class SlurmScheduler(BaseScheduler):
     ## Internal Use Only ##
     #######################
 
-    def _submitJob(self, jobdata, listmax=20):
+    def _submitJob(self, jobdata, listmax=10):
         # TODO: Change to event later
 
         self._jobList.append(jobdata)
 
         # Reset the scheduler
-        if (len(self._jobList) < 10):
+       
+        if (len(self._jobList) > listmax):
+            super().run_it()
+        else:
             super().reset()
 
     def _execute(self):

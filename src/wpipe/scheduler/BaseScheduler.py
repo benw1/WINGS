@@ -21,13 +21,14 @@ class BaseScheduler(abc.ABC):
     def __init__(self, timer=20):
         self._timer = timer
         self._reset = False
-
-        threading.Timer(self._timer, self._middleman).start()
+        self._threadtimer = threading.Timer(self._timer, self._middleman)
+        self._threadtimer.start()
 
     def _middleman(self):
         if self._reset:
             self._reset = False
-            threading.Timer(self._timer, self._middleman).start()
+            self._threadtimer = threading.Timer(self._timer, self._middleman)
+            self._threadtimer.start()
         else:
             self._execute()
 
@@ -37,3 +38,7 @@ class BaseScheduler(abc.ABC):
 
     def reset(self):
         self._reset = True
+
+    def run_it(self):
+        self._threadtimer.cancel()
+        self._execute()

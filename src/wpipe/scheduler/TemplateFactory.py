@@ -55,7 +55,7 @@ parallel --jobs {{pbs.njobs}} --sshloginfile $PBS_NODEFILE --workdir $PWD < {{pb
 ## Specify the working directory for this job
 #SBATCH --chdir={{slurm.pipe_root}}
 module load parallel-20170722 
-source activate astroconda
+conda activate astroconda
 cat {{slurm.executables_list_path}} | parallel
 
 """
