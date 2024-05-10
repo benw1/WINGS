@@ -1,4 +1,7 @@
+from typing import Union
+
 from django import template
+# from wpipe.sqlintf import Job, Event, Node, Configuration
 
 register = template.Library()
 
@@ -30,3 +33,21 @@ def param_replace(context, **kwargs):
     for k in [k for k, v in d.items() if not v]:
         del d[k]
     return d.urlencode()
+
+
+@register.filter
+def wpipe_model_str(model: Union['Job', 'Event', 'Node', 'Configuration']) -> str:
+    class_name = type(model).__name__
+    if class_name == 'Job':
+        return f'<{model.id}>'
+    elif class_name == 'Event':
+        return f"<{model.name} ({model.id})>"
+    elif class_name == 'Node':
+        string = "{}".format(model.name)
+        if model.int_ip:
+            string = "{} (init_ip: {})".format(string, model.init_ip)
+        return string
+    elif class_name == 'Configuration':
+        return f"<{model.name} ({model.id})>"
+    else:
+        raise RuntimeError(f"This isn't a supported model: {model}")

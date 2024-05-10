@@ -1,0 +1,28 @@
+<!-- This is for html files that don't need the full navbar extended -->
+{% load static %}
+
+<!DOCTYPE html>
+<meta charset="UTF-8">
+
+<html>
+<head>
+<!--  Boostrap core CSS -->
+
+  <link href="{% static 'css/bootstrap.min.css'%}" rel="stylesheet">
+  <link href="{% static 'css/bootstrap.css'%}" rel="stylesheet">
+  <script src="{% static 'js/jquery.min.js'%}"></script>
+  <script src="{% static 'js/bootstrap.bundle.min.js'%}"></script>
+
+  {% block head %}
+  {% endblock %}
+</head>
+
+{% block body %}
+<!--Pages that extend 'base.html' will override this section-->
+{% endblock %}
+
+</html>
+
+{%block script%}
+<!--Pages that extend 'base.html' will override this section-->
+{% endblock %}

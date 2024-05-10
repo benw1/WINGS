@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% load common_tags %}
+
 {% block body %}
 <head>
     <meta charset="UTF-8">
@@ -48,19 +50,26 @@
 
     <hr>
 
-<!--    TODO: Make a nested view of tasks that expand on more -->
-    <div class="row">
-        <div class="col-md-12">
-            <h2>Tasks</h2>
-        </div>
-    </div>
+<!--&lt;!&ndash;    TODO: Make a nested view of tasks that expand on more &ndash;&gt;-->
+<!--    <div class="row">-->
+<!--        <div class="col-md-12">-->
+<!--            <h2>Tasks</h2>-->
+<!--        </div>-->
+<!--    </div>-->
 
-    <hr>
+<!--    <hr>-->
 
 <!--    TODO: Make a nested view of Events that expand on more -->
+<!--    TODO: For jobs that fail prefer parent events.  Otherwise show events that do work-->
+<!--    TODO: Tree snipped we go back some amount of events  -->
     <div class="row">
         <div class="col-md-12">
-            <h2>Events</h2>
+            <h2>Parent-Child Jobs & Events</h2>
+        </div>
+        <hr>
+        <div class="col-md-12">
+<!--            {% include 'common/ajax_tree_view.html' with base_object=job.firing_event list_stack=events_stack %}-->
+            {% include 'common/ajax_tree_view.html' with list_stack=job_stack %}
         </div>
     </div>
 

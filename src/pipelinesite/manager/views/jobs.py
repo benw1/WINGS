@@ -1,10 +1,26 @@
+import os
+
+import sqlalchemy.orm
 from django.db.models import Value, Case, When
 from django.shortcuts import render
 from django.core.paginator import Paginator
+from django.urls import reverse
 
-from pipelinesite.models import Jobs
+from pipelinesite.models import Jobs, Events
 from pipelinesite.utils import JobStates
 from manager.filters.job_filter import JobFilter
+
+# Define sqlalchemy session to be used in methods
+# import wpipe as wp
+# from wpipe.sqlintf import Session
+# from wpipe.sqlintf.Event import Event as SIEvent
+from wpipe.sqlintf.Job import Job
+from wpipe.Job import Job as WpipeJob
+from wpipe.sqlintf.Event import Event
+
+# engine = sqlalchemy.create_engine(os.environ['WPIPE_ENGINEURL'])
+# Session = sqlalchemy.orm.sessionmaker(bind=engine)
+# session = Session()
 
 def jobs(request):
 
@@ -48,10 +64,4 @@ def jobs(request):
 
     return render(request, 'job/job_list_view.html', context)
 
-def job_single_view(request, pk):
-    #TODO: Tree view of events and parent events
-    # Events page would have jobs that created it and teh job that came from it
-    job = Jobs.objects.get(pk=pk)
 
-    context = {'job': job}
-    return render(request, 'job/job_single_view.html', context)

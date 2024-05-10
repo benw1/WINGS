@@ -1,0 +1,116 @@
+{% extends 'base_min.html' %}
+
+<!--Quality of life updates to tree view -->
+<!-- Don't load everything, so loading doesn't take forever -->
+<!-- We want to scroll less -->
+{% load ajax_tags %}
+{% load bootstrap_icons %}
+
+<!--<head>-->
+{% block head %}
+    <style>
+        ul, #custom-tree {
+          list-style-type: none;
+        }
+
+        #custom-tree {
+          margin: 0;
+          padding: 0;
+        }
+
+        .caret {
+          cursor: pointer;
+          -webkit-user-select: none; /* Safari 3.1+ */
+          -moz-user-select: none; /* Firefox 2+ */
+          -ms-user-select: none; /* IE 10+ */
+          user-select: none;
+        }
+
+        .caret::before {
+          content: "\25B6";
+          color: black;
+          display: inline-block;
+          margin-right: 6px;
+        }
+
+        .caret-down::before {
+          -ms-transform: rotate(90deg); /* IE 9 */
+          -webkit-transform: rotate(90deg); /* Safari */'
+          transform: rotate(90deg);
+        }
+
+        .nested {
+          display: none;
+        }
+
+        .active {
+          display: block;
+        }
+    </style>
+{% endblock %}
+<!--</head>-->
+
+
+{% block body %}
+
+<!--TODO: Build a custom ul with CSS to add the tree like view part-->
+<div class="container">
+    <h5>The tree view</h5>
+    <h5>Tree Name: {{ tree_name }}</h5>
+
+    <ul>
+    {% for list_item_dict in list_stack reversed %}
+        {% if list_item_dict.url %}
+        <li>
+            {{ list_item_dict.value }}
+            <a href="{{ list_item_dict.url }}">{% bs_icon 'link-45deg' %}</a></li>
+        {% else %}
+        <li>{{ list_item_dict.value }}</li>
+        {% endif %}
+    {% endfor %}
+    </ul>
+
+</div>
+<!--<div class="container">-->
+<!--    <h5>The tree view</h5>-->
+<!--    <h5>Tree Name: {{ tree_name }}</h5>-->
+
+<!--    <ul id="custom-tree">-->
+<!--      <li><span class="caret">Beverages</span>-->
+<!--        <ul class="nested">-->
+<!--          <li>Water</li>-->
+<!--          <li>Coffee</li>-->
+<!--          <li><span class="caret">Tea</span>-->
+<!--            <ul class="nested">-->
+<!--              <li>Black Tea</li>-->
+<!--              <li>White Tea</li>-->
+<!--              <li><span class="caret">Green Tea</span>-->
+<!--                <ul class="nested">-->
+<!--                  <li>Sencha</li>-->
+<!--                  <li>Gyokuro</li>-->
+<!--                  <li>Matcha</li>-->
+<!--                  <li>Pi Lo Chun</li>-->
+<!--                </ul>-->
+<!--              </li>-->
+<!--            </ul>-->
+<!--          </li>-->
+<!--        </ul>-->
+<!--      </li>-->
+<!--    </ul>-->
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+var toggler = document.getElementsByClassName("caret");
+var i;
+
+for (i = 0; i < toggler.length; i++) {
+  toggler[i].addEventListener("click", function() {
+    this.parentElement.querySelector(".nested").classList.toggle("active");
+    this.classList.toggle("caret-down");
+  });
+}
+</script>
+{% endblock %}
+

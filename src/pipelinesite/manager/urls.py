@@ -2,7 +2,8 @@ from django.urls import path
 
 from .views.users import users
 from .views.pipelines import pipelines, pipeline_single
-from .views.jobs import jobs, job_single_view
+from .views.jobs import jobs
+from .views.job_single import job_single_view
 from .views.tasks import task_list, task_detail_view
 from .views.events import event_list, event_detail_view
 
