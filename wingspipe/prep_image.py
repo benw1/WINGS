@@ -20,7 +20,7 @@ def outimages(imgpath):
         front = imgpath.split('.fits')[0] +'.fits' + imgpath.split('.fits')[1] #for fits files
     #issue with file name-- data/targetname/proc etc. targetname has .fits
     print("FRONT: ", front)
-    chips = glob.glob(front + '.chip*.fits') 
+    chips = glob.glob(front + '.chip*[0-9].fits') 
     print("CHIPS: ", chips, ". \n")
     return chips
 
@@ -75,8 +75,8 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
     imgpath = config.procpath + '/' + new_image_name
     print('imgpath =', imgpath)
     outims = outimages(imgpath) #returns chips
-    if len(outims) > 0: # purpose?
-        return 0
+    #if len(outims) > 0: # purpose?
+    #    return 0
     try:
         dp.filename = new_image_name
     except:
@@ -89,12 +89,23 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
     _t = subprocess.run(_t1, stdout=subprocess.PIPE)
     _t = subprocess.run(_t2, stdout=subprocess.PIPE)
     outims = outimages(imgpath) #returns chips
+    thisjob.logprint("OUTIMS")
+    thisjob.logprint(outims)
     if len(outims) > 1:
         print(len(outims), " Images\n")
-        # for outimage in outimages:
-        # placeholder for when there are 18 chips in each sim
+        for outimage in outims:
+            filename = outimage.split('/')[-1]
+            front = filename.split('.fits')[0]
+            _t3 = [dolphot_path + 'calcsky', config.procpath + '/' + front, '15', '35', '-64', '2.25',
+                   '2.00']  # put in calcsky parameters
+            print("T3 ", _t3)
+            _t = subprocess.run(_t3, stdout=subprocess.PIPE)
+            _dp1 = config.dataproduct(filename=filename, relativepath=config.procpath, group='proc',
+                              subtype='dolphot_data', filtername=filtname)
+            skyname = front + '.sky.fits'
+            _dp2 = config.dataproduct(filename=skyname, relativepath=config.procpath, group='proc',
+                                  subtype='dolphot_sky', filtername=filtname)
     else:
-        print(outims)
         filename = outims[0].split('/')[-1] 
         front = filename.split('.fits')[0]
         _t3 = [dolphot_path + 'calcsky', config.procpath + '/' + front, '15', '35', '-64', '2.25',
@@ -106,7 +117,7 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
         skyname = front + '.sky.fits'
         _dp2 = config.dataproduct(filename=skyname, relativepath=config.procpath, group='proc',
                                   subtype='dolphot_sky', filtername=filtname)
-    return 1
+    return len(outims)
 
 
 def fixwcs(imgpath):
@@ -175,7 +186,7 @@ if __name__ == '__main__':
         # wp.si.session.execute('UNLOCK TABLES')
         ######
         update_option = parent_job.options[compname]
-        if (needcheck == 1):
+        if (needcheck > 0):
             update_option += 1
         else:
             #update_option += 1
@@ -208,13 +219,19 @@ if __name__ == '__main__':
                 detname = this_event.options['detname']
             except:
                 detname = this_target.name
-                my_job.logprint(''.join(["FAILED TEST event detname is ", str(detname)]))
-            new_event = this_job.child_event('images_prepped', tag=detname, options={'target_id': tid,'detname': detname,'submission_type': 'scheduler'})
-            this_job.logprint('about to fire')
-            this_job.logprint(''.join(["event detname is ", str(detname)]))
-            new_event.fire()
-            this_job.logprint('fired')
-            this_job.logprint('images_prepped\n')
-            this_job.logprint(''.join(["Event= ", str(new_event.event_id),"\n",detname,"\n","images_prepped\n"]))
+                this_job.logprint(''.join(["FAILED TEST event detname is ", str(detname)]))
+            for j in range(needcheck):
+                tag = detname+str(j+1)
+                chip = str(j+1)
+                this_job.logprint("DTNAME AND CHIP")
+                this_job.logprint(detname)
+                this_job.logprint(chip)
+                new_event = this_job.child_event('images_prepped', tag=tag, options={'target_id': tid,'detname': detname, 'chip': chip, 'submission_type': 'scheduler'})
+                this_job.logprint('about to fire')
+                this_job.logprint(''.join(["event detname is ", str(detname)]))
+                new_event.fire()
+                this_job.logprint('fired')
+                this_job.logprint('images_prepped\n')
+                this_job.logprint(''.join(["Event= ", str(new_event.event_id),"\n",detname,"\n","images_prepped\n"]))
 
             time.sleep(300)
