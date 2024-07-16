@@ -358,7 +358,7 @@ class Job(OptOwner):
     @state.setter
     @_in_session()
     def state(self, state):
-        self._job.state = state
+        self._job.state = state[:256]
         self.update_timestamp()
         # self._job.timestamp = datetime.datetime.utcnow()
         # self._session.commit()
