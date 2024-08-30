@@ -6,6 +6,7 @@ from astropy.io import fits
 import pandas as pd
 import wpipe as wp
 import numpy as np
+import time
 if __name__ == '__main__':
     from wingtips import WingTips as wtips
 else:
@@ -103,6 +104,7 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
             my_job.logprint(''.join(["event detname is ", str(detname)]))
             new_event.fire()
             i += 1
+    time.sleep(150)    
 
 
 def read_fixed(filepath, my_config, my_job, racent, deccent):
@@ -463,7 +465,7 @@ if __name__ == '__main__':
                 for i in range(ndetect):
                     dpid = dp_id
                     new_event = my_job.child_event('split_catalog', tag=i+1,
-                                       options={'dp_id': dpid,'submission_type':'scheduler', 'ra_dither': 0.0, 'dec_dither': 0.0})
+                                       options={'dp_id': dpid,'submission_type':'scheduler', 'detectors': i+1, 'ra_dither': 0.0, 'dec_dither': 0.0})
                     my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  split_catalog"]))
                     new_event.fire()
         elif 'split' in event.name:

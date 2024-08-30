@@ -69,8 +69,18 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
     print("Running ",filename,float(ra),float(dec))
     print("SEED ",seed)
     scene_general = {'ra': float(ra), 'dec': float(dec), 'pa': pa, 'seed': seed}
-    obs = {'instrument': 'WFI', 'filters': [filtername], 'detectors': my_params['detectors'], 'distortion': False, 'pupil_mask': '', 'background': 'avg',  'observations_id': dp_id, 'exptime': my_params['exptime'], 'offsets': [{'offset_id': event_id, 'offset_centre': False, 'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
-    obm = ObservationModule(obs, scene_general=scene_general, psf_grid_size=int(my_params['psf_grid']), oversample=int(my_params['oversample']), observation_default_background='avg', random_seed=seed)
+    obs = {'fast_galaxy': True,'instrument': 'WFI', 'filters': [filtername], 'detectors': my_params['detectors'], 'distortion': False, 'pupil_mask': '', 'background': 'avg',  'observations_id': dp_id, 'exptime': my_params['exptime'], 'offsets': [{'offset_id': event_id, 'offset_centre': False, 'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
+    #obm = ObservationModule(obs, scene_general=scene_general, psf_grid_size=int(my_params['psf_grid']), oversample=int(my_params['oversample']), random_seed=seed)
+    
+    print(obs)
+    print(scene_general)
+    print('obs = ', [filtername], my_params['detectors'], dp_id, my_params['exptime'], event_id, '\n')
+    print('scene_general = ', float(ra), float(dec), pa, seed)
+    print('obm = ', int(my_params['psf_grid']), int(my_params['oversample']))
+    print('ObservationModule({}, scene_general={}, psf_grid_size={}, oversample={}, random_seed={})'.format(obs, scene_general, int(my_params['psf_grid']), int(my_params['oversample']), seed))
+    
+    obm = ObservationModule(obs, scene_general=scene_general, psf_grid_size=int(my_params['psf_grid']), oversample=int(my_params['oversample']), random_seed=seed)
+    
     try:
         os.symlink(my_params['psf_cache'],my_config.procpath+"/psf_cache")
     except:
@@ -169,7 +179,7 @@ if __name__ == '__main__':
             this_job.logprint(''.join(["ID and subtype ", str(dpid), " and ", str(st), "\n"]))
             new_event = this_job.child_event('stips_done', tag=dpid,
                                              options={'target_id': tid, 'dp_id': dpid, 'submission_type': 'scheduler',
-                                                      'name': comp_name, 'to_run': total, 'detname': detname})
+                                                      'name': comp_name, 'to_run': total, 'detname': detname, 'walltime': '2:00:00'})
             this_job.logprint(''.join(["event detname is ", str(detname)]))
             new_event.fire()
             #this_job.logprint('stips_done but not firing any events for now\n')
