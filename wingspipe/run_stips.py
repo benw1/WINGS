@@ -155,7 +155,8 @@ if __name__ == '__main__':
     if detname == checkname:
         print("SAME")
     else:
-        print("FAIL")
+        print("FAIL, setting detname to checkname")
+        detname = checkname
     image_dps = wp.DataProduct.select(config_id=str(this_conf.config_id), data_type="stips_image", subtype=detname)
     #image_dps = wp.DataProduct.select(config_id=str(this_conf.config_id), data_type="stips_image")
     this_job.logprint(''.join(["Got ", str(len(image_dps)), " images \n"]))
