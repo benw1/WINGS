@@ -6,7 +6,7 @@ Please note that this module is private. The Job class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .constants import LOGPRINT_TIMESTAMP
-from .core import sys, logging, datetime, pd, si
+from .core import gc, sys, logging, datetime, pd, si
 from .core import make_yield_session_if_not_cached, make_query_rtn_upd
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import as_int, split_path
@@ -206,6 +206,17 @@ class Job(OptOwner):
                                                 loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
                 pass
 
+    @classmethod
+    def _clear_unused_cached_instances(cls):
+        mask = cls.__cache__[CLASS_LOW].map(gc.get_referrers).map(len) == 1
+        _ = cls.__cache__[CLASS_LOW][mask].map(lambda obj: delattr(getattr(obj, '_%s' % CLASS_LOW), '_wpipe_object'))
+        _ = cls.__cache__[CLASS_LOW][mask].map(lambda obj: delattr(obj, '_%s' % CLASS_LOW))
+        cls.__cache__.drop(mask[mask].index, inplace=True)
+
+    @classmethod
+    def _return_cached_instances(cls):
+        return [getattr(obj, '_%s' % CLASS_LOW) for obj in cls.__cache__[CLASS_LOW]]
+
     def __new__(cls, *args, **kwargs):
         if hasattr(cls, '_inst'):
             old_cls_inst = cls._inst
@@ -281,10 +292,6 @@ class Job(OptOwner):
             cls._inst = old_cls_inst
         return new_cls_inst
     
-    @classmethod
-    def _return_cached_instances(cls):
-        return [getattr(obj, '_%s' % CLASS_LOW) for obj in cls.__cache__[CLASS_LOW]]
-
     @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_child_events_proxy'):

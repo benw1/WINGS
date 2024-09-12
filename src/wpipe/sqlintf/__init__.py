@@ -71,9 +71,9 @@ boolean: flag to control the automatic committing.
 
 def _consolidate_cached_instances():
     from .. import User, Node, Pipeline, Input, Option, Target, Configuration, Parameter, DataProduct, Task, Mask, Job, Event
-    return list(itertools.chain.from_iterable(
-        [cls._return_cached_instances()
-         for cls in [User, Node, Pipeline, Input, Option, Target, Configuration, Parameter, DataProduct, Task, Mask, Job, Event]]))
+    cache_classes = [User, Node, Pipeline, Input, Option, Target, Configuration, Parameter, DataProduct, Task, Mask, Job, Event]
+    _ = [cls._clear_unused_cached_instances() for cls in cache_classes]
+    return list(itertools.chain.from_iterable([cls._return_cached_instances() for cls in cache_classes]))
 
 
 def deactivate_commit():

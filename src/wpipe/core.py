@@ -8,6 +8,7 @@ are available in the main ``wpipe`` namespace - use that instead.
 import importlib
 import contextlib
 import functools
+import gc
 import os
 import sys
 import pathlib
@@ -28,7 +29,7 @@ import pandas as pd
 
 from . import sqlintf as si
 
-__all__ = ['importlib', 'contextlib', 'os', 'sys', 'pathlib', 'types',
+__all__ = ['importlib', 'contextlib', 'gc', 'os', 'sys', 'pathlib', 'types',
            'datetime', 'time', 'subprocess', 'logging', 'glob', 'shutil',
            'warnings', 'json', 'ast', 'atexit', 'np', 'pd', 'si', 'PARSER',
            'as_int', 'clean_path', 'split_path', 'remove_path',

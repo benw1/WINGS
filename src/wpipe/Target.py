@@ -5,7 +5,7 @@ Contains the Target class definition
 Please note that this module is private. The Target class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import os, datetime, json, pd, si
+from .core import gc, os, datetime, json, pd, si
 from .core import make_yield_session_if_not_cached, make_query_rtn_upd
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import remove_path, split_path
@@ -134,7 +134,14 @@ class Target(OptOwner):
             for _session in cls._check_in_cache(kind='keyid',
                                                 loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
                 pass
-    
+
+    @classmethod
+    def _clear_unused_cached_instances(cls):
+        mask = cls.__cache__[CLASS_LOW].map(gc.get_referrers).map(len) == 1
+        _ = cls.__cache__[CLASS_LOW][mask].map(lambda obj: delattr(getattr(obj, '_%s' % CLASS_LOW), '_wpipe_object'))
+        _ = cls.__cache__[CLASS_LOW][mask].map(lambda obj: delattr(obj, '_%s' % CLASS_LOW))
+        cls.__cache__.drop(mask[mask].index, inplace=True)
+
     @classmethod
     def _return_cached_instances(cls):
         return [getattr(obj, '_%s' % CLASS_LOW) for obj in cls.__cache__[CLASS_LOW]]
