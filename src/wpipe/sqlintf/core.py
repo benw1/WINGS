@@ -55,6 +55,8 @@ else:
 POOL_RECYLE = 3600
 
 def make_engine():
+    if verbose:
+        print(f"Using ENGINE_URL = {ENGINE_URL}")
     url_parse_results = urllib.parse.urlparse(ENGINE_URL)
     engine_url = ENGINE_URL
     hostname = url_parse_results.hostname
