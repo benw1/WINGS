@@ -576,6 +576,8 @@ class DataProduct(OptOwner):
         newkwargs['filename'] = filename
         newkwargs['relativepath'] = path
         return newkwargs
+
+    @maintain_cache
     def _copy_symlink(self, path, kwargs, func):
         dpowner = kwargs.pop('dpowner', self.dpowner)
         return_dp = kwargs.pop('return_dp', True)
