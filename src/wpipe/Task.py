@@ -6,7 +6,7 @@ Please note that this module is private. The Task class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import gc, os, sys, shutil, warnings, datetime, pd, si
-from .core import make_yield_session_if_not_cached, make_query_rtn_upd
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd, maintain_cache
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import clean_path, remove_path, split_path
 from .proxies import ChildrenProxy
@@ -204,6 +204,7 @@ class Task:
             cls._inst = old_cls_inst
         return new_cls_inst
 
+    @maintain_cache
     # @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_masks_proxy'):
@@ -403,6 +404,7 @@ class Task:
         self._task.timestamp = datetime.datetime.utcnow()
         self._session.commit()
 
+    @maintain_cache
     def register(self):
         """
         Import and call the function register implemented in task script.
@@ -431,6 +433,7 @@ class Task:
         """
         remove_path(self.executable)
 
+    @maintain_cache
     def delete(self):
         """
         Delete corresponding row from the database.

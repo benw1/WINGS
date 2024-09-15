@@ -5,7 +5,7 @@ Contains the proxies.ChildrenProxy class definition
 Please note that this module is private. The proxies.ChildrenProxy class is
 available in the ``wpipe.proxies`` namespace - use that instead.
 """
-from .core import contextlib, sys, np, in_session
+from .core import contextlib, sys, np, in_session, maintain_cache
 
 __all__ = ['ChildrenProxy']
 
@@ -62,6 +62,7 @@ class ChildrenProxy:  # TODO: Generalize proxy object with the BaseProxy
             del self.n, self.len
             raise StopIteration
 
+    @maintain_cache
     def __getitem__(self, item):
         if isinstance(item, str):
             child = self._search_child_from_attritem(item)

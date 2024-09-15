@@ -6,7 +6,7 @@ Please note that this module is private. The Pipeline class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import gc, os, sys, glob, datetime, json, pd, si
-from .core import make_yield_session_if_not_cached, make_query_rtn_upd
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd, maintain_cache
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session, to_json
 from .core import as_int, clean_path, remove_path, split_path
 from .core import PARSER
@@ -306,7 +306,8 @@ class Pipeline(DPOwner):
             cls._inst = old_cls_inst
         return new_cls_inst
 
-    @_in_session()
+    @maintain_cache
+    # @_in_session()
     def __init__(self, *args, **kwargs):
         if self.pipe_root not in map(os.path.abspath, sys.path):
             sys.path.insert(0, self.pipe_root)
@@ -618,6 +619,7 @@ class Pipeline(DPOwner):
         remove_path(self.software_root, self.input_root, self.data_root, self.config_root)
         remove_path(self.pipe_root + '/.wpipe', hard=True)
 
+    @maintain_cache
     def delete(self):
         """
         Delete corresponding row from the database.

@@ -7,7 +7,7 @@ available in the main ``wpipe`` namespace - use that instead.
 """
 from .constants import LOGPRINT_TIMESTAMP
 from .core import gc, sys, logging, datetime, pd, si
-from .core import make_yield_session_if_not_cached, make_query_rtn_upd
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd, maintain_cache
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import as_int, split_path
 from .core import PARSER
@@ -291,7 +291,8 @@ class Job(OptOwner):
         if old_cls_inst is not None:
             cls._inst = old_cls_inst
         return new_cls_inst
-    
+
+    @maintain_cache
     @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_child_events_proxy'):
@@ -611,6 +612,7 @@ class Job(OptOwner):
         from .Event import Event
         return Event(self, *args, **kwargs)
 
+    @maintain_cache
     def logprint(self, log_text=None):
         """
         Log given text in a log dataproduct.
@@ -671,6 +673,7 @@ class Job(OptOwner):
         self.child_events.delete()
         self.state = JOBINITSTATE
 
+    @maintain_cache
     def delete(self):
         """
         Delete corresponding row from the database.

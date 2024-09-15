@@ -14,10 +14,10 @@ import datetime
 
 import numpy as np
 
-from ..core import si, in_session
+from ..core import si, in_session, maintain_cache
 
 __all__ = ['contextlib', 'sys', 'itertools', 'numbers', 'datetime', 'np',
-           'si', 'in_session', 'try_scalar']
+           'si', 'in_session', 'maintain_cache', 'try_scalar']
 
 _try_scalar_nan_dict = {'nan': float('NaN'),
                         'inf': float('Inf'),

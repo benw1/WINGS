@@ -52,7 +52,8 @@ __all__ = ['sa', 'orm', 'exc', 'argparse', 'PARSER', 'Session', 'SESSION',
            'User', 'Node', 'Pipeline', 'DPOwner', 'Input', 'Option',
            'OptOwner', 'Target', 'Configuration', 'Parameter', 'DataProduct',
            'Task', 'Mask', 'Job', 'Event',
-           'COMMIT_FLAG', 'hold_commit', 'begin_session', 'delete']
+           'COMMIT_FLAG', 'maintain_cache', 'hold_commit', 'begin_session',
+           'delete']
 
 Base.metadata.create_all(Engine)
 
@@ -66,14 +67,37 @@ COMMIT_FLAG = True
 boolean: flag to control the automatic committing.
 """
 
-# INSTANCES = []
+MAINTAIN_CACHE = False
+"""
+boolean: flag to control whether or not unused cached instances should be cleared before starting a session.
+"""
 
 
 def _consolidate_cached_instances():
     from .. import User, Node, Pipeline, Input, Option, Target, Configuration, Parameter, DataProduct, Task, Mask, Job, Event
     cache_classes = [User, Node, Pipeline, Input, Option, Target, Configuration, Parameter, DataProduct, Task, Mask, Job, Event]
-    _ = [cls._clear_unused_cached_instances() for cls in cache_classes]
-    return list(itertools.chain.from_iterable([cls._return_cached_instances() for cls in cache_classes]))
+    if not MAINTAIN_CACHE:
+        _ = [cls._clear_unused_cached_instances() for cls in cache_classes]
+    consolidated_cached_instances = list(itertools.chain.from_iterable([cls._return_cached_instances() for cls in cache_classes]))
+    return consolidated_cached_instances
+
+
+class MaintainCache:
+    def __init__(self):
+        self.existing_flag = None
+
+    def __enter__(self):
+        global MAINTAIN_CACHE
+        self.existing_flag = MAINTAIN_CACHE
+        MAINTAIN_CACHE = True
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        global MAINTAIN_CACHE
+        MAINTAIN_CACHE = self.existing_flag
+
+
+def maintain_cache():
+    return MaintainCache()
 
 
 def deactivate_commit():

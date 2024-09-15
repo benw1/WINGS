@@ -6,7 +6,7 @@ Please note that this module is private. The Target class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 from .core import gc, os, datetime, json, pd, si
-from .core import make_yield_session_if_not_cached, make_query_rtn_upd
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd, maintain_cache
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import remove_path, split_path
 from .proxies import ChildrenProxy
@@ -203,7 +203,8 @@ class Target(OptOwner):
             cls._inst = old_cls_inst
         return new_cls_inst
 
-    @_in_session()
+    @maintain_cache
+    # @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_configurations_proxy'):
             self._configurations_proxy = ChildrenProxy(self._target, 'configurations', 'Configuration')
@@ -372,6 +373,7 @@ class Target(OptOwner):
         """
         remove_path(self.datapath)
 
+    @maintain_cache
     def delete(self):
         """
         Delete corresponding row from the database.

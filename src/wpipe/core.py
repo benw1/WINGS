@@ -34,7 +34,7 @@ __all__ = ['importlib', 'contextlib', 'gc', 'os', 'sys', 'pathlib', 'types',
            'warnings', 'json', 'ast', 'atexit', 'np', 'pd', 'si', 'PARSER',
            'as_int', 'clean_path', 'split_path', 'remove_path',
            'make_yield_session_if_not_cached', 'make_query_rtn_upd',
-           'key_wpipe_separator', 'initialize_args',
+           'maintain_cache', 'key_wpipe_separator', 'initialize_args',
            'wpipe_to_sqlintf_connection', 'in_session',
            'return_dict_of_attrs', 'to_json']
 
@@ -171,11 +171,11 @@ def make_query_rtn_upd(class_low, keyid_attr, uniq_attrs):
     def query_return_and_update_cached_row(self, value_attr):
         _sqlintf = getattr(self, '_%s' % class_low)
         value = getattr(_sqlintf, value_attr)
-        temp = self.__cache__[class_low] == self
+        temp = self.__cache__[class_low] == self  # search for existing row matching with identical wpipe object
         # SOMEHOW, THIS BLOC BELOW IS NECESSARY
-        if temp.sum() == 0:
-            keyid = _sqlintf
-            temp = self.__cache__[keyid_attr] == keyid
+        if temp.sum() == 0:  # if no row matching with identical wpipe object
+            keyid = _sqlintf if isinstance(_sqlintf, int) else _sqlintf.id
+            temp = self.__cache__[keyid_attr] == keyid  # search for existing row matching identical keyid
         if temp.sum() == 0:
             _to_cache = {keyid_attr: keyid}
             for attr in uniq_attrs:
@@ -187,6 +187,31 @@ def make_query_rtn_upd(class_low, keyid_attr, uniq_attrs):
             self.__cache__.loc[temp, value_attr] = value
         return value
     return query_return_and_update_cached_row
+
+
+def maintain_cache(func):
+    """
+    Decorator that allow the decorated routine to run in a context manager
+    where the MAINTAIN_CACHE flag is set to True. This assures that the caches
+    of all the wpipe classes are kept intact for the duration of the decorated
+    routine process.
+
+    Parameters
+    ----------
+    func : function
+        Callable routine to decorate
+    
+    Returns
+    -------
+    wrapper : function
+        Wrapped decorated callable
+    """
+    @functools.wraps(func)
+    def wrapper(self_cls, *args, **kwargs):
+        with si.maintain_cache():
+                output = func(self_cls, *args, **kwargs)
+                return output
+    return wrapper
 
 
 def key_wpipe_separator(obj):

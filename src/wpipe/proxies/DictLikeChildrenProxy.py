@@ -5,7 +5,7 @@ Contains the proxies.DictLikeChildrenProxy class definition
 Please note that this module is private. The proxies.DictLikeChildrenProxy
 class is available in the ``wpipe.proxies`` namespace - use that instead.
 """
-from .core import sys, itertools, in_session
+from .core import sys, itertools, in_session, maintain_cache
 from .BaseProxy import BaseProxy
 from .ChildrenProxy import ChildrenProxy
 
@@ -38,12 +38,14 @@ class DictLikeChildrenProxy(ChildrenProxy):
         self._refresh()
         return repr(dict(self._items))
 
+    @maintain_cache
     def __getitem__(self, item):
         child = super(DictLikeChildrenProxy, self).__getitem__(item)
         return BaseProxy(parent=getattr(child, '_'+self._cls_name.lower()),
                          attr_name=self._child_value,
                          try_scalar=True)
 
+    @maintain_cache
     def __setitem__(self, item, value):
         if not isinstance(value, BaseProxy):
             if isinstance(item, str):

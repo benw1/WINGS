@@ -7,7 +7,7 @@ available in the main ``wpipe`` namespace - use that instead.
 """
 import socket
 from .core import gc, datetime, pd, si
-from .core import make_yield_session_if_not_cached, make_query_rtn_upd
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd, maintain_cache
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import split_path
 from .proxies import ChildrenProxy
@@ -167,6 +167,7 @@ class Node:
             cls._inst = old_cls_inst
         return new_cls_inst
 
+    @maintain_cache
     # @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_jobs_proxy'):
@@ -292,6 +293,7 @@ class Node:
         self._node.timestamp = datetime.datetime.utcnow()
         self._session.commit()
 
+    @maintain_cache
     def delete(self):
         """
         Delete corresponding row from the database.

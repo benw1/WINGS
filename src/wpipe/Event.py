@@ -7,7 +7,7 @@ available in the main ``wpipe`` namespace - use that instead.
 """
 from wpipe.scheduler.ConsumerFactory import get_send_job_factory, get_consumer_factory
 from .core import gc, os, datetime, subprocess, pd, si
-from .core import make_yield_session_if_not_cached, make_query_rtn_upd
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd, maintain_cache
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import as_int, split_path
 from .core import PARSER
@@ -219,6 +219,7 @@ class Event(OptOwner):
             cls._inst = old_cls_inst
         return new_cls_inst
 
+    @maintain_cache
     @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_fired_jobs_proxy'):
@@ -396,6 +397,7 @@ class Event(OptOwner):
         from .Job import Job
         return Job(self, *args, **kwargs)
 
+    @maintain_cache
     def fire(self):
         """
         Fire the task associated to this event.
@@ -470,9 +472,11 @@ class Event(OptOwner):
             # else:
             #     raise ValueError("'%s' isn't a valid 'submission_type'" % submission_type)
 
+    @maintain_cache
     def _generate_new_job(self, task):
         return self.fired_job(len(self.fired_jobs) + 1, task, self.config)
 
+    @maintain_cache
     def delete(self):
         """
         Delete corresponding row from the database.
