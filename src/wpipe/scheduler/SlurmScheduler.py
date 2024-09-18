@@ -102,7 +102,7 @@ class SlurmScheduler(BaseScheduler):
         for jobdata in self._jobList:
             jobsForJinja.append(
                 {'command': ("export OMP_NUM_THREADS=%d && " % n_cpus if omp_threads else "")
-                            + "source ~/.bashrc && conda activate %s &&" % jobdata.getCondaEnv()
+                            + "source ~/.bashrc && micromamba activate %s &&" % jobdata.getCondaEnv()
                             + jobdata.getTaskExecutable()
                             + ' -p ' + str(jobdata.getPipelineId())
                             + ' -u ' + str(jobdata.getPipelineUserName())
