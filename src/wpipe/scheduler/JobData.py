@@ -8,7 +8,7 @@ available in the ``wpipe.scheduler`` namespace - use that instead.
 import os
 from .. import si
 from .PbsScheduler import DEFAULT_NODE_MODEL, DEFAULT_WALLTIME
-from .SlurmScheduler import DEFAULT_MEMORY, DEFAULT_WALLTIME
+from .SlurmScheduler import DEFAULT_MEMORY, DEFAULT_WALLTIME, DEFAULT_ACCOUNT, DEFAULT_PARTITION
 
 __all__ = ['JobData']
 
@@ -48,6 +48,14 @@ class JobData:
             self._memory = str(event_options['memory'])
         except KeyError:
             self._memory = DEFAULT_MEMORY
+        try:
+            self._slurm_partition = str(event_options['partition'])
+        except KeyError:
+            self._slurm_partition = DEFAULT_PARTITION
+        try:
+            self._slurm_account= str(event_options['account'])
+        except KeyError:
+            self._slurm_account = DEFAULT_ACCOUNT
         try:
             self._job_openmp = bool(event_options['job_openmp'])
         except KeyError:
@@ -116,6 +124,12 @@ class JobData:
 
     def getMemory(self):
         return self._memory
+
+    def getAccount(self):
+        return self._slurm_account
+
+    def getPartition(self):
+        return self._slurm_partition
 
     def getJobOpenMP(self):
         return self._job_openmp
