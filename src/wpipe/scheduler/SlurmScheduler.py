@@ -17,7 +17,7 @@ __all__ = ['DEFAULT_NODE_MODEL', 'DEFAULT_WALLTIME', 'SlurmScheduler']
 DEFAULT_WALLTIME = '48:00:00'
 DEFAULT_MEMORY = '50G'
 DEFAULT_ACCOUNT = 'astro'
-DEFAULT_PARTITION = 'astro'
+DEFAULT_PARTITION = 'compute-bigmem'
 DEFAULT_NODE_MODEL = 'has'
 NODE_CORES_DICT = {'bro': 2 * 14, 'has': 2 * 12, 'ivy': 2 * 10, 'san': 2 * 8}
 
@@ -134,7 +134,8 @@ class SlurmScheduler(BaseScheduler):
         n_jobs = len(self._jobList)
         n_nodes = [math.ceil(n_jobs / node_cores[node_model]), n_jobs][omp_threads]
         n_cpus = node_cores[node_model]
-        n_jobs_per_node = [n_cpus, 1][omp_threads]
+        #n_jobs_per_node = [n_cpus, 1][omp_threads]
+        n_jobs_per_node = n_jobs
         omp_threads = ['', 'ompthreads=%d:' % n_cpus][omp_threads]
 
         # create a dictionary
