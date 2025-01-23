@@ -16,6 +16,8 @@ __all__ = ['DEFAULT_NODE_MODEL', 'DEFAULT_WALLTIME', 'SlurmScheduler']
 
 DEFAULT_WALLTIME = '48:00:00'
 DEFAULT_MEMORY = '50G'
+DEFAULT_ACCOUNT = 'astro'
+DEFAULT_PARTITION = 'compute-bigmem'
 DEFAULT_NODE_MODEL = 'has'
 NODE_CORES_DICT = {'bro': 2 * 14, 'has': 2 * 12, 'ivy': 2 * 10, 'san': 2 * 8}
 
@@ -43,13 +45,17 @@ class SlurmScheduler(BaseScheduler):
     ## Internal Use Only ##
     #######################
 
-    def _submitJob(self, jobdata):
+    def _submitJob(self, jobdata, listmax=10):
         # TODO: Change to event later
 
         self._jobList.append(jobdata)
 
         # Reset the scheduler
-        super().reset()
+       
+        if (len(self._jobList) > listmax):
+            super().run_it()
+        else:
+            super().reset()
 
     def _execute(self):
         print("We do the scheduling now from: " + self._key.getKey())
@@ -102,7 +108,7 @@ class SlurmScheduler(BaseScheduler):
         for jobdata in self._jobList:
             jobsForJinja.append(
                 {'command': ("export OMP_NUM_THREADS=%d && " % n_cpus if omp_threads else "")
-                            + "source ~/.bashrc && conda activate %s &&" % jobdata.getCondaEnv()
+                            + "source ~/.bashrc && micromamba activate %s &&" % jobdata.getCondaEnv()
                             + jobdata.getTaskExecutable()
                             + ' -p ' + str(jobdata.getPipelineId())
                             + ' -u ' + str(jobdata.getPipelineUserName())
@@ -120,15 +126,16 @@ class SlurmScheduler(BaseScheduler):
 
         template = TemplateFactory.getSlurmFileTemplate()
 
-        slurm_account = 'astro'
-        slurm_partition = 'astro'
+        slurm_account = self._jobList[0].getAccount()
+        slurm_partition = self._jobList[0].getPartition()
         node_cores = NODE_CORES_DICT
         node_model = self._jobList[0].getNodemodel()
         omp_threads = self._jobList[0].getJobOpenMP()
         n_jobs = len(self._jobList)
         n_nodes = [math.ceil(n_jobs / node_cores[node_model]), n_jobs][omp_threads]
         n_cpus = node_cores[node_model]
-        n_jobs_per_node = [n_cpus, 1][omp_threads]
+        #n_jobs_per_node = [n_cpus, 1][omp_threads]
+        n_jobs_per_node = n_jobs
         omp_threads = ['', 'ompthreads=%d:' % n_cpus][omp_threads]
 
         # create a dictionary
@@ -136,8 +143,8 @@ class SlurmScheduler(BaseScheduler):
                    'njobs': n_jobs_per_node,
                    'walltime': self._jobList[0].getWalltime(),
                    'mem' : self._jobList[0].getMemory(),
-                   'account' : slurm_account,
-                   'partition' : slurm_partition,
+                   'account' : self._jobList[0].getAccount(),
+                   'partition' : self._jobList[0].getPartition(),
                    'jobid' : self._jobList[0].getJobId(),
                    'pipe_root': self._jobList[0].getPipelinePipeRoot(),
                    'executables_list_path': executablesListPath}
