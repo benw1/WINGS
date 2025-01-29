@@ -90,6 +90,16 @@ def send(dp, conf, comp_name, total, job):
             event = job.child_event('new_match_catalog', jargs='0', value='0',
                                     options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'config_id': confid})
             event.fire()
+    if '.hdf5' in dp.filename:
+        print("hdf5 file detected")
+        eventtag = dpid
+        event = job.child_event('new_fixed_catalog', jargs='0', value='0', tag=eventtag,
+                options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'config_id': confid})
+        print("generated event", event.event_id, "Firing...")
+        event.fire()
+
+
+
     
 def parse_all():
     parser = wp.PARSER

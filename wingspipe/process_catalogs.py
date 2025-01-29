@@ -6,6 +6,7 @@ from astropy.io import fits
 import pandas as pd
 import wpipe as wp
 import numpy as np
+import vaex
 import time
 if __name__ == '__main__':
     from wingtips import WingTips as wtips
@@ -18,6 +19,7 @@ def register(task):
     _temp = task.mask(source='*', name='new_match_catalog', value='*')
     _temp = task.mask(source='*', name='new_fixed_catalog', value='*')
     _temp = task.mask(source='*', name='new_split_catalog', value='*')
+    _temp = task.mask(source='*', name='new_hdf5_catalog', value='*')
 
 
 def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
@@ -39,7 +41,7 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
     print("ra and dec ",racent,deccent)
     fileroot = my_config.procpath + '/'
     procdp = my_config.dataproduct(filename=filename, relativepath=fileroot, group='proc')
-    stips_files, filters = read_fixed(procdp.relativepath + '/' + procdp.filename, my_config, my_job, racent, deccent)
+    stips_files, filters = read_fixed(procdp.relativepath + '/' + procdp.filename, my_config, my_job, racent, deccent,procdp.filename)
     comp_name = 'completed' + detname
     options = {comp_name: 0}
     my_job.options = options
@@ -107,25 +109,27 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
     time.sleep(150)    
 
 
-def read_fixed(filepath, my_config, my_job, racent, deccent):
-    if 'fit' in str(filepath):
+def read_fixed(filepath, my_config, my_job, racent, deccent, filename):
+    if 'fit' in str(filename):
         data = fits.open(filepath)
         print(data[1].columns,"COLS")
         nstars = len(data[1].data['ra'])
         magni = np.arange(len(data[1].data))
-    if '.csv' in str(filepath):
+        allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
+    if '.csv' in str(filename):
         data = pd.read_csv(filepath)
         print(data.columns, "COLS")
         #data.columns = map(str.upper, data.columns)
         nstars = len(data['ra'])
         magni = np.arange(len(data))
+        allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
+
     my_params = my_config.parameters
     #area = float(my_params["area"])
     background = my_params["background_dir"]
     #tot_dens = np.float(nstars) / area
     #print("MAX TOTAL DENSITY = ", tot_dens)
     filtsinm = []
-    allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
     for filt in allfilts:
         try:
             try:
@@ -140,7 +144,10 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     try:
         h = data[1].data['F158']
     except:
-        h = data['F158']
+        try:
+            h = data['F158']
+        except:
+            h = data['roman_f158']
     htot_keep = (h > 23.0) & (h < 24.0)
     hkeep = h[htot_keep]
     htot = len(hkeep)
@@ -477,3 +484,4 @@ if __name__ == '__main__':
             my_config = catalog_dp.config
             my_params = my_config.parameters
             process_fixed_catalog(job_id, dp_id, detracent, detdeccent, detname)
+

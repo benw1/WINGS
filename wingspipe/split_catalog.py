@@ -3,6 +3,7 @@ import gc
 import os
 import subprocess
 import time
+import vaex
 
 import pandas as pd
 import wpipe as wp
@@ -20,6 +21,9 @@ def register(task):
     _temp = task.mask(source='*', name='start', value=task.name)
     _temp = task.mask(source='*', name='split_catalog', value='*')
 
+def rreplace(s, old, new, occurrence):
+    li = s.rsplit(old, occurrence)
+    return new.join(li)
 
 def split_catalog(job_id, dp_id, detid):
     dp = wp.DataProduct(dp_id)
@@ -70,16 +74,33 @@ def split_catalog(job_id, dp_id, detid):
         declim1 = detdeccent - 0.1
         declim2 = detdeccent + 0.1
         # my_data = pd.read_csv(cat)
-        my_data = dd.read_csv(cat)
-        #may need to change to my_datafile = fits.open(cat) and add line my_data=my_datafile[1]
-        print(my_data.ra, my_data.dec, ralim1, ralim2, declim1, declim2)
-        keep = (my_data.ra > ralim1) & (my_data.ra < ralim2) & (my_data.dec > declim1) & (my_data.dec < declim2)
-        # my_data[keep].to_csv(outfile, index=False)
-        my_data[keep].to_csv(outfile, index=False, single_file=True)
+        try:
+            my_data = dd.read_csv(cat)
+            #may need to change to my_datafile = fits.open(cat) and add line my_data=my_datafile[1]
+            print(my_data.ra, my_data.dec, ralim1, ralim2, declim1, declim2)
+            keep = (my_data.ra > ralim1) & (my_data.ra < ralim2) & (my_data.dec > declim1) & (my_data.dec < declim2)
+            # my_data[keep].to_csv(outfile, index=False)
+            my_data[keep].to_csv(outfile, index=False, single_file=True)
+        except:
+            ds = vaex.open(cat)
+            ds_small = ds[(ds.ra < ralim2) & (ds.ra > ralim1) & (ds.dec < declim2) & (ds.dec > declim1)]
+            ds2 = ds_small['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184']
+            ds2.rename('roman_f062','F062')
+            ds2.rename('roman_f087','F087')
+            ds2.rename('roman_f106','F106')
+            ds2.rename('roman_f129','F129')
+            ds2.rename('roman_f158','F158')
+            ds2.rename('roman_f184','F184')
+            outfile = rreplace(outfile, '.hdf5', '.csv', 1)
+            filename = rreplace(filename, '.hdf5', '.csv', 1)
+            ds2.export_csv(outfile)
         #do we want this to be '.to_csv' or should it be converting to a fits file?
+        print("Making dp for ",filename)
         _dp = my_config.dataproduct(filename=filename, relativepath=my_config.procpath, group='proc',
                                     subtype='split_catalog')
-        checksize = len(my_data[keep])
+        #checksize = len(my_data[keep])
+        outfile_stats = os.stat(outfile)
+        checksize = outfile_stats.st_size / (1024)
         dpid = _dp.dp_id
         if (checksize < 10000000):
             new_event = my_job.child_event('new_split_catalog', tag=dpid,

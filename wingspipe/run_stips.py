@@ -133,8 +133,6 @@ if __name__ == '__main__':
     dec_dither = this_event.options['dec_dither']
     print('event', this_event_id, 'dp', this_dp_id)
     checkname = run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither))
-    update_option = parent_job.options[compname]
-    update_option += 1
     to_run = this_event.options['to_run']
     catalogID = this_event.options['dp_id']
     detname = this_event.options['detname']
@@ -146,8 +144,10 @@ if __name__ == '__main__':
     try:
         ndetect = my_params['ndetect']
     except:
+        this_job.logprint("Couldn't find ndetect parameter, setting to 1")
         ndetect = 1
     if ndetect == 1:
+        this_job.logprint("ndetect is 1, so setting the detname to the targname")
         targname = this_target.name
         detname = '.'.join(targname.split('.')[:-1])
     this_job.logprint(''.join(["Grabbing DPS with DETNAME and conf ids of", detname, str(this_conf.config_id),"\n"]))
@@ -159,6 +159,8 @@ if __name__ == '__main__':
         detname = checkname
     image_dps = wp.DataProduct.select(config_id=str(this_conf.config_id), data_type="stips_image", subtype=detname)
     #image_dps = wp.DataProduct.select(config_id=str(this_conf.config_id), data_type="stips_image")
+    update_option = parent_job.options[compname]
+    update_option += 1
     this_job.logprint(''.join(["Got ", str(len(image_dps)), " images \n"]))
     this_job.logprint(''.join(["Completed ", str(update_option), " of ", str(to_run), "\n"]))
     if update_option == to_run:
