@@ -4,6 +4,10 @@ import os
 import subprocess
 import time
 import vaex
+import re
+import pathlib
+from astropy import coordinates, units
+from mhealpy import HealpixMap
 
 import pandas as pd
 import wpipe as wp
@@ -25,12 +29,32 @@ def rreplace(s, old, new, occurrence):
     li = s.rsplit(old, occurrence)
     return new.join(li)
 
+def get_overlapping_files(my_config,detracor,detdeccor):
+    cwd = my_config.parameters["healpix_library_path"]
+    state_file = list(cwd.glob('*.h5'))[0].with_suffix('').with_suffix('.state')
+    partial_moc_nuniqs = np.sort([
+        int(foo[0])
+        for f in cwd.glob(state_file.with_suffix('.*.h5').name)
+        if (foo:=re.findall(".*\.(\d+)\.h5", f.name))
+        ])
+    partial_moc_hp_map = HealpixMap(None, partial_moc_nuniqs, density = True)
+
+    detector_vertices = coordinates.ICRS(ra=detracor, dec=detdeccor)
+    partial_moc_hp_map.uniq[partial_moc_hp_map.query_polygon(detector_vertices.cartesian.xyz.T.value, inclusive=True)]
+    filelist = np.array(sorted(cwd.glob('*.h5')))[partial_moc_hp_map.query_polygon(detector_vertices.cartesian.xyz.T.value, inclusive=True)]
+    return filelist
+
 def split_catalog(job_id, dp_id, detid):
     dp = wp.DataProduct(dp_id)
-    cat = dp.path
     my_job = wp.Job(job_id)
     my_config = dp.config
     my_params = my_config.parameters
+    if defined(my_params['healpix_catalog_path']:
+        cat = my_params['healpix_catalog_path']
+        heal = 1
+    else:
+        cat = dp.path
+        heal = 0
     racent = my_params['racent']
     deccent = my_params['deccent']
     my_pipe = my_config.pipeline
@@ -63,9 +87,13 @@ def split_catalog(job_id, dp_id, detid):
         #detracent = racent + xoff
         #detdeccent = deccent + yoff
 
-        detracent = racent + offsets[0,detcount]
-        detdeccent = deccent + offsets[1,detcount]
-
+        detracent = (racent + offsets[0,detcount]) 
+        detdeccent = (deccent + offsets[1,detcount]) 
+        if heal == 1:
+            racor = np.cos(detdeccent * np.pi/180.0)
+            detracorners = [detracent - (5.0/(60.0*racor)), detracent - (5.0/(60.0*racor)),detracent + (5.0/(60.0*racor)),detracent + (5.0/(60.0*racor))] * units.deg
+            detdeccorners = [detdeccent - 5.0/60.0, detdeccent + (5.0/60.0),detdeccent + (5.0/60.0),detdeccent - (5.0/60.0)] * units.deg
+            catfiles = get_overlapping_files(my_config,detracorners,deteccorners)
         #decstr = '%.4f' % detdeccent
         #rastr = '"%.4f' % detracent
         #rastr = rastr.lstrip("\"")
