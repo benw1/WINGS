@@ -241,7 +241,7 @@ class WingTips:
             _temp.write_stips(outfile, hasID=bool(ID), hasCmnt=bool(notes), saveID=bool(ID),
                               max_writing_packet=max_writing_packet)
         elif check >= 10000000:
-            runs = np.int(np.floor(check/10000000)+1)
+            runs = int(np.floor(check/10000000)+1)
             _tab = np.array([ra[0:10000000], dec[0:10000000], flux[0:10000000], Type[0:10000000], n[0:10000000], re[0:10000000], phi[0:10000000], ratio[0:10000000]], dtype='object').T
             _temp.tab = np.array(_tab)
             del _tab

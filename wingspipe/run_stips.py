@@ -69,7 +69,7 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
     print("Running ",filename,float(ra),float(dec))
     print("SEED ",seed)
     scene_general = {'ra': float(ra), 'dec': float(dec), 'pa': pa, 'seed': seed}
-    obs = {'fast_galaxy': True,'instrument': 'WFI', 'filters': [filtername], 'detectors': my_params['detectors'], 'distortion': False, 'pupil_mask': '', 'background': 'avg',  'observations_id': dp_id, 'exptime': my_params['exptime'], 'offsets': [{'offset_id': event_id, 'offset_centre': False, 'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
+    obs = {'fast_galaxy': True,'instrument': 'WFI', 'filters': [filtername], 'detectors': 1, 'distortion': False, 'pupil_mask': '', 'background': 'avg',  'observations_id': dp_id, 'exptime': my_params['exptime'], 'offsets': [{'offset_id': event_id, 'offset_centre': False, 'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
     #obm = ObservationModule(obs, scene_general=scene_general, psf_grid_size=int(my_params['psf_grid']), oversample=int(my_params['oversample']), random_seed=seed)
     
     print(obs)

@@ -98,6 +98,13 @@ def send(dp, conf, comp_name, total, job):
         print("generated event", event.event_id, "Firing...")
         event.fire()
 
+    if '.' not in dp.filename:
+        print("healpix list file detected")
+        eventtag = dpid
+        event = job.child_event('new_healpix_target', jargs='0', value='0', tag=eventtag,
+                options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'config_id': confid})
+        print("generated event", event.event_id, "Firing...")
+        event.fire()
 
 
     

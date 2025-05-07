@@ -17,7 +17,7 @@ def outimages(imgpath):
     if '.csv' in str(imgpath):
         front = imgpath.split('.fits')[0] #for csv files
     else:
-        front = imgpath.split('.fits')[0] +'.fits' + imgpath.split('.fits')[1] #for fits files
+        front = imgpath.split('.fits')[0]# +'.fits' + imgpath.split('.fits')[1] #for fits files
     #issue with file name-- data/targetname/proc etc. targetname has .fits
     print("FRONT: ", front)
     chips = glob.glob(front + '.chip*[0-9].fits') 
@@ -88,6 +88,7 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
     print("T2 ", _t2)
     _t = subprocess.run(_t1, stdout=subprocess.PIPE)
     _t = subprocess.run(_t2, stdout=subprocess.PIPE)
+    print("imgpath:",imgpath)
     outims = outimages(imgpath) #returns chips
     thisjob.logprint("OUTIMS")
     thisjob.logprint(outims)
@@ -106,6 +107,7 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
             _dp2 = config.dataproduct(filename=skyname, relativepath=config.procpath, group='proc',
                                   subtype='dolphot_sky', filtername=filtname)
     else:
+        print("OUTIMD: ",outims)
         filename = outims[0].split('/')[-1] 
         front = filename.split('.fits')[0]
         _t3 = [dolphot_path + 'calcsky', config.procpath + '/' + front, '15', '35', '-64', '2.25',

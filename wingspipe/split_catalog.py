@@ -5,7 +5,7 @@ import subprocess
 import time
 import vaex
 import re
-import pathlib
+from pathlib import Path
 from astropy import coordinates, units
 from mhealpy import HealpixMap
 
@@ -24,13 +24,15 @@ else:
 def register(task):
     _temp = task.mask(source='*', name='start', value=task.name)
     _temp = task.mask(source='*', name='split_catalog', value='*')
+    _temp = task.mask(source='*', name='new_healpix_target', value='*')
 
 def rreplace(s, old, new, occurrence):
     li = s.rsplit(old, occurrence)
     return new.join(li)
 
 def get_overlapping_files(my_config,detracor,detdeccor):
-    cwd = my_config.parameters["healpix_library_path"]
+    cwd = Path(my_config.parameters["healpix_library_path"])
+    print(list(cwd.glob('*.h5'))[0])
     state_file = list(cwd.glob('*.h5'))[0].with_suffix('').with_suffix('.state')
     partial_moc_nuniqs = np.sort([
         int(foo[0])
@@ -38,23 +40,73 @@ def get_overlapping_files(my_config,detracor,detdeccor):
         if (foo:=re.findall(".*\.(\d+)\.h5", f.name))
         ])
     partial_moc_hp_map = HealpixMap(None, partial_moc_nuniqs, density = True)
-
+    print(detracor,detdeccor)
     detector_vertices = coordinates.ICRS(ra=detracor, dec=detdeccor)
     partial_moc_hp_map.uniq[partial_moc_hp_map.query_polygon(detector_vertices.cartesian.xyz.T.value, inclusive=True)]
+    #filelist = np.array(sorted(cwd.glob('*.h5')))[partial_moc_hp_map.query_polygon(detector_vertices.cartesian.xyz.T.value, inclusive=True)]
     filelist = np.array(sorted(cwd.glob('*.h5')))[partial_moc_hp_map.query_polygon(detector_vertices.cartesian.xyz.T.value, inclusive=True)]
     return filelist
 
+def get_detectors(ang):
+    det_off = [(-1500,2000,0),(1200,1500,0)]
+    det_names = ("SCA02","SCA06")
+    return det_off,det_names
+
+def split_healpix(job_id, dp_id):
+    dp = wp.DataProduct(dp_id)
+    my_job = wp.Job(job_id)
+    my_config = dp.config
+    my_params = my_config.parameters
+    filepath = dp.relativepath+"/"+dp.filename
+    data = np.loadtxt(filepath, dtype=str)
+    racent = float(data[1])
+    deccent = float(data[2])
+    my_params["healpix_library_path"] = data[0]
+    my_params["racent"] = data[1]
+    my_params["deccent"] = data[2]
+    try:
+        ang = my_params['rotation_angle']
+    except:
+        ang = 0.0
+    detlocs,detnames = get_detectors(ang)
+    print(detlocs,detnames,)
+    my_detectors = my_params['detectors']
+    outfilelist = []
+    ralist = []
+    declist = []
+    detcount = 0
+    for detname in detnames:
+        if detname not in (my_detectors):
+            continue
+        offsets = detlocs[detcount]
+        #detracent = (racent + offsets[0,detcount]) 
+        #detdeccent = (deccent + offsets[1,detcount]) 
+        detracent = (racent + offsets[0]/3600.0) 
+        detdeccent = (deccent + offsets[1]/3600.0) 
+
+        racor = np.cos(detdeccent * np.pi/180.0)
+        detracorners = [detracent - (5.0/(60.0*racor)), detracent - (5.0/(60.0*racor)),detracent + (5.0/(60.0*racor)),detracent + (5.0/(60.0*racor))] * units.deg
+        detdeccorners = [detdeccent - 5.0/60.0, detdeccent + (5.0/60.0),detdeccent + (5.0/60.0),detdeccent - (5.0/60.0)] * units.deg
+        catfiles = get_overlapping_files(my_config,detracorners,detdeccorners)
+        outname = detname + ".filelist"
+        output = my_config.confpath + "/" + outname
+        with open(output, 'w') as f:
+            #print(catfiles, file=f)
+            for files in catfiles:
+                print(files,file=f)
+        _dp = my_config.dataproduct(filename=outname, relativepath=my_config.confpath,subtype="healpix_list", group='conf')
+        new_event = my_job.child_event('new_healpix_list', tag=_dp.dp_id, options={'dp_id': _dp.dp_id, 'racent': detracent, 'deccent': detdeccent,
+                                                  'submission_type': 'scheduler', 'detname': detname})
+        my_job.logprint(''.join(["event detname is ", str(detname)]))
+        my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_healpix_list"]))
+        new_event.fire()
+        detcount += 1
+ 
 def split_catalog(job_id, dp_id, detid):
     dp = wp.DataProduct(dp_id)
     my_job = wp.Job(job_id)
     my_config = dp.config
     my_params = my_config.parameters
-    if defined(my_params['healpix_catalog_path']:
-        cat = my_params['healpix_catalog_path']
-        heal = 1
-    else:
-        cat = dp.path
-        heal = 0
     racent = my_params['racent']
     deccent = my_params['deccent']
     my_pipe = my_config.pipeline
@@ -89,11 +141,6 @@ def split_catalog(job_id, dp_id, detid):
 
         detracent = (racent + offsets[0,detcount]) 
         detdeccent = (deccent + offsets[1,detcount]) 
-        if heal == 1:
-            racor = np.cos(detdeccent * np.pi/180.0)
-            detracorners = [detracent - (5.0/(60.0*racor)), detracent - (5.0/(60.0*racor)),detracent + (5.0/(60.0*racor)),detracent + (5.0/(60.0*racor))] * units.deg
-            detdeccorners = [detdeccent - 5.0/60.0, detdeccent + (5.0/60.0),detdeccent + (5.0/60.0),detdeccent - (5.0/60.0)] * units.deg
-            catfiles = get_overlapping_files(my_config,detracorners,deteccorners)
         #decstr = '%.4f' % detdeccent
         #rastr = '"%.4f' % detracent
         #rastr = rastr.lstrip("\"")
@@ -242,5 +289,8 @@ if __name__ == '__main__':
         event = this_job.firing_event
         dp_id = event.options['dp_id']
         detid = event.tag
-        split_catalog(job_id, dp_id, detid)
+        if "healpix" in event.name:
+            split_healpix(job_id,dp_id)
+        else:
+            split_catalog(job_id, dp_id, detid)
 

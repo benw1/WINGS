@@ -20,6 +20,24 @@ def register(task):
     _temp = task.mask(source='*', name='new_fixed_catalog', value='*')
     _temp = task.mask(source='*', name='new_split_catalog', value='*')
     _temp = task.mask(source='*', name='new_hdf5_catalog', value='*')
+    _temp = task.mask(source='*', name='new_healpix_list', value='*')
+
+
+def process_healpix_list(my_config,my_dp_id):
+    list_dp = wp.DataProduct(my_dp_id)
+    fileroot = str(list_dp.relativepath)
+    listroot = str(list_dp.relativepath)
+    listname = str(list_dp.filename)
+    filepath = fileroot + '/' + listname
+    healpix_list = np.loadtxt(filepath,dtype=str)
+    ds0 = vaex.open_many(healpix_list)
+    df = ds0['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f213'].to_pandas_df()
+    ds0.close()
+    del ds0
+    gc.collect()
+    return df
+        
+        
 
 
 def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
@@ -224,6 +242,64 @@ def process_match_catalog(my_job_id, my_dp_id):
         new_event.fire()
         i += 1
 
+def process_df_catalog(my_config,my_event,my_job,df):
+    my_target = my_config.target
+    print("NAME",my_target.name)
+    try:
+        starsonly = int(my_params['starsonly'])
+    except:
+        print("Setting starsonly to 1")
+        starsonly = 1
+
+    #
+    fileroot = my_config.procpath + '/'
+    detname = my_event.options["detname"]
+    prefix = fileroot + my_target.name + "_" + my_event.options["detname"]
+    ra = df['ra']
+    dec = df['dec']
+    racent = my_event.options["racent"]
+    deccent = my_event.options["deccent"]
+    magni = np.array([df['roman_f062'],df['roman_f087'],df['roman_f106'],df['roman_f129'],df['roman_f158'],df['roman_f184']]).T
+    background = my_params["background_dir"]
+
+    
+    filtsinm = ['F062','F087','F106','F129','F158','F184']
+    h = df['roman_f158']
+    htot_keep = (h > 23.0) & (h < 24.0)
+    hkeep = h[htot_keep]
+    htot = len(hkeep)
+    #hden = np.float(htot) / area
+    del h
+    my_job.logprint(''.join(["H(23-24) TOTAL = ", str(htot)]))
+    stips_in = []
+
+
+
+    if starsonly == 0:
+        galradec = getgalradec(prefix+".tmp", ra * 0.0 + racent, dec * 0.0 + deccent, magni, background)
+        stips_files, filters = write_stips(prefix+".tmp", ra, dec, magni, background,
+                                       galradec, racent, deccent, starsonly, filtsinm,my_job)
+    if starsonly == 1:
+        stips_files, filters = write_stips(prefix+".tmp", ra, dec, magni, background,
+                                       0.0, racent, deccent, starsonly, filtsinm,my_job)
+    comp_name = 'completed' + my_target.name
+    options = {comp_name: 0}
+    my_job.options = options
+    total = len(stips_files)
+    i = 0
+    for stips_cat in stips_files:
+        filtname = filters[i]
+        _dp = my_config.dataproduct(filename=stips_cat, relativepath=my_config.procpath, group='proc',
+                                    filtername=filtname, subtype='stips_input_catalog')
+        dpid = _dp.dp_id
+        new_event = my_job.child_event('new_stips_catalog', tag=filtname,
+                options={'dp_id': dpid, 'detname': detname, 'to_run': total, 'name': comp_name,'ra_dither': 0.0,
+                                                'dec_dither': 0.0,'submission_type' : 'scheduler'})
+        my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
+        new_event.fire()
+        i += 1
+    time.sleep(150)
+
 
 def read_match(filepath, cols, my_config, my_job):
     data = np.loadtxt(filepath)
@@ -306,7 +382,7 @@ def read_match(filepath, cols, my_config, my_job):
     return stips_in, filters
 
 
-def getgalradec(infile, ra, dec, magni, background, my_job):
+def getgalradec(infile, ra, dec, magni, background):
     filt = 'F087'
     zp_ab = np.array([26.365, 26.357, 26.320, 26.367, 25.913])
     zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588])
@@ -315,9 +391,7 @@ def getgalradec(infile, ra, dec, magni, background, my_job):
     outfile = starpre + '_' + filt + '.tbl'
     flux = wtips.get_counts(magni[:, 0], zp_ab[0])
     wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/1000))+1)
-    my_job.logprint("LINE 302")
     stars = wtips([outfile])
-    my_job.logprint("LINE 304")
     galaxies = wtips([filedir + filt + '.txt'])  # this file will be provided pre-made
     radec = galaxies.random_radec_for(stars)
     return radec
@@ -347,34 +421,36 @@ def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, s
         flux = wtips.get_counts(magni[:, mindex], zp_vega[j])
         # This makes a stars only input list
         my_job.logprint("LINE 328")
-        print(ra[0:99999])
-        wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/1000))+1)
-        my_job.logprint("LINE 330")
-        #stars = wtips([outfile], fast_reader={'chunk_size': 2**20})
-        stars = wtips([outfile])
-        my_job.logprint("LINE 332")
-        galaxies = wtips([background + '/' + filt + '.txt'])  # this file will be provided pre-made
-        my_job.logprint("LINE 334")
-        galaxies.flux_to_Sb()  # galaxy flux to surface brightness
-        galaxies.replace_radec(galradec)  # distribute galaxies across starfield
-        my_job.logprint("LINE 337")
-        if starsonly < 1:
-            stars.merge_with(galaxies)  # merge stars and galaxies list
         outfile = filedir + 'Mixed' + '_' + outfilename
         mixedfilename = 'Mixed' + '_' + outfilename
-        stars.write_stips(outfile, ipac=True, max_writing_packet=int(np.round(len(flux)/1000))+1)
-        del stars
-        del galaxies
-        gc.collect()
-        with open(outfile, 'r+') as f:
-            content = f.read()
-            f.seek(0, 0)
-            f.write('\\type = internal' + '\n' +
-                    '\\filter = F' + str(filt[1:]) + '\n' +
-                    '\\center = (' + str(racent) +
-                    '  ' + str(deccent) + ')\n' +
-                    content)
-        f.close()
+        my_job.logprint("outfile is ")
+        my_job.logprint(outfile)
+        if not os.path.isfile(outfile):
+            wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/1000))+1)
+            my_job.logprint("LINE 330")
+            #stars = wtips([outfile], fast_reader={'chunk_size': 2**20})
+            stars = wtips([outfile])
+            if starsonly < 1:
+                my_job.logprint("LINE 332")
+                galaxies = wtips([background + '/' + filt + '.txt'])  # this file will be provided pre-made
+                my_job.logprint("LINE 334")
+                galaxies.flux_to_Sb()  # galaxy flux to surface brightness
+                galaxies.replace_radec(galradec)  # distribute galaxies across starfield
+                my_job.logprint("LINE 337")
+                stars.merge_with(galaxies)  # merge stars and galaxies list
+                del galaxies
+            stars.write_stips(outfile, ipac=True, max_writing_packet=int(np.round(len(flux)/1000))+1)
+            del stars
+            gc.collect()
+            with open(outfile, 'r+') as f:
+                content = f.read()
+                f.seek(0, 0)
+                f.write('\\type = internal' + '\n' +
+                        '\\filter = F' + str(filt[1:]) + '\n' +
+                        '\\center = (' + str(racent) +
+                        '  ' + str(deccent) + ')\n' +
+                        content)
+            f.close()
         outfiles = np.append(outfiles, mixedfilename)
         filters = np.append(filters, str(filt))
     return outfiles, filters
@@ -451,16 +527,14 @@ if __name__ == '__main__':
         event = this_job.firing_event
         dp_id = event.options['dp_id']
         catalog_dp = wp.DataProduct(dp_id)
+        my_config = catalog_dp.config
+        my_params = my_config.parameters
         my_target = catalog_dp.target
         targname = my_target.name
        
         if 'match' in event.name:
             process_match_catalog(job_id, dp_id)
         elif 'fixed' in event.name:
-            my_job = wp.Job(job_id)
-            catalog_dp = wp.DataProduct(dp_id)
-            my_config = catalog_dp.config
-            my_params = my_config.parameters
             try:
                 ndetect = my_params['ndetect']
             except:
@@ -475,13 +549,14 @@ if __name__ == '__main__':
                                        options={'dp_id': dpid,'submission_type':'scheduler', 'detectors': i+1, 'ra_dither': 0.0, 'dec_dither': 0.0})
                     my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  split_catalog"]))
                     new_event.fire()
+            time.sleep(150)
         elif 'split' in event.name:
             detracent = event.options['racent']
             detdeccent = event.options['deccent']
             detname = event.options['detname']
-            my_job = wp.Job(job_id)
-            catalog_dp = wp.DataProduct(dp_id)
-            my_config = catalog_dp.config
             my_params = my_config.parameters
             process_fixed_catalog(job_id, dp_id, detracent, detdeccent, detname)
 
+        elif 'healpix' in event.name:
+            df = process_healpix_list(my_config,dp_id) 
+            process_df_catalog(my_config,event,this_job,df)
