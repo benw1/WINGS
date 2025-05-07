@@ -5,6 +5,7 @@ import subprocess
 import time
 import vaex
 import re
+from stips.observation_module import ObservationModule
 from pathlib import Path
 from astropy import coordinates, units
 from mhealpy import HealpixMap
@@ -77,7 +78,7 @@ def split_healpix(job_id, dp_id):
     except:
         ang = 0.0
     detlocs,detnames = get_offsets(racent, deccent)
-    print(detlocs,detnames,)
+    print(detlocs,detnames)
     my_detectors = my_params['detectors']
     outfilelist = []
     ralist = []
@@ -85,6 +86,7 @@ def split_healpix(job_id, dp_id):
     detcount = 0
     for detname in detnames:
         if detname not in (my_detectors):
+            detcount += 1
             continue
         offsets = detlocs[detcount]
         #detracent = (racent + offsets[0,detcount]) 
@@ -92,7 +94,9 @@ def split_healpix(job_id, dp_id):
         detracent = (racent + offsets[0]/3600.0) 
         detdeccent = (deccent + offsets[1]/3600.0) 
 
-        racor = np.cos(detdeccent * np.pi/180.0)
+        #racor = np.cos(detdeccent * np.pi/180.0)
+        racor = 1.0 #offsets function handles spherical geometry
+
         detracorners = [detracent - (5.0/(60.0*racor)), detracent - (5.0/(60.0*racor)),detracent + (5.0/(60.0*racor)),detracent + (5.0/(60.0*racor))] * units.deg
         detdeccorners = [detdeccent - 5.0/60.0, detdeccent + (5.0/60.0),detdeccent + (5.0/60.0),detdeccent - (5.0/60.0)] * units.deg
         catfiles = get_overlapping_files(my_config,detracorners,detdeccorners)
