@@ -47,10 +47,18 @@ def get_overlapping_files(my_config,detracor,detdeccor):
     filelist = np.array(sorted(cwd.glob('*.h5')))[partial_moc_hp_map.query_polygon(detector_vertices.cartesian.xyz.T.value, inclusive=True)]
     return filelist
 
-def get_detectors(ang):
-    det_off = [(-1500,2000,0),(1200,1500,0)]
-    det_names = ("SCA02","SCA06")
-    return det_off,det_names
+#def get_detectors(ang):
+#    det_off = [(-1500,2000,0),(1200,1500,0)]
+#    det_names = ("SCA02","SCA06")
+#    return det_off,det_names
+
+def get_offsets(obs_ra, obs_dec):
+    obs18par = {'fast_galaxy': False,'instrument': 'WFI', 'detectors': 18, 'distortion': False, 'offsets': [{'offset_id': 1, 'offset_centre': False, 'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
+    residuals = {'residual_flat': False, 'residual_dark': False, 'residual_cosmic': False, 'residual_poisson': True, 'residual_readnoise': True}
+    obm18 = ObservationModule(obs18par, ra=obs_ra, dec=obs_dec, residuals=residuals)
+    
+    return obm18.instrument.DETECTOR_OFFSETS, obm18.instrument.OFFSET_NAMES
+
 
 def split_healpix(job_id, dp_id):
     dp = wp.DataProduct(dp_id)
@@ -68,7 +76,7 @@ def split_healpix(job_id, dp_id):
         ang = my_params['rotation_angle']
     except:
         ang = 0.0
-    detlocs,detnames = get_detectors(ang)
+    detlocs,detnames = get_offsets(racent, deccent)
     print(detlocs,detnames,)
     my_detectors = my_params['detectors']
     outfilelist = []
