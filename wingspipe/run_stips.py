@@ -21,12 +21,13 @@ def register(task):
     _temp = task.mask(source='*', name='new_stips_catalog', value='*')
 
 
-def run_stips(event_id, dp_id, ra_dith, dec_dith):
+def run_stips(event_id, dp_id, ra_dith, dec_dith, detname):
     catalog_dp = wp.DataProduct(dp_id)
     my_config = catalog_dp.config
     my_params = my_config.parameters
-    #racent = float(my_params['racent']) + (float(ra_dith) / 3600.0)
-    #deccent = float(my_params['deccent']) + (float(dec_dith) / 3600.0)
+    racent = float(my_params['racent']) + (float(ra_dith) / 3600.0)
+    deccent = float(my_params['deccent']) + (float(dec_dith) / 3600.0)
+    
     try:
         pa = my_params['orientation']
     except KeyError:
@@ -81,6 +82,10 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
     
     obm = ObservationModule(obs, scene_general=scene_general, psf_grid_size=int(my_params['psf_grid']), oversample=int(my_params['oversample']), random_seed=seed)
     
+    print('detector_name in obm default:', obm.instrument.OFFSET_NAMES)
+    obm.instrument.OFFSET_NAMES = detname
+    print('detector_name in obm:', obm.instrument.OFFSET_NAMES)
+    
     try:
         os.symlink(my_params['psf_cache'],my_config.procpath+"/psf_cache")
     except:
@@ -111,7 +116,12 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith):
     
     return detname
 
+def get_offsets(obs_ra, obs_dec):
+    obs18par = {'fast_galaxy': False,'instrument': 'WFI', 'detectors': 18, 'distortion': False, 'offsets': [{'offset_id': 1, 'offset_centre': False, 'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
+    residuals = {'residual_flat': False, 'residual_dark': False, 'residual_cosmic': False, 'residual_poisson': True, 'residual_readnoise': True}
+    obm18 = ObservationModule(obs18par, ra=obs_ra, dec=obs_dec, residuals=residuals)
 
+    return obm18.instrument.DETECTOR_OFFSETS, obm18.instrument.OFFSET_NAMES
 
 
 def parse_all():
@@ -132,10 +142,10 @@ if __name__ == '__main__':
     ra_dither = this_event.options['ra_dither']
     dec_dither = this_event.options['dec_dither']
     print('event', this_event_id, 'dp', this_dp_id)
-    checkname = run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither))
+    detname = this_event.options['detname']
+    checkname = run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither), detname)
     to_run = this_event.options['to_run']
     catalogID = this_event.options['dp_id']
-    detname = this_event.options['detname']
     detname = detname.replace(".cat","")
     print("DETNAME ",detname)
     catalogDP = wp.DataProduct(catalogID)
