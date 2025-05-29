@@ -108,7 +108,7 @@ def split_healpix(job_id, dp_id):
                 print(files,file=f)
         _dp = my_config.dataproduct(filename=outname, relativepath=my_config.confpath,subtype="healpix_list", group='conf')
         new_event = my_job.child_event('new_healpix_list', tag=_dp.dp_id, options={'dp_id': _dp.dp_id, 'racent': detracent, 'deccent': detdeccent,
-                                                  'submission_type': 'scheduler', 'detname': detname})
+            'submission_type': 'scheduler', 'partition': 'cpu-g2-mem2x', 'detname': detname})
         my_job.logprint(''.join(["event detname is ", str(detname)]))
         my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_healpix_list"]))
         new_event.fire()
@@ -305,4 +305,5 @@ if __name__ == '__main__':
             split_healpix(job_id,dp_id)
         else:
             split_catalog(job_id, dp_id, detid)
+    time.sleep(150)
 

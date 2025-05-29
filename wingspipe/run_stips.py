@@ -83,13 +83,13 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, detname):
     obm = ObservationModule(obs, scene_general=scene_general, psf_grid_size=int(my_params['psf_grid']), oversample=int(my_params['oversample']), random_seed=seed)
     
     print('detector_name in obm default:', obm.instrument.OFFSET_NAMES)
-    obm.instrument.OFFSET_NAMES = detname
-    print('detector_name in obm:', obm.instrument.OFFSET_NAMES)
-    
-    try:
-        os.symlink(my_params['psf_cache'],my_config.procpath+"/psf_cache")
-    except:
-        print("Try-except line 72 failed, config path error")
+    obm.instrument.OFFSET_NAMES = (detname,)
+    print('detector_name in obm changed to:', obm.instrument.OFFSET_NAMES)
+    print('ObservationModule({}, scene_general={}, psf_grid_size={}, oversample={}, random_seed={})'.format(obs, scene_general, int(my_params['psf_grid']), int(my_params['oversample']), seed))
+    #try:
+    #    os.symlink(my_params['psf_cache'],my_config.procpath+"/psf_cache")
+    #except:
+    #    print("Try-except line 72 failed, config path error")
     print("START obm.nextobservation")
     obm.nextObservation()
     source_count_catalogues = obm.addCatalogue(str(filename))
@@ -143,6 +143,7 @@ if __name__ == '__main__':
     dec_dither = this_event.options['dec_dither']
     print('event', this_event_id, 'dp', this_dp_id)
     detname = this_event.options['detname']
+    print('DETNAME',detname)
     checkname = run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither), detname)
     to_run = this_event.options['to_run']
     catalogID = this_event.options['dp_id']

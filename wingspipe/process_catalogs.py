@@ -31,7 +31,11 @@ def process_healpix_list(my_config,my_dp_id):
     filepath = fileroot + '/' + listname
     healpix_list = np.loadtxt(filepath,dtype=str)
     ds0 = vaex.open_many(healpix_list)
-    df = ds0['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f213'].to_pandas_df()
+    print("SIZE",ds0.shape,ds0['roman_f158'])
+    ds1 = ds0[ds0.roman_f158 < 26.0]
+    print("SIZE2",ds1.shape)
+
+    df = ds1['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f213'].to_pandas_df()
     ds0.close()
     del ds0
     gc.collect()

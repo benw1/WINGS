@@ -2,6 +2,7 @@
 import numpy as np
 import wpipe as wp
 from astropy.io import fits
+import time
 
 def register(task):
     _temp = task.mask(source='*', name='start', value=task.name)
@@ -102,10 +103,9 @@ def send(dp, conf, comp_name, total, job):
         print("healpix list file detected")
         eventtag = dpid
         event = job.child_event('new_healpix_target', jargs='0', value='0', tag=eventtag,
-                options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'config_id': confid})
+                options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'submission_type': 'scheduler', 'memory': '2G', 'config_id': confid})
         print("generated event", event.event_id, "Firing...")
         event.fire()
-
 
     
 def parse_all():
@@ -117,4 +117,5 @@ if __name__ == '__main__':
     args = parse_all()
     discover_targets(wp.Pipeline(), wp.Job(args.job_id))
     # placeholder for additional steps
+    time.sleep(150)
     print('done')
