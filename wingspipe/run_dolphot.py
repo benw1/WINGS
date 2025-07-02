@@ -16,14 +16,13 @@ def run_dolphot(my_job,dp_id):
     my_target = param_dp.target
     my_config = param_dp.config
     targname = my_target.name
-    dolphot_path = which('romanmask')
+    #my_config.parameters['dolphot_path'] = "/gscratch/astro/benw1/dolphot_roman/dolphot3.0/bin/"
+    dolphot_path = my_config.parameters['dolphot_path']
     logpath = my_config.logpath
     procpath = my_config.procpath
 
     my_job.logprint(dolphot_path)
-    dolphot_path = dolphot_path[:-9]
-    my_job.logprint(dolphot_path)
-    dolphot = dolphot_path + "dolphot"
+    dolphot = dolphot_path + "/" + "dolphot"
     my_job.logprint(dolphot)
     parameter_file = param_dp.relativepath + '/' + param_dp.filename
     parfilename = param_dp.filename

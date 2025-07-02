@@ -62,9 +62,11 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
     incatname = dp.subtype
     incatpre = incatname.split('.')[0]
     my_params = config.parameters
-    dolphot_path = which('romanmask') 
-    print(dolphot_path) 
-    dolphot_path = dolphot_path[:-9] 
+    #dolphot_path = which('romanmask') 
+    #print(dolphot_path) 
+    #dolphot_path = dolphot_path[:-9] 
+    #config.parameters['dolphot_path'] = "/gscratch/astro/benw1/dolphot_roman/dolphot3.0/bin/"
+    dolphot_path = config.parameters['dolphot_path']
     target = config.target
     targetname = target.name
     print(targetname, " TARGET\n")
@@ -82,7 +84,7 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
     except:
         print("name already changed")
     fixwcs(imgpath)
-    _t1 = [dolphot_path + 'romanmask', '-exptime=' + str(my_params['exptime']), '-rdnoise=12.0', imgpath]
+    _t1 = [dolphot_path + 'romanmask', '-exptime=' + str(my_params['exptime']), '-rdnoise=0.0001', imgpath]
     _t2 = [dolphot_path + 'splitgroups', imgpath]
     print("T1 ", _t1)
     print("T2 ", _t2)
@@ -199,7 +201,7 @@ if __name__ == '__main__':
         catalogDP = wp.DataProduct(catalogID)
         this_conf = catalogDP.config
         this_job.logprint(''.join(["Completed ", str(update_option), " of ", str(to_run), "\n"]))
-        if update_option == to_run:
+        if update_option >= to_run:
             '''
             this_job.logprint(''.join(["Detnames =",detnames1,"\n"]))
             for i in range(numdet):

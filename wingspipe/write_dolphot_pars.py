@@ -172,9 +172,17 @@ def write_dolphot_pars(target, config, thisjob, detname, chip):
                 "FlagMask = 4            #photometry quality flags to reject when combining magnitudes\n" +
                 "CombineChi = 0          #combined magnitude weights uses chi? (int 0=no, 1=yes)\n" +
                 "InterpPSFlib = 0        #interpolate PSF library spatially\n")
+        ncpus = 1
+        dolpath = config.parameters["dolphot_path"]
+        if "dolphot3" in dolpath:
+            maxthreads = int(config.parameters["maxthreads"])
+            if nimg/2.0 < maxthreads:
+                maxthreads = str(int(nimg/2 + 1))
+            d.write(f'MaxThreads={maxthreads}\n')  # write to file
+            ncpus = str(maxthreads)
     _dp = config.dataproduct(filename=parfile_name, relativepath=config.confpath,
                              subtype="dolphot_parameters", group='conf')
-    return _dp
+    return _dp,ncpus
 
 
 def parse_all():
@@ -197,10 +205,10 @@ if __name__ == '__main__':
     this_target = this_config.target
     tid = this_target.target_id
     this_job.logprint(''.join(["detname ", str(detname), "\n"]))
-    paramdp = write_dolphot_pars(this_target, this_config, this_job, detname, chip)
+    paramdp,ncpus = write_dolphot_pars(this_target, this_config, this_job, detname, chip)
     dpid = int(paramdp.dp_id)
     this_job.logprint(''.join(["Parameter file DPID ", str(dpid), "\n"]))
-    newevent = this_job.child_event('parameters_written', tag=dpid, options={'target_id': tid, 'dp_id': dpid, 'detname': detname,'submission_type': 'scheduler'})
+    newevent = this_job.child_event('parameters_written', tag=dpid, options={'target_id': tid, 'dp_id': dpid, 'detname': detname,'submission_type': 'scheduler','ncpus':ncpus})
     newevent.fire()
     this_job.logprint('parameters_written\n')
     time.sleep(300)

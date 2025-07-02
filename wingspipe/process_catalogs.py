@@ -35,7 +35,8 @@ def process_healpix_list(my_config,my_dp_id):
     ds1 = ds0[ds0.roman_f158 < 26.0]
     print("SIZE2",ds1.shape)
 
-    df = ds1['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f213'].to_pandas_df()
+    #df = ds1['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f213','roman_f146'].to_pandas_df()
+    df = ds1['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f146'].to_pandas_df()
     ds0.close()
     del ds0
     gc.collect()
@@ -137,14 +138,16 @@ def read_fixed(filepath, my_config, my_job, racent, deccent, filename):
         print(data[1].columns,"COLS")
         nstars = len(data[1].data['ra'])
         magni = np.arange(len(data[1].data))
-        allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
+        #allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
+        allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F146']
     if '.csv' in str(filename):
         data = pd.read_csv(filepath)
         print(data.columns, "COLS")
         #data.columns = map(str.upper, data.columns)
         nstars = len(data['ra'])
         magni = np.arange(len(data))
-        allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
+        #allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
+        allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F146']
 
     my_params = my_config.parameters
     #area = float(my_params["area"])
@@ -263,11 +266,13 @@ def process_df_catalog(my_config,my_event,my_job,df):
     dec = df['dec']
     racent = my_event.options["racent"]
     deccent = my_event.options["deccent"]
-    magni = np.array([df['roman_f062'],df['roman_f087'],df['roman_f106'],df['roman_f129'],df['roman_f158'],df['roman_f184']]).T
+    #magni = np.array([df['roman_f062'],df['roman_f087'],df['roman_f106'],df['roman_f129'],df['roman_f158'],df['roman_f184'],df['roman_f213'],df['roman_f146']]).T
+    magni = np.array([df['roman_f062'],df['roman_f087'],df['roman_f106'],df['roman_f129'],df['roman_f158'],df['roman_f184'],df['roman_f146']]).T
     background = my_params["background_dir"]
 
     
-    filtsinm = ['F062','F087','F106','F129','F158','F184']
+    #filtsinm = ['F062','F087','F106','F129','F158','F184','F213','F146']
+    filtsinm = ['F062','F087','F106','F129','F158','F184','F146']
     h = df['roman_f158']
     htot_keep = (h > 23.0) & (h < 24.0)
     hkeep = h[htot_keep]
@@ -388,8 +393,9 @@ def read_match(filepath, cols, my_config, my_job):
 
 def getgalradec(infile, ra, dec, magni, background):
     filt = 'F087'
-    zp_ab = np.array([26.365, 26.357, 26.320, 26.367, 25.913])
-    zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588])
+    zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,26.06,27.66])
+    zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,24.528,26.4])
+
     starpre = '.'.join(infile.split('.')[:-1])
     filedir = background + '/'
     outfile = starpre + '_' + filt + '.tbl'
@@ -402,9 +408,12 @@ def getgalradec(infile, ra, dec, magni, background):
 
 
 def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, starsonly, filtsinm, my_job):
-    filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
-    zp_ab = np.array([26.5, 26.365, 26.357, 26.320, 26.367, 25.913])
-    zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588])
+    #filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
+    #zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,26.06,27.66])
+    #zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,24.528,26.4])
+    filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F146']
+    zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,27.66])
+    zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,26.4])
     starpre = '.'.join(infile.split('.')[:-1])
     filedir = '/'.join(infile.split('/')[:-1]) + '/'
     outfiles = []
