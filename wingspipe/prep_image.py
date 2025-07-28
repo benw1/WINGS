@@ -126,18 +126,34 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
 
 def fixwcs(imgpath):
     # use astropy to get CDELT1 and CDELT2 from header
-    data, head = fits.getdata(imgpath, header=True)
+    print("IN FIXWCS")
+
+    hdul = fits.open(imgpath, mode='update')
+    head = hdul[1].header
     #cd11 = head['PC1_1']
     #cd22 = head['PC2_2']
+    detector = head['DETECTOR']
+    print("DETECTOR ",detector)
+    detector2 = detector.replace('WFI','SCA')
+    print("NEW DETECTOR ",detector2)
+    head['DETECTOR'] = detector2
     try:
         cd11 = head['CD1_1']
     except:
         cd11 = head['CDELT1']
         cd22 = head['CDELT2']
-        fits.setval(imgpath, 'CD1_1', value=cd11)
-        fits.setval(imgpath, 'CD2_2', value=cd22)
-        fits.setval(imgpath, 'CD1_2', value=0)
-        fits.setval(imgpath, 'CD2_1', value=0)
+        #fits.setval(imgpath, 'CD1_1', value=cd11)
+        #fits.setval(imgpath, 'CD2_2', value=cd22)
+        #fits.setval(imgpath, 'CD1_2', value=0)
+        #fits.setval(imgpath, 'CD2_1', value=0)
+        head['CD1_1'] = cd11
+        head['CD2_2'] = cd22
+        head['CD1_2'] = 0
+        head['CD2_1'] = 0
+    hdul.flush()
+    hdul.close()
+    data, head2 = fits.getdata(imgpath, header=True)
+    print("Checking ",head2['DETECTOR'])
     return
 
 

@@ -5,6 +5,7 @@ from shutil import which
 import wpipe as wp
 import importlib
 import os
+import glob
 
 def register(task):
     _temp = task.mask(source='*', name='start', value='*')
@@ -34,7 +35,11 @@ def run_dolphot(my_job,dp_id):
     dolphot_command = "cd " + procpath + " && " + \
         dolphot+" "+ outfile + ' -p' + parameter_file + " >> "+logfile
     my_job.logprint(dolphot_command)
-    dolphot_output = os.system(dolphot_command)
+    if os.path.isfile(procpath+"/"+outfile):
+        my_job.logprint(f"{procpath}/{outfile} already exists... not running DOLPHOT")
+    else:
+        my_job.logprint(f"{procpath}/{outfile} does not exist... running DOLPHOT")
+        dolphot_output = os.system(dolphot_command)
     try:
         head_tail = os.path.split(outfile)
         phot_dp = wp.DataProduct(
@@ -42,8 +47,8 @@ def run_dolphot(my_job,dp_id):
     except:
         ValueError("Failed to create phot file DP. Exiting.") 
     my_job.logprint(
-        f"Created dataproduct for {dolphotout}, {phot_dp}")
-    out_files = glob(procpath+'/*.phot.*')
+        f"Created dataproduct for {head_tail[1]}, {phot_dp}")
+    out_files = glob.glob(procpath+'/*.phot.*')
     if len(out_files) < 5:
         raise exception("too few output files")
     for file in out_files:
