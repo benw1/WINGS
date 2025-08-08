@@ -27,8 +27,8 @@ if  my_file.is_file():
     ip1 = my_file.read_text()
     ip = ip1.strip()
     HOST_MACHINE = ip
-else:
-    HOST_MACHINE = '10.64.57.84'
+#else:
+#    # HOST_MACHINE = '10.64.57.84'
 HOST_MACHINE = '0.0.0.0'
 BASE_PORT = DEFAULT_PORT = 8000
 

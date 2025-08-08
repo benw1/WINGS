@@ -2,10 +2,12 @@
 import gc
 import os
 import subprocess
-
+from astropy.io import fits
 import pandas as pd
 import wpipe as wp
 import numpy as np
+import vaex
+import time
 if __name__ == '__main__':
     from wingtips import WingTips as wtips
 else:
@@ -17,6 +19,30 @@ def register(task):
     _temp = task.mask(source='*', name='new_match_catalog', value='*')
     _temp = task.mask(source='*', name='new_fixed_catalog', value='*')
     _temp = task.mask(source='*', name='new_split_catalog', value='*')
+    _temp = task.mask(source='*', name='new_hdf5_catalog', value='*')
+    _temp = task.mask(source='*', name='new_healpix_list', value='*')
+
+
+def process_healpix_list(my_config,my_dp_id):
+    list_dp = wp.DataProduct(my_dp_id)
+    fileroot = str(list_dp.relativepath)
+    listroot = str(list_dp.relativepath)
+    listname = str(list_dp.filename)
+    filepath = fileroot + '/' + listname
+    healpix_list = np.loadtxt(filepath,dtype=str)
+    ds0 = vaex.open_many(healpix_list)
+    print("SIZE",ds0.shape,ds0['roman_f158'])
+    ds1 = ds0[ds0.roman_f158 < 26.0]
+    print("SIZE2",ds1.shape)
+
+    #df = ds1['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f213','roman_f146'].to_pandas_df()
+    df = ds1['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f146'].to_pandas_df()
+    ds0.close()
+    del ds0
+    gc.collect()
+    return df
+        
+        
 
 
 def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
@@ -31,14 +57,14 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
     filepath = fileroot + '/' + filename
     print(fileroot,my_config.procpath)
     if fileroot != my_config.procpath:
-       wp.shutil.copy2(filepath, my_config.procpath)
+        wp.shutil.copy2(filepath, my_config.procpath)
     #
     print("CONFIG PATH ",my_config.procpath)
     print("CONFIG ID ",my_config.config_id)
     print("ra and dec ",racent,deccent)
     fileroot = my_config.procpath + '/'
     procdp = my_config.dataproduct(filename=filename, relativepath=fileroot, group='proc')
-    stips_files, filters = read_fixed(procdp.relativepath + '/' + procdp.filename, my_config, my_job, racent, deccent)
+    stips_files, filters = read_fixed(procdp.relativepath + '/' + procdp.filename, my_config, my_job, racent, deccent,procdp.filename)
     comp_name = 'completed' + detname
     options = {comp_name: 0}
     my_job.options = options
@@ -98,36 +124,59 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
                                         filtername=filtname, subtype='stips_input_catalog')
             dpid = _dp.dp_id
             new_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                           options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'submission_type' : 'scheduler',
-                                                    'ra_dither': 0.0, 'dec_dither': 0.0, 'detname': detname})
+                                           options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type' : 'scheduler', 'ra_dither': 0.0, 'dec_dither': 0.0,'detname': detname})
             my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
             my_job.logprint(''.join(["event detname is ", str(detname)]))
             new_event.fire()
             i += 1
+    time.sleep(150)    
 
 
-def read_fixed(filepath, my_config, my_job, racent, deccent):
-    data = pd.read_csv(filepath)
-    #data.columns = map(str.upper, data.columns)
-    nstars = len(data['ra'])
-    print(data.columns,"COLS")
+def read_fixed(filepath, my_config, my_job, racent, deccent, filename):
+    allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
+    if 'fit' in str(filename):
+        data = fits.open(filepath)
+        print(data[1].columns,"COLS")
+        nstars = len(data[1].data['ra'])
+        magni = np.arange(len(data[1].data))
+        #allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
+        allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F146']
+    if '.csv' in str(filename):
+        data = pd.read_csv(filepath)
+        print(data.columns, "COLS")
+        #data.columns = map(str.upper, data.columns)
+        nstars = len(data['ra'])
+        magni = np.arange(len(data))
+        #allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
+        allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F146']
+
     my_params = my_config.parameters
     #area = float(my_params["area"])
     background = my_params["background_dir"]
     #tot_dens = np.float(nstars) / area
     #print("MAX TOTAL DENSITY = ", tot_dens)
     filtsinm = []
-    allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
+
     magni = np.arange(len(data))
+    
     for filt in allfilts:
         try:
-            test = data[filt]
+            try:
+                test = data[1].data[filt]
+            except:
+                test = data[filt]
             filtsinm = np.append(filtsinm, filt)
             magni = np.vstack((magni, test))
         except KeyError:
             print("NO ", filt, " data found")
     print("FILTERS: ", filtsinm)
-    h = data['F158']
+    try:
+        h = data[1].data['F158']
+    except:
+        try:
+            h = data['F158']
+        except:
+            h = data['roman_f158']
     htot_keep = (h > 23.0) & (h < 24.0)
     hkeep = h[htot_keep]
     htot = len(hkeep)
@@ -135,8 +184,12 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     del h
     #my_job.logprint(''.join(["H(23-24) DENSITY = ", str(hden)]))
     stips_in = []
-    ra = data['ra']
-    dec = data['dec']
+    try:
+        ra = data[1].data['ra']
+        dec = data[1].data['dec']
+    except: 
+        ra = data['ra']
+        dec = data['dec']
     my_job.logprint(''.join(
         ["MIXMAX COO: ", str(np.min(ra)), " ", str(np.max(ra)), " ", str(np.min(dec)), " ", str(np.max(dec)), "\n"]))
     if racent == 0.0:
@@ -171,7 +224,7 @@ def process_match_catalog(my_job_id, my_dp_id):
     my_job = wp.Job(my_job_id)
     catalog_dp = wp.DataProduct(my_dp_id)
     my_target = catalog_dp.target
-    # print("NAME",my_target.name)
+    print("NAME",my_target.name)
     my_config = catalog_dp.config
     fileroot = str(catalog_dp.relativepath)
     filename = str(catalog_dp.filename)  # For example:  'h15.shell.5Mpc.in'
@@ -194,14 +247,76 @@ def process_match_catalog(my_job_id, my_dp_id):
                                     filtername=filtname, subtype='stips_input_catalog')
         dpid = _dp.dp_id
         new_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                       options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type' : 'scheduler'})
+                                       options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'ra_dither': 0.0, 
+                                                'dec_dither': 0.0,'submission_type' : 'scheduler'})
         my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
         new_event.fire()
         i += 1
 
+def process_df_catalog(my_config,my_event,my_job,df):
+    my_target = my_config.target
+    print("NAME",my_target.name)
+    try:
+        starsonly = int(my_params['starsonly'])
+    except:
+        print("Setting starsonly to 1")
+        starsonly = 1
+
+    #
+    fileroot = my_config.procpath + '/'
+    detname = my_event.options["detname"]
+    prefix = fileroot + my_target.name + "_" + my_event.options["detname"]
+    ra = df['ra']
+    dec = df['dec']
+    racent = my_event.options["racent"]
+    deccent = my_event.options["deccent"]
+    #magni = np.array([df['roman_f062'],df['roman_f087'],df['roman_f106'],df['roman_f129'],df['roman_f158'],df['roman_f184'],df['roman_f213'],df['roman_f146']]).T
+    magni = np.array([df['roman_f062'],df['roman_f087'],df['roman_f106'],df['roman_f129'],df['roman_f158'],df['roman_f184'],df['roman_f146']]).T
+    background = my_params["background_dir"]
+
+    
+    #filtsinm = ['F062','F087','F106','F129','F158','F184','F213','F146']
+    filtsinm = ['F062','F087','F106','F129','F158','F184','F146']
+    h = df['roman_f158']
+    htot_keep = (h > 23.0) & (h < 24.0)
+    hkeep = h[htot_keep]
+    htot = len(hkeep)
+    #hden = np.float(htot) / area
+    del h
+    my_job.logprint(''.join(["H(23-24) TOTAL = ", str(htot)]))
+    stips_in = []
+
+
+
+    if starsonly == 0:
+        galradec = getgalradec(prefix+".tmp", ra * 0.0 + racent, dec * 0.0 + deccent, magni, background)
+        stips_files, filters = write_stips(prefix+".tmp", ra, dec, magni, background,
+                                       galradec, racent, deccent, starsonly, filtsinm,my_job)
+    if starsonly == 1:
+        stips_files, filters = write_stips(prefix+".tmp", ra, dec, magni, background,
+                                       0.0, racent, deccent, starsonly, filtsinm,my_job)
+    comp_name = 'completed' + my_target.name
+    options = {comp_name: 0}
+    my_job.options = options
+    total = len(stips_files)
+    i = 0
+    for stips_cat in stips_files:
+        filtname = filters[i]
+        _dp = my_config.dataproduct(filename=stips_cat, relativepath=my_config.procpath, group='proc',
+                                    filtername=filtname, subtype='stips_input_catalog')
+        dpid = _dp.dp_id
+        new_event = my_job.child_event('new_stips_catalog', tag=filtname,
+                options={'dp_id': dpid, 'detname': detname, 'to_run': total, 'name': comp_name,'ra_dither': 0.0,
+                                                'dec_dither': 0.0,'submission_type' : 'scheduler'})
+        my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
+        new_event.fire()
+        i += 1
+    time.sleep(150)
+
 
 def read_match(filepath, cols, my_config, my_job):
     data = np.loadtxt(filepath)
+    #may need to change line above for fits files to datafile = fits.open(filepath)
     np.random.shuffle(data)
     nstars = len(data[:, 0])
     my_params = my_config.parameters
@@ -258,8 +373,7 @@ def read_match(filepath, cols, my_config, my_job):
     ra = 0.0
     dec = 0.0
     for k in range(len(coordlist)):
-        ra = np.append(ra,
-                       radist * coordlist + racent - (pix * imagesize / (np.cos(deccent * 3.14159 / 180.0) * 7200.0)))
+        ra = np.append(ra, radist * coordlist + racent - (pix * imagesize / (np.cos(deccent * 3.14159 / 180.0) * 7200.0)))
         dec = np.append(dec, np.repeat(decdist * coordlist[k] + deccent - (pix * imagesize / 7200.0), len(coordlist)))
     ra = ra[1:len(magni1) + 1]
     dec = dec[1:len(magni1) + 1]
@@ -281,27 +395,29 @@ def read_match(filepath, cols, my_config, my_job):
     return stips_in, filters
 
 
-def getgalradec(infile, ra, dec, magni, background, my_job):
+def getgalradec(infile, ra, dec, magni, background):
     filt = 'F087'
     zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,26.06,27.66])
     zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,24.528,26.4])
+
     starpre = '.'.join(infile.split('.')[:-1])
     filedir = background + '/'
     outfile = starpre + '_' + filt + '.tbl'
     flux = wtips.get_counts(magni[:, 0], zp_ab[1])
     wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/1000))+1)
-    my_job.logprint("LINE 302")
     stars = wtips([outfile])
-    my_job.logprint("LINE 304")
     galaxies = wtips([filedir + filt + '.txt'])  # this file will be provided pre-made
     radec = galaxies.random_radec_for(stars)
     return radec
 
+def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, starsonly, filtsinm, my_job):
+    #filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
+    #zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,26.06,27.66])
+    #zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,24.528,26.4])
+    filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F146']
+    zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,27.66])
+    zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,26.4])
 
-def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, starsonly, filtsinm,my_job):
-    filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
-    zp_ab = np.array([6.73, 26.39, 26.41, 26.43, 26.47,26.08,26.06,27.66])
-    zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,24.528,26.4])
     starpre = '.'.join(infile.split('.')[:-1])
     filedir = '/'.join(infile.split('/')[:-1]) + '/'
     outfiles = []
@@ -322,34 +438,36 @@ def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, s
         flux = wtips.get_counts(magni[:, mindex], zp_vega[j])
         # This makes a stars only input list
         my_job.logprint("LINE 328")
-        print(ra[0:99999])
-        wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/1000))+1)
-        my_job.logprint("LINE 330")
-        #stars = wtips([outfile], fast_reader={'chunk_size': 2**20})
-        stars = wtips([outfile])
-        my_job.logprint("LINE 332")
-        galaxies = wtips([background + '/' + filt + '.txt'])  # this file will be provided pre-made
-        my_job.logprint("LINE 334")
-        galaxies.flux_to_Sb()  # galaxy flux to surface brightness
-        galaxies.replace_radec(galradec)  # distribute galaxies across starfield
-        my_job.logprint("LINE 337")
-        if starsonly < 1:
-            stars.merge_with(galaxies)  # merge stars and galaxies list
         outfile = filedir + 'Mixed' + '_' + outfilename
         mixedfilename = 'Mixed' + '_' + outfilename
-        stars.write_stips(outfile, ipac=True, max_writing_packet=int(np.round(len(flux)/1000))+1)
-        del stars
-        del galaxies
-        gc.collect()
-        with open(outfile, 'r+') as f:
-            content = f.read()
-            f.seek(0, 0)
-            f.write('\\type = internal' + '\n' +
-                    '\\filter = F' + str(filt[1:]) + '\n' +
-                    '\\center = (' + str(racent) +
-                    '  ' + str(deccent) + ')\n' +
-                    content)
-        f.close()
+        my_job.logprint("outfile is ")
+        my_job.logprint(outfile)
+        if not os.path.isfile(outfile):
+            wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/1000))+1)
+            my_job.logprint("LINE 330")
+            #stars = wtips([outfile], fast_reader={'chunk_size': 2**20})
+            stars = wtips([outfile])
+            if starsonly < 1:
+                my_job.logprint("LINE 332")
+                galaxies = wtips([background + '/' + filt + '.txt'])  # this file will be provided pre-made
+                my_job.logprint("LINE 334")
+                galaxies.flux_to_Sb()  # galaxy flux to surface brightness
+                galaxies.replace_radec(galradec)  # distribute galaxies across starfield
+                my_job.logprint("LINE 337")
+                stars.merge_with(galaxies)  # merge stars and galaxies list
+                del galaxies
+            stars.write_stips(outfile, ipac=True, max_writing_packet=int(np.round(len(flux)/1000))+1)
+            del stars
+            gc.collect()
+            with open(outfile, 'r+') as f:
+                content = f.read()
+                f.seek(0, 0)
+                f.write('\\type = internal' + '\n' +
+                        '\\filter = F' + str(filt[1:]) + '\n' +
+                        '\\center = (' + str(racent) +
+                        '  ' + str(deccent) + ')\n' +
+                        content)
+            f.close()
         outfiles = np.append(outfiles, mixedfilename)
         filters = np.append(filters, str(filt))
     return outfiles, filters
@@ -394,14 +512,16 @@ def link_stips_catalogs(my_config):
                     dec_dither = dither_size * (int(j))
                     eventtag = filtname+'_ra:'+str(k)+'/'+str(ra_dithers)+'_dec:'+str(j)+'/'+str(dec_dithers)
                     my_event = my_job.child_event('new_stips_catalog', tag=eventtag,
-                                                  options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'scheduler',
-                                                           'ra_dither': ra_dither, 'dec_dither': dec_dither})
+                                                  options={'dp_id': dpid, 'to_run': total, 'name': comp_name,
+                                                           'submission_type':'scheduler', 'ra_dither': ra_dither, 
+                                                           'dec_dither': dec_dither})
+                    #Should there be a detname key here (line above)?
                     my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
                     my_event.fire()
 
         except KeyError:
             my_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                          options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'scheduler'})
+                                          options={'dp_id': dpid, 'to_run': total, 'ra_dither': 0.0, 'dec_dither': 0.0, 'name': comp_name,'submission_type':'scheduler'})
             my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
             my_event.fire()
 
@@ -424,16 +544,14 @@ if __name__ == '__main__':
         event = this_job.firing_event
         dp_id = event.options['dp_id']
         catalog_dp = wp.DataProduct(dp_id)
+        my_config = catalog_dp.config
+        my_params = my_config.parameters
         my_target = catalog_dp.target
         targname = my_target.name
        
         if 'match' in event.name:
             process_match_catalog(job_id, dp_id)
         elif 'fixed' in event.name:
-            my_job = wp.Job(job_id)
-            catalog_dp = wp.DataProduct(dp_id)
-            my_config = catalog_dp.config
-            my_params = my_config.parameters
             try:
                 ndetect = my_params['ndetect']
             except:
@@ -445,15 +563,17 @@ if __name__ == '__main__':
                 for i in range(ndetect):
                     dpid = dp_id
                     new_event = my_job.child_event('split_catalog', tag=i+1,
-                                       options={'dp_id': dpid,'submission_type':'scheduler'})
+                                       options={'dp_id': dpid,'submission_type':'scheduler', 'detectors': i+1, 'ra_dither': 0.0, 'dec_dither': 0.0})
                     my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  split_catalog"]))
                     new_event.fire()
+            time.sleep(150)
         elif 'split' in event.name:
             detracent = event.options['racent']
             detdeccent = event.options['deccent']
             detname = event.options['detname']
-            my_job = wp.Job(job_id)
-            catalog_dp = wp.DataProduct(dp_id)
-            my_config = catalog_dp.config
             my_params = my_config.parameters
             process_fixed_catalog(job_id, dp_id, detracent, detdeccent, detname)
+
+        elif 'healpix' in event.name:
+            df = process_healpix_list(my_config,dp_id) 
+            process_df_catalog(my_config,event,this_job,df)

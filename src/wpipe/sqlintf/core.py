@@ -13,8 +13,7 @@ import argparse
 from pathlib import Path
 import tenacity as tn
 import sqlalchemy as sa
-from sqlalchemy.sql import text
-from sqlalchemy import orm, exc, pool
+from sqlalchemy import orm, exc, pool, text
 from sqlalchemy.ext.declarative import declarative_base
 
 __all__ = ['contextlib','argparse', 'tn', 'sa', 'orm', 'exc', 'pool', 'PARSER',
@@ -50,7 +49,7 @@ else:
 #else:
 #    ENGINE_URL = 'mysql://wings:wings2025@10.64.57.84:8020/server'
 #    # ENGINE_URL = 'mysql+mysqlconnector://root:password@localhost:8000/server'
-
+print("url check", ENGINE_URL)
 
 POOL_RECYLE = 3600
 
@@ -71,6 +70,7 @@ def make_engine():
                 hostname = ''
             else:
                 hostname = '.'.join(hostname.rsplit('/', 1))
+    print("url check", engine_url)
     return sa.create_engine(engine_url, echo=verbose, pool_recycle=POOL_RECYLE)
 
 Engine = make_engine()
@@ -84,15 +84,11 @@ sqlalchemy.engine.base.Engine object: handles the connection to the database.
 # engine = sa.create_engine("mysql+pymysql://root:password@localhost:8000/server")  # This is for the mysql container
 
 if not sqlite:
-    #Engine.execute("CREATE DATABASE IF NOT EXISTS wpipe")
+    query1 = text("CREATE DATABASE IF NOT EXISTS wpipe")
+    Engine.connect().execute(query1)
+    query2 = text("USE wpipe")
+    Engine.connect().execute(query2)
 
-    with Engine.connect() as conn:
-        stmt = text("CREATE DATABASE IF NOT EXISTS wpipe")     
-        result = conn.execute(stmt)
-    #Engine.execute("USE wpipe")
-    with Engine.connect() as conn:
-        stmt = text("USE wpipe")     
-        result = conn.execute(stmt)
     url_parse_results = urllib.parse.urlparse(ENGINE_URL)
     ENGINE_URL = url_parse_results._replace(path=url_parse_results.path.replace('server', 'wpipe')).geturl()
     Engine.dispose()
