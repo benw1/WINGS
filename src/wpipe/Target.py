@@ -5,7 +5,8 @@ Contains the Target class definition
 Please note that this module is private. The Target class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import os, datetime, json, si
+from .core import os, datetime, json, pd, si
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import remove_path, split_path
 from .proxies import ChildrenProxy
@@ -13,9 +14,19 @@ from .OptOwner import OptOwner
 
 __all__ = ['Target']
 
+CLASS_NAME = split_path(__file__)[1]
+KEYID_ATTR = 'target_id'
+UNIQ_ATTRS = getattr(si, CLASS_NAME).__UNIQ_ATTRS__
+CLASS_LOW = CLASS_NAME.lower()
+
 
 def _in_session(**local_kw):
-    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' % CLASS_LOW, **local_kw)
+
+
+_check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
+
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW, KEYID_ATTR, UNIQ_ATTRS)
 
 
 class Target(OptOwner):
@@ -111,13 +122,36 @@ class Target(OptOwner):
         or
         >>> my_target = wp.Target(my_input)
     """
+    __cache__ = pd.DataFrame(columns=[KEYID_ATTR]+UNIQ_ATTRS+[CLASS_LOW])
+
+    @classmethod
+    def _check_in_cache(cls, kind, loc):
+        return _check_in_cache(cls, kind, loc)
+
+    @classmethod
+    def _sqlintf_instance_argument(cls):
+        if hasattr(cls, '_%s' % CLASS_LOW):
+            for _session in cls._check_in_cache(kind='keyid',
+                                                loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
+                pass
+    
+    @classmethod
+    def _return_cached_instances(cls):
+        return [getattr(obj, '_%s' % CLASS_LOW) for obj in cls.__cache__[CLASS_LOW]]
+
     def __new__(cls, *args, **kwargs):
+        if hasattr(cls, '_inst'):
+            old_cls_inst = cls._inst
+            delattr(cls, '_inst')
+        else:
+            old_cls_inst = None
+        cls._to_cache = {}
         # checking if given argument is sqlintf object or existing id
         cls._target = args[0] if len(args) else None
         if not isinstance(cls._target, si.Target):
             keyid = kwargs.get('id', cls._target)
             if isinstance(keyid, int):
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='keyid', loc=keyid):
                     cls._target = session.query(si.Target).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
@@ -127,7 +161,7 @@ class Target(OptOwner):
                 datapath = input.pipeline.data_root+'/'+name
                 dataraws = input.rawspath
                 # querying the database for existing row or create
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='args', loc=(input.input_id, name)):
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
@@ -147,9 +181,20 @@ class Target(OptOwner):
                             else:
                                 this_nested.rollback()
                             retry.retry_state.commit()
+        else:
+            cls._sqlintf_instance_argument()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Target')
-        return cls._inst
+        # add instance to cache dataframe
+        if cls._to_cache:
+            cls._to_cache[CLASS_LOW] = cls._inst
+            cls.__cache__.loc[len(cls.__cache__)] = cls._to_cache
+            del cls._to_cache
+        new_cls_inst = cls._inst
+        delattr(cls, '_inst')
+        if old_cls_inst is not None:
+            cls._inst = old_cls_inst
+        return new_cls_inst
 
     @_in_session()
     def __init__(self, *args, **kwargs):
@@ -157,11 +202,17 @@ class Target(OptOwner):
             self._configurations_proxy = ChildrenProxy(self._target, 'configurations', 'Configuration')
         if not hasattr(self, '_optowner'):
             self._optowner = self._target
-        self.configure_target()
+        self.configure_target(rawdps_to_add=kwargs.get('rawdps_to_add', None))
         super(Target, self).__init__(kwargs.get('options', {}))
 
+    @_in_session()
+    def __repr__(self):
+        cls = self.__class__.__name__
+        description = ', '.join([(f"{prop}={getattr(self, prop)}") for prop in [KEYID_ATTR]+UNIQ_ATTRS])
+        return f'{cls}({description})'
+
     @classmethod
-    def select(cls, **kwargs):
+    def select(cls, *args, **kwargs):
         """
         Returns a list of Target objects fulfilling the kwargs filter.
 
@@ -175,9 +226,12 @@ class Target(OptOwner):
         out : list of Target object
             list of objects fulfilling the kwargs filter.
         """
-        with si.begin_session() as session:
-            cls._temp = session.query(si.Target).filter_by(**kwargs)
-            return list(map(cls, cls._temp.all()))
+        for session in si.begin_session():
+            with session as session:
+                cls._temp = session.query(si.Target).filter_by(**kwargs)
+                for arg in args:
+                    cls._temp = cls._temp.filter(arg)
+                return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -193,14 +247,16 @@ class Target(OptOwner):
         str: Name of the target.
         """
         self._session.refresh(self._target)
-        return self._target.name
+        return _query_return_and_update_cached_row(self, 'name')
 
     @name.setter
     @_in_session()
     def name(self, name):
         self._target.name = name
-        self._target.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        _temp = _query_return_and_update_cached_row(self, 'name')
+        self.update_timestamp()
+        # self._target.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -294,14 +350,14 @@ class Target(OptOwner):
         from .Configuration import Configuration
         return Configuration(self, *args, **kwargs)
 
-    def configure_target(self):
+    def configure_target(self, **kwargs):
         """
         Generate configurations for each conf dataproduct owned by parent
         input.
         """
         for confdp in self.input.confdataproducts:
             self.configuration(os.path.splitext(confdp.filename)[0],
-                               parameters=json.load(open(confdp.relativepath+'/'+confdp.filename))[0])
+                               parameters=json.load(open(confdp.relativepath+'/'+confdp.filename))[0], **kwargs)
 
     def remove_data(self):
         """
@@ -316,3 +372,4 @@ class Target(OptOwner):
         self.configurations.delete()
         self.remove_data()
         super(Target, self).delete()
+        self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]

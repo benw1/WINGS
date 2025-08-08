@@ -98,7 +98,7 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
                                         filtername=filtname, subtype='stips_input_catalog')
             dpid = _dp.dp_id
             new_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                           options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'submission_type' : 'pbs',
+                                           options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'submission_type' : 'scheduler',
                                                     'ra_dither': 0.0, 'dec_dither': 0.0, 'detname': detname})
             my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
             my_job.logprint(''.join(["event detname is ", str(detname)]))
@@ -117,7 +117,7 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     #tot_dens = np.float(nstars) / area
     #print("MAX TOTAL DENSITY = ", tot_dens)
     filtsinm = []
-    allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
+    allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
     magni = np.arange(len(data))
     for filt in allfilts:
         try:
@@ -181,7 +181,7 @@ def process_match_catalog(my_job_id, my_dp_id):
     fileroot = my_config.procpath + '/'
     procdp = my_config.dataproduct(filename=filename, relativepath=fileroot, group='proc')
     # filternames = my_params[filternames]
-    filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
+    filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
     stips_files, filters = read_match(procdp.relativepath + '/' + procdp.filename, filternames, my_config, my_job)
     comp_name = 'completed' + my_target.name
     options = {comp_name: 0}
@@ -194,7 +194,7 @@ def process_match_catalog(my_job_id, my_dp_id):
                                     filtername=filtname, subtype='stips_input_catalog')
         dpid = _dp.dp_id
         new_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                       options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type' : 'pbs'})
+                                       options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type' : 'scheduler'})
         my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
         new_event.fire()
         i += 1
@@ -283,12 +283,12 @@ def read_match(filepath, cols, my_config, my_job):
 
 def getgalradec(infile, ra, dec, magni, background, my_job):
     filt = 'F087'
-    zp_ab = np.array([26.365, 26.357, 26.320, 26.367, 25.913])
-    zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588])
+    zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,26.06,27.66])
+    zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,24.528,26.4])
     starpre = '.'.join(infile.split('.')[:-1])
     filedir = background + '/'
     outfile = starpre + '_' + filt + '.tbl'
-    flux = wtips.get_counts(magni[:, 0], zp_ab[0])
+    flux = wtips.get_counts(magni[:, 0], zp_ab[1])
     wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/1000))+1)
     my_job.logprint("LINE 302")
     stars = wtips([outfile])
@@ -299,9 +299,9 @@ def getgalradec(infile, ra, dec, magni, background, my_job):
 
 
 def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, starsonly, filtsinm,my_job):
-    filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
-    zp_ab = np.array([26.5, 26.365, 26.357, 26.320, 26.367, 25.913])
-    zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588])
+    filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
+    zp_ab = np.array([6.73, 26.39, 26.41, 26.43, 26.47,26.08,26.06,27.66])
+    zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,24.528,26.4])
     starpre = '.'.join(infile.split('.')[:-1])
     filedir = '/'.join(infile.split('/')[:-1]) + '/'
     outfiles = []
@@ -394,14 +394,14 @@ def link_stips_catalogs(my_config):
                     dec_dither = dither_size * (int(j))
                     eventtag = filtname+'_ra:'+str(k)+'/'+str(ra_dithers)+'_dec:'+str(j)+'/'+str(dec_dithers)
                     my_event = my_job.child_event('new_stips_catalog', tag=eventtag,
-                                                  options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'pbs',
+                                                  options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'scheduler',
                                                            'ra_dither': ra_dither, 'dec_dither': dec_dither})
                     my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
                     my_event.fire()
 
         except KeyError:
             my_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                          options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'pbs'})
+                                          options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type':'scheduler'})
             my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
             my_event.fire()
 
@@ -445,7 +445,7 @@ if __name__ == '__main__':
                 for i in range(ndetect):
                     dpid = dp_id
                     new_event = my_job.child_event('split_catalog', tag=i+1,
-                                       options={'dp_id': dpid,'submission_type':'pbs'})
+                                       options={'dp_id': dpid,'submission_type':'scheduler'})
                     my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  split_catalog"]))
                     new_event.fire()
         elif 'split' in event.name:

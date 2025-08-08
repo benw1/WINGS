@@ -18,6 +18,7 @@ class DataProduct(OptOwner):
         DO NOT USE CONSTRUCTOR: constructing a DataProduct object adds a new
         row to the database: USE INSTEAD ITS WPIPE COUNTERPART.
     """
+    __UNIQ_ATTRS__ = ['dpowner_id', 'group', 'filename']
     __tablename__ = 'dataproducts'
     id = sa.Column(sa.Integer, sa.ForeignKey('optowners.id'), primary_key=True)
     filename = sa.Column(sa.String(256))

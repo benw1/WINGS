@@ -17,6 +17,7 @@ class User(Base):
         DO NOT USE CONSTRUCTOR: constructing a User object adds a new row
         to the database: USE INSTEAD ITS WPIPE COUNTERPART.
     """
+    __UNIQ_ATTRS__ = ['name']
     __tablename__ = 'users'
     id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.String(256))

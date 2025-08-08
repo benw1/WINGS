@@ -18,6 +18,7 @@ class Event(OptOwner):
         DO NOT USE CONSTRUCTOR: constructing a Event object adds a new row
         to the database: USE INSTEAD ITS WPIPE COUNTERPART.
     """
+    __UNIQ_ATTRS__ = ['parent_job_id', 'name', 'tag']
     __tablename__ = 'events'
     id = sa.Column(sa.Integer, sa.ForeignKey('optowners.id'), primary_key=True)
     name = sa.Column(sa.String(256))

@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 import argparse
 
-from wpipe.scheduler import pbsconsumer
+from wpipe.scheduler import slurmconsumer
 
 
 if __name__ == '__main__':
@@ -19,6 +19,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     if hasattr(args, 'which'):
-        pbsconsumer(args.which)
+        slurmconsumer(args.which)
     else:
         parser.print_help()

@@ -36,7 +36,7 @@ setup(name='wpipe',
       python_requires='>=3',
       packages=['wpipe', 'wpipe.sqlintf', 'wpipe.proxies', 'wpipe.scheduler'],
       package_dir={'': 'src'},
-      install_requires=['numpy', 'pandas', 'tenacity', 'tables', 'sqlalchemy',
+      install_requires=['numpy', 'pandas', 'tenacity', 'tables', 'sqlalchemy<2', 'pymysql',
                         'mysql-connector-python', 'mysqlclient', 'astropy', 'jinja2'],
-      scripts=['bin/wingspipe', 'bin/pbsconsumer.py']
+      scripts=['bin/wingspipe', 'bin/pbsconsumer.py', 'bin/slurmconsumer.py']
       )

@@ -18,6 +18,7 @@ class Configuration(DPOwner):
         DO NOT USE CONSTRUCTOR: constructing a Configuration object adds a new
         row to the database: USE INSTEAD ITS WPIPE COUNTERPART.
     """
+    __UNIQ_ATTRS__ = ['target_id', 'name']
     __tablename__ = 'configurations'
     id = sa.Column(sa.Integer, sa.ForeignKey('dpowners.id'), primary_key=True)
     name = sa.Column(sa.String(256))

@@ -18,6 +18,7 @@ class Target(OptOwner):
         DO NOT USE CONSTRUCTOR: constructing a Target object adds a new row
         to the database: USE INSTEAD ITS WPIPE COUNTERPART.
     """
+    __UNIQ_ATTRS__ = ['input_id', 'name']
     __tablename__ = 'targets'
     id = sa.Column(sa.Integer, sa.ForeignKey('optowners.id'), primary_key=True)
     name = sa.Column(sa.String(256))

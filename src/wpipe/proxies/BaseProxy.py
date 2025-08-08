@@ -38,20 +38,26 @@ class BaseProxy:
     def __new__(cls, *args, **kwargs):
         if cls is BaseProxy:
             parent = kwargs.pop('parent', None)
-            with si.begin_session() as session:
-                session.add(parent)
-                proxy = getattr(parent, kwargs.pop('attr_name', ''))
+            for session in si.begin_session():
+                with session as session:
+                    session.add(parent)
+                    proxy = getattr(parent, kwargs.pop('attr_name', ''))
             if kwargs.pop('try_scalar', False):
                 proxy = try_scalar(proxy)
-            if isinstance(proxy, str) or isinstance(proxy, numbers.Number):
-                from . import StrNumProxy
-                cls = StrNumProxy
-            elif isinstance(proxy, datetime.datetime):
-                from . import DatetimeProxy
-                cls = DatetimeProxy
+            if proxy is None:
+                cls = type(None)
+                args = []
+                kwargs = {}
             else:
-                raise ValueError("Invalid proxy type %s" % type(proxy))
-            args = [proxy]
+                if isinstance(proxy, str) or isinstance(proxy, numbers.Number):
+                    from . import StrNumProxy
+                    cls = StrNumProxy
+                elif isinstance(proxy, datetime.datetime):
+                    from . import DatetimeProxy
+                    cls = DatetimeProxy
+                else:
+                    raise ValueError("Invalid proxy type %s" % type(proxy))
+                args = [proxy]
             return cls.__new__(cls, *args, *kwargs)
         return super().__new__(cls, *args, *kwargs)
 

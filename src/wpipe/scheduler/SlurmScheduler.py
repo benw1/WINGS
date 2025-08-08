@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """
-Contains the scheduler.PbsScheduler class definition
+Contains the scheduler.SlurmScheduler class definition
 
-Please note that this module is private. The scheduler.PbsScheduler class is
+Please note that this module is private. The scheduler.SlurmScheduler class is
 available in the ``wpipe.scheduler`` namespace - use that instead.
 """
 import datetime
@@ -12,14 +12,19 @@ from .BaseScheduler import BaseScheduler
 from .TemplateFactory import TemplateFactory
 import subprocess
 
-__all__ = ['DEFAULT_NODE_MODEL', 'DEFAULT_WALLTIME', 'PbsScheduler']
+__all__ = ['DEFAULT_NODE_MODEL', 'DEFAULT_WALLTIME', 'SlurmScheduler']
 
+DEFAULT_WALLTIME = '48:00:00'
+DEFAULT_MEMORY = '50G'
+DEFAULT_ACCOUNT = 'astro'
+DEFAULT_PARTITION = 'compute-bigmem'
+DEFAULT_NCPUS = '1'
 DEFAULT_NODE_MODEL = 'has'
-DEFAULT_WALLTIME = '24:00:00'
 NODE_CORES_DICT = {'bro': 2 * 14, 'has': 2 * 12, 'ivy': 2 * 10, 'san': 2 * 8}
 
 
-class PbsScheduler(BaseScheduler):
+
+class SlurmScheduler(BaseScheduler):
     # Keep track of all the instances that might be spawned
     schedulers = list()
 
@@ -29,10 +34,10 @@ class PbsScheduler(BaseScheduler):
             jobdata.getTime() if jobdata.getTime() is not None else 20)  # passed in value or default timer amount (seconds).
         print("Creating a new scheduler ...")
 
-        self._key = self.PbsKey(jobdata)
+        self._key = self.SlurmKey(jobdata)
         self._jobList = list()
 
-        PbsScheduler.schedulers.append(self)  # add this new scheduler to the list
+        SlurmScheduler.schedulers.append(self)  # add this new scheduler to the list
 
         # run the submit now that the object is created
         self._submitJob(jobdata)
@@ -41,13 +46,17 @@ class PbsScheduler(BaseScheduler):
     ## Internal Use Only ##
     #######################
 
-    def _submitJob(self, jobdata):
+    def _submitJob(self, jobdata, listmax=10):
         # TODO: Change to event later
 
         self._jobList.append(jobdata)
 
         # Reset the scheduler
-        super().reset()
+       
+        if (len(self._jobList) > listmax):
+            super().run_it()
+        else:
+            super().reset()
 
     def _execute(self):
         print("We do the scheduling now from: " + self._key.getKey())
@@ -55,34 +64,34 @@ class PbsScheduler(BaseScheduler):
         now = datetime.datetime.now()
         dt_string = now.strftime("%d-%m-%Y-%H-%M-%S.%f")
 
-        pbsfilename = dt_string + ".pbs"  # name it with the current time
+        slurmfilename = dt_string + ".slurm"  # name it with the current time
         executables_file = dt_string + ".list"  # name it with the current time
 
-        pbsfilepath = self._jobList[0].getPipelineConfigRoot() + "/" + pbsfilename
+        slurmfilepath = self._jobList[0].getPipelineConfigRoot() + "/" + slurmfilename
         executables_path = self._jobList[0].getPipelineConfigRoot() + "/" + executables_file
 
         jobFileOutput = self._makeJobList()
-        pbsFileOutput = self._makePbsFile(executables_path)
+        slurmFileOutput = self._makeSlurmFile(executables_path)
 
         with open(executables_path, 'w') as f:
             f.write(jobFileOutput)
-        with open(pbsfilepath, 'w') as f:
-            f.write(pbsFileOutput)
+        with open(slurmfilepath, 'w') as f:
+            f.write(slurmFileOutput)
 
         # TODO: Test this out more
-        output = subprocess.run("qsub %s" % (pbsfilepath), shell=True, capture_output=True)
-        print("Qsub output:")
+        output = subprocess.run("sbatch %s" % (slurmfilepath), shell=True, capture_output=True)
+        print("Sbatch output:")
         print(output)
 
         # remove scheduler from list
-        PbsScheduler.schedulers.remove(self)
+        SlurmScheduler.schedulers.remove(self)
 
     @staticmethod
     def _checkForScheduler(jobdata):
         # This will check for an existing scheduler and return it if it exists
-        tempKey = PbsScheduler.PbsKey(jobdata)
+        tempKey = SlurmScheduler.SlurmKey(jobdata)
 
-        for scheduler in PbsScheduler.schedulers:
+        for scheduler in SlurmScheduler.schedulers:
             if scheduler._key.equals(tempKey):
                 return True, scheduler
 
@@ -100,7 +109,7 @@ class PbsScheduler(BaseScheduler):
         for jobdata in self._jobList:
             jobsForJinja.append(
                 {'command': ("export OMP_NUM_THREADS=%d && " % n_cpus if omp_threads else "")
-                            + "source activate %s &&" % jobdata.getCondaEnv()
+                            + "source ~/.bashrc && micromamba activate %s &&" % jobdata.getCondaEnv()
                             + jobdata.getTaskExecutable()
                             + ' -p ' + str(jobdata.getPipelineId())
                             + ' -u ' + str(jobdata.getPipelineUserName())
@@ -114,34 +123,38 @@ class PbsScheduler(BaseScheduler):
 
         return output
 
-    def _makePbsFile(self, executablesListPath):
+    def _makeSlurmFile(self, executablesListPath):
 
-        template = TemplateFactory.getPbsFileTemplate()
+        template = TemplateFactory.getSlurmFileTemplate()
 
+        slurm_account = self._jobList[0].getAccount()
+        slurm_partition = self._jobList[0].getPartition()
         node_cores = NODE_CORES_DICT
         node_model = self._jobList[0].getNodemodel()
         omp_threads = self._jobList[0].getJobOpenMP()
         n_jobs = len(self._jobList)
         n_nodes = [math.ceil(n_jobs / node_cores[node_model]), n_jobs][omp_threads]
         n_cpus = node_cores[node_model]
-        n_jobs_per_node = [n_cpus, 1][omp_threads]
+        #n_jobs_per_node = [n_cpus, 1][omp_threads]
+        n_jobs_per_node = n_jobs
         omp_threads = ['', 'ompthreads=%d:' % n_cpus][omp_threads]
 
         # create a dictionary
-        pbsDict = {'model': node_model,
-                   'nnodes': n_nodes,
-                   'ncpus': n_cpus,
-                   'ompthreads': omp_threads,
+        slurmDict = {'nnodes': n_nodes,
                    'njobs': n_jobs_per_node,
+                   'ncpus': self._jobList[0].getNcpus(),
                    'walltime': self._jobList[0].getWalltime(),
-                   # 'condaenv': self._jobList[0].getCondaEnv(),
+                   'mem' : self._jobList[0].getMemory(),
+                   'account' : self._jobList[0].getAccount(),
+                   'partition' : self._jobList[0].getPartition(),
+                   'jobid' : self._jobList[0].getJobId(),
                    'pipe_root': self._jobList[0].getPipelinePipeRoot(),
                    'executables_list_path': executablesListPath}
 
-        output = template.render(pbs=pbsDict)
+        output = template.render(slurm=slurmDict)
 
         print()
-        print("Jinja Pbs File:")
+        print("Jinja Slurm File:")
         print(output)
         return output
 
@@ -152,23 +165,23 @@ class PbsScheduler(BaseScheduler):
     @staticmethod
     def submit(jobdata):
         # If no schedulers exist then create a new one and exit this method
-        if len(PbsScheduler.schedulers) == 0:
-            PbsScheduler(jobdata)
+        if len(SlurmScheduler.schedulers) == 0:
+            SlurmScheduler(jobdata)
             return
 
-        (hasScheduler, scheduler) = PbsScheduler._checkForScheduler(jobdata)
+        (hasScheduler, scheduler) = SlurmScheduler._checkForScheduler(jobdata)
         if hasScheduler:  # check for existing schedulers and call submitJob for the retrieved scheduler
             print('Adding job to scheduler with key {} ...'.format(scheduler._key.getKey()))
             scheduler._submitJob(jobdata)
         else:  # No scheduler was found but we need to do the scheduling
-            PbsScheduler(jobdata)
+            SlurmScheduler(jobdata)
 
     ####################
     ## Nested Classes ##
     ####################
 
     # out of site and out of mind
-    class PbsKey(object):
+    class SlurmKey(object):
 
         def __init__(self, jobdata):
             # self._key = jobdata.getTaskName()  # For debugging

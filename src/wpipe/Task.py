@@ -5,16 +5,27 @@ Contains the Task class definition
 Please note that this module is private. The Task class is
 available in the main ``wpipe`` namespace - use that instead.
 """
-from .core import os, sys, shutil, warnings, datetime, si
+from .core import os, sys, shutil, warnings, datetime, pd, si
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import clean_path, remove_path, split_path
 from .proxies import ChildrenProxy
 
 __all__ = ['Task']
 
+CLASS_NAME = split_path(__file__)[1]
+KEYID_ATTR = 'task_id'
+UNIQ_ATTRS = getattr(si, CLASS_NAME).__UNIQ_ATTRS__
+CLASS_LOW = CLASS_NAME.lower()
+
 
 def _in_session(**local_kw):
-    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' % CLASS_LOW, **local_kw)
+
+
+_check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
+
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW, KEYID_ATTR, UNIQ_ATTRS)
 
 
 class Task:
@@ -112,13 +123,36 @@ class Task:
 
         >>> new_job = my_task.job(my_node, my_event, my_config)
     """
+    __cache__ = pd.DataFrame(columns=[KEYID_ATTR]+UNIQ_ATTRS+[CLASS_LOW])
+
+    @classmethod
+    def _check_in_cache(cls, kind, loc):
+        return _check_in_cache(cls, kind, loc)
+
+    @classmethod
+    def _sqlintf_instance_argument(cls):
+        if hasattr(cls, '_%s' % CLASS_LOW):
+            for _session in cls._check_in_cache(kind='keyid',
+                                                loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
+                pass
+    
+    @classmethod
+    def _return_cached_instances(cls):
+        return [getattr(obj, '_%s' % CLASS_LOW) for obj in cls.__cache__[CLASS_LOW]]
+
     def __new__(cls, *args, **kwargs):
+        if hasattr(cls, '_inst'):
+            old_cls_inst = cls._inst
+            delattr(cls, '_inst')
+        else:
+            old_cls_inst = None
+        cls._to_cache = {}
         # checking if given argument is sqlintf object or existing id
         cls._task = args[0] if len(args) else None
         if not isinstance(cls._task, si.Task):
             keyid = kwargs.get('id', cls._task)
             if isinstance(keyid, int):
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='keyid', loc=keyid):
                     cls._task = session.query(si.Task).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
@@ -129,7 +163,7 @@ class Task:
                 run_time = kwargs.get('run_time', 0 if args[2] is None else args[2])
                 is_exclusive = kwargs.get('is_exclusive', 0 if args[3] is None else args[3])
                 # querying the database for existing row or create
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='args', loc=(pipeline.pipeline_id, name)):
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
@@ -148,22 +182,38 @@ class Task:
                             else:
                                 this_nested.rollback()
                             retry.retry_state.commit()
+        else:
+            cls._sqlintf_instance_argument()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Task')
-        return cls._inst
+        # add instance to cache dataframe
+        if cls._to_cache:
+            cls._to_cache[CLASS_LOW] = cls._inst
+            cls.__cache__.loc[len(cls.__cache__)] = cls._to_cache
+            del cls._to_cache
+        new_cls_inst = cls._inst
+        delattr(cls, '_inst')
+        if old_cls_inst is not None:
+            cls._inst = old_cls_inst
+        return new_cls_inst
 
-    @_in_session()
+    # @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_masks_proxy'):
             self._masks_proxy = ChildrenProxy(self._task, 'masks', 'Mask')
         if not hasattr(self, '_jobs_proxy'):
             self._jobs_proxy = ChildrenProxy(self._task, 'jobs', 'Job',
                                              child_attr='id')
-        self._task.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        # self.update_timestamp()
+
+    @_in_session()
+    def __repr__(self):
+        cls = self.__class__.__name__
+        description = ', '.join([(f"{prop}={getattr(self, prop)}") for prop in [KEYID_ATTR]+UNIQ_ATTRS])
+        return f'{cls}({description})'
 
     @classmethod
-    def select(cls, **kwargs):
+    def select(cls, *args, **kwargs):
         """
         Returns a list of Task objects fulfilling the kwargs filter.
 
@@ -177,9 +227,12 @@ class Task:
         out : list of Task object
             list of objects fulfilling the kwargs filter.
         """
-        with si.begin_session() as session:
-            cls._temp = session.query(si.Task).filter_by(**kwargs)
-            return list(map(cls, cls._temp.all()))
+        for session in si.begin_session():
+            with session as session:
+                cls._temp = session.query(si.Task).filter_by(**kwargs)
+                for arg in args:
+                    cls._temp = cls._temp.filter(arg)
+                return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -195,14 +248,18 @@ class Task:
         str: Name of the task.
         """
         self._session.refresh(self._task)
-        return self._task.name
+        return _query_return_and_update_cached_row(self, 'name')
 
     @name.setter
     @_in_session()
     def name(self, name):
+        temp = self.pipeline.software_root
+        os.rename(temp + '/' + self._task.name, temp + '/' + name)
         self._task.name = name
-        self._task.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        _temp = _query_return_and_update_cached_row(self, 'name')
+        self.update_timestamp()
+        # self._task.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -331,6 +388,14 @@ class Task:
         from .Job import Job
         return Job(self, *args, **kwargs)
 
+    @_in_session()
+    def update_timestamp(self):
+        """
+
+        """
+        self._task.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
+
     def register(self):
         """
         Import and call the function register implemented in task script.
@@ -367,3 +432,4 @@ class Task:
         self.remove_data()
         self.jobs.delete()
         si.delete(self._task)
+        self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]

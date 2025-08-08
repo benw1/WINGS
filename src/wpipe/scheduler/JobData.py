@@ -5,7 +5,10 @@ Contains the scheduler.JobData class definition
 Please note that this module is private. The scheduler.JobData class is
 available in the ``wpipe.scheduler`` namespace - use that instead.
 """
+import os
 from .. import si
+from .PbsScheduler import DEFAULT_NODE_MODEL, DEFAULT_WALLTIME
+from .SlurmScheduler import DEFAULT_MEMORY, DEFAULT_WALLTIME, DEFAULT_ACCOUNT, DEFAULT_PARTITION, DEFAULT_NCPUS
 
 __all__ = ['JobData']
 
@@ -30,11 +33,41 @@ class JobData:
         print(job.firing_event.options)
         event_options = job.firing_event.options
         try:
-            self._job_time = event_options['job_time']
+            self._job_time = 0 + event_options['job_time']
         except KeyError:
             self._job_time = None
-
-
+        try:
+            self._node_model = '' + event_options['node_model']
+        except KeyError:
+            self._node_model = DEFAULT_NODE_MODEL
+        try:
+            self._walltime = str(event_options['walltime'])
+        except KeyError:
+            self._walltime = DEFAULT_WALLTIME
+        try:
+            self._memory = str(event_options['memory'])
+        except KeyError:
+            self._memory = DEFAULT_MEMORY
+        try:
+            self._slurm_partition = str(event_options['partition'])
+        except KeyError:
+            self._slurm_partition = DEFAULT_PARTITION
+        try:
+            self._slurm_account= str(event_options['account'])
+        except KeyError:
+            self._slurm_account = DEFAULT_ACCOUNT
+        try:
+            self._job_openmp = bool(event_options['job_openmp'])
+        except KeyError:
+            self._job_openmp = False
+        try:
+            self._job_condaenv = str(event_options['conda_environment'])
+        except KeyError:
+            self._job_condaenv = os.environ.get('CONDA_DEFAULT_ENV', '')
+        try:
+            self._ncpus = str(event_options['ncpus'])
+        except:
+            self._ncpus = DEFAULT_NCPUS
     # These are required
     def validate(self):
         errors = ""
@@ -52,6 +85,8 @@ class JobData:
             errors += "Job for scheduler has no pipeline username\n"
         if self._job_id is None:
             errors += "Job for scheduler has no job id\n"
+        if self._verbose is None:
+            errors += "Job for scheduler has no verbose flag\n"
         return errors
 
     def getTaskName(self):
@@ -84,6 +119,30 @@ class JobData:
     def setTime(self, time):
         self._job_time = time
 
+    def getNodemodel(self):
+        return self._node_model
+
+    def getWalltime(self):
+        return self._walltime
+
+    def getMemory(self):
+        return self._memory
+
+    def getNcpus(self):
+        return self._ncpus
+
+    def getAccount(self):
+        return self._slurm_account
+
+    def getPartition(self):
+        return self._slurm_partition
+
+    def getJobOpenMP(self):
+        return self._job_openmp
+
+    def getCondaEnv(self):
+        return self._job_condaenv
+
     # For pretty printing or logging
     def toString(self):
         string = 'JobData:\n'
@@ -97,4 +156,12 @@ class JobData:
         string += '\tSet verbosity to: {}\n'.format(self.getVerbose())
         if self.getTime() is not None:
             string += '\tJob Time: {}\n'.format(self.getTime())
+        if self.getNodemodel() is not None:
+            string += '\tRequested Node model: {}\n'.format(self.getNodemodel())
+        if self.getWalltime() is not None:
+            string += '\tRequested Wall time: {}\n'.format(self.getWalltime())
+        if self.getJobOpenMP():
+            string += '\tJob requires OpenMP resources\n'
+        if self.getCondaEnv():
+            string += '\tJob requires conda environment "{}"\n'.format(self.getCondaEnv())
         return string

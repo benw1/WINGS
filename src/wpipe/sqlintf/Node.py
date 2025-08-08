@@ -17,6 +17,7 @@ class Node(Base):
         DO NOT USE CONSTRUCTOR: constructing a Node object adds a new row
         to the database: USE INSTEAD ITS WPIPE COUNTERPART.
     """
+    __UNIQ_ATTRS__ = ['name']
     __tablename__ = 'nodes'
     id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.String(256))

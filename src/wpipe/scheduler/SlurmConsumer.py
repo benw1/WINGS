@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
-Contains the PbsConsumer utilities including the scheduler.checkPbsConnection
-and scheduler.sendJobToPbs function definitions
+Contains the SlurmConsumer utilities including the scheduler.checkSlurmConnection
+and scheduler.sendJobToSlurm function definitions
 
 Please note that this module is private. These functions are available in the
 main ``wpipe.scheduler`` namespace - use that instead.
@@ -12,16 +12,25 @@ import socket
 import logging
 import sys
 from datetime import datetime
+from pathlib import Path
+
 from .StreamToLogger import StreamToLogger
 from .JobData import JobData
-from .PbsScheduler import PbsScheduler
+from .SlurmScheduler import SlurmScheduler
 from wpipe.sqlintf import SESSION
 
-__all__ = ['BASE_PORT', 'DEFAULT_PORT', 'checkPbsConnection', 'sendJobToPbs']
+__all__ = ['BASE_PORT', 'DEFAULT_PORT', 'checkSlurmConnection', 'sendJobToSlurm']
 
 # TODO: Make this not hardcoded
-HOST_MACHINE = '10.150.27.94'
-BASE_PORT = DEFAULT_PORT = 5000
+my_file = Path("/usr/lusers/benw1/server.address")
+if  my_file.is_file():
+    ip1 = my_file.read_text()
+    ip = ip1.strip()
+    HOST_MACHINE = ip
+else:
+    HOST_MACHINE = '10.64.57.84'
+HOST_MACHINE = '0.0.0.0'
+BASE_PORT = DEFAULT_PORT = 8000
 
 
 # HOST_MACHINE = '127.0.0.1' # For debugging
@@ -59,10 +68,10 @@ class PipelineObjectProtocol(asyncio.Protocol):
 
         logging.info('Submitting job to scheduler ...')
         logging.info(jobdata.toString())
-        PbsScheduler.submit(jobdata)
+        SlurmScheduler.submit(jobdata)
 
 
-def checkPbsConnection():
+def checkSlurmConnection():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     connected = s.connect_ex((HOST_MACHINE, DEFAULT_PORT))
     s.close()
@@ -70,8 +79,8 @@ def checkPbsConnection():
     return connected  # non zero for unconnected
 
 
-# Used by clients to send to the PbsConsumer
-def sendJobToPbs(pipejob):
+# Used by clients to send to the SlurmConsumer
+def sendJobToSlurm(pipejob):
     # TODO: How do we parse for the host machine automatically?
 
     # Turn our object into bytes for sending
@@ -100,14 +109,14 @@ def sendJobToPbs(pipejob):
 
 
 def periodicLog():
-    logging.info("PbsConsumer is still running ...")
+    logging.info("SlurmConsumer is still running ...")
     asyncio.get_event_loop().call_later(60 * 30, lambda: periodicLog())
 
 
 if __name__ == "__main__":
-    from wpipe.scheduler.PbsConsumer import DEFAULT_PORT
+    from wpipe.scheduler.SlurmConsumer import DEFAULT_PORT
     # Setup the logging
-    logging.basicConfig(filename='PbsConsumerLog-{}.log'.format(datetime.today().strftime('%m-%d-%Y-%H-%M-%S')),
+    logging.basicConfig(filename='SlurmConsumerLog-{}.log'.format(datetime.today().strftime('%m-%d-%Y-%H-%M-%S')),
                         level=logging.DEBUG, filemode='a',
                         format="[%(asctime)s][%(levelname)s][%(name)s]: %(message)s")
 
@@ -125,7 +134,7 @@ if __name__ == "__main__":
     logging.info("Setting up asyncio loop ...")
     loop = asyncio.get_event_loop()
 
-    logging.info('Creating PbsConsumer server on {}:{} ...'.format(HOST_MACHINE, DEFAULT_PORT))
+    logging.info('Creating SlurmConsumer server on {}:{} ...'.format(HOST_MACHINE, DEFAULT_PORT))
     coroutine = loop.create_server(lambda: PipelineObjectProtocol(), HOST_MACHINE, DEFAULT_PORT)
     server = loop.run_until_complete(coroutine)
 
@@ -139,7 +148,7 @@ if __name__ == "__main__":
         if SESSION is not None:
             SESSION.close()
             # SESSION = None
-        loop.call_later(172800, lambda: sendJobToPbs("poisonpill"))  # This kills the server after some time
+        loop.call_later(172800, lambda: sendJobToSlurm("poisonpill"))  # This kills the server after some time
         loop.call_later(60 * 30, lambda: periodicLog())
         loop.run_forever()
     finally:

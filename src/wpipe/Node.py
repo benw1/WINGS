@@ -6,16 +6,27 @@ Please note that this module is private. The Node class is
 available in the main ``wpipe`` namespace - use that instead.
 """
 import socket
-from .core import datetime, si
+from .core import datetime, pd, si
+from .core import make_yield_session_if_not_cached, make_query_rtn_upd
 from .core import initialize_args, wpipe_to_sqlintf_connection, in_session
 from .core import split_path
 from .proxies import ChildrenProxy
 
 __all__ = ['Node']
 
+CLASS_NAME = split_path(__file__)[1]
+KEYID_ATTR = 'node_id'
+UNIQ_ATTRS = getattr(si, CLASS_NAME).__UNIQ_ATTRS__
+CLASS_LOW = CLASS_NAME.lower()
+
 
 def _in_session(**local_kw):
-    return in_session('_%s' %  split_path(__file__)[1].lower(), **local_kw)
+    return in_session('_%s' % CLASS_LOW, **local_kw)
+
+
+_check_in_cache = make_yield_session_if_not_cached(KEYID_ATTR, UNIQ_ATTRS, CLASS_LOW)
+
+_query_return_and_update_cached_row = make_query_rtn_upd(CLASS_LOW, KEYID_ATTR, UNIQ_ATTRS)
 
 
 class Node:
@@ -81,13 +92,36 @@ class Node:
         makes use of the socket.gethostname method that returns the current
         host name.
     """
+    __cache__ = pd.DataFrame(columns=[KEYID_ATTR]+UNIQ_ATTRS+[CLASS_LOW])
+
+    @classmethod
+    def _check_in_cache(cls, kind, loc):
+        return _check_in_cache(cls, kind, loc)
+
+    @classmethod
+    def _sqlintf_instance_argument(cls):
+        if hasattr(cls, '_%s' % CLASS_LOW):
+            for _session in cls._check_in_cache(kind='keyid',
+                                                loc=getattr(cls, '_%s' % CLASS_LOW).get_id()):
+                pass
+    
+    @classmethod
+    def _return_cached_instances(cls):
+        return [getattr(obj, '_%s' % CLASS_LOW) for obj in cls.__cache__[CLASS_LOW]]
+
     def __new__(cls, *args, **kwargs):
+        if hasattr(cls, '_inst'):
+            old_cls_inst = cls._inst
+            delattr(cls, '_inst')
+        else:
+            old_cls_inst = None
+        cls._to_cache = {}
         # checking if given argument is sqlintf object or existing id
         cls._node = args[0] if len(args) else None
         if not isinstance(cls._node, si.Node):
             keyid = kwargs.get('id', cls._node)
             if isinstance(keyid, int):
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='keyid', loc=keyid):
                     cls._node = session.query(si.Node).filter_by(id=keyid).one()
             else:
                 # gathering construction arguments
@@ -96,7 +130,7 @@ class Node:
                 int_ip = kwargs.get('int_ip', '' if args[1] is None else args[1])
                 ext_ip = kwargs.get('ext_ip', '' if args[2] is None else args[2])
                 # querying the database for existing row or create
-                with si.begin_session() as session:
+                for session in cls._check_in_cache(kind='args', loc=(name,)):
                     for retry in session.retrying_nested():
                         with retry:
                             this_nested = retry.retry_state.begin_nested()
@@ -111,20 +145,36 @@ class Node:
                             else:
                                 this_nested.rollback()
                             retry.retry_state.commit()
+        else:
+            cls._sqlintf_instance_argument()
         # verifying if instance already exists and return
         wpipe_to_sqlintf_connection(cls, 'Node')
-        return cls._inst
+        # add instance to cache dataframe
+        if cls._to_cache:
+            cls._to_cache[CLASS_LOW] = cls._inst
+            cls.__cache__.loc[len(cls.__cache__)] = cls._to_cache
+            del cls._to_cache
+        new_cls_inst = cls._inst
+        delattr(cls, '_inst')
+        if old_cls_inst is not None:
+            cls._inst = old_cls_inst
+        return new_cls_inst
 
-    @_in_session()
+    # @_in_session()
     def __init__(self, *args, **kwargs):
         if not hasattr(self, '_jobs_proxy'):
             self._jobs_proxy = ChildrenProxy(self._node, 'jobs', 'Job',
                                              child_attr='id')
-        self._node.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        # self.update_timestamp()
+
+    @_in_session()
+    def __repr__(self):
+        cls = self.__class__.__name__
+        description = ', '.join([(f"{prop}={getattr(self, prop)}") for prop in [KEYID_ATTR]+UNIQ_ATTRS])
+        return f'{cls}({description})'
 
     @classmethod
-    def select(cls, **kwargs):
+    def select(cls, *args, **kwargs):
         """
         Returns a list of Node objects fulfilling the kwargs filter.
 
@@ -138,9 +188,12 @@ class Node:
         out : list of Node object
             list of objects fulfilling the kwargs filter.
         """
-        with si.begin_session() as session:
-            cls._temp = session.query(si.Node).filter_by(**kwargs)
-            return list(map(cls, cls._temp.all()))
+        for session in si.begin_session():
+            with session as session:
+                cls._temp = session.query(si.Node).filter_by(**kwargs)
+                for arg in args:
+                    cls._temp = cls._temp.filter(arg)
+                return list(map(cls, cls._temp.all()))
 
     @property
     def parents(self):
@@ -156,14 +209,16 @@ class Node:
         str: Name of node.
         """
         self._session.refresh(self._node)
-        return self._node.name
+        return _query_return_and_update_cached_row(self, 'name')
 
     @name.setter
     @_in_session()
     def name(self, name):
         self._node.name = name
-        self._node.timestamp = datetime.datetime.utcnow()
-        self._session.commit()
+        _temp = _query_return_and_update_cached_row(self, 'name')
+        self.update_timestamp()
+        # self._node.timestamp = datetime.datetime.utcnow()
+        # self._session.commit()
 
     @property
     @_in_session()
@@ -222,8 +277,17 @@ class Node:
         from .Job import Job
         return Job(self, *args, **kwargs)
 
+    @_in_session()
+    def update_timestamp(self):
+        """
+
+        """
+        self._node.timestamp = datetime.datetime.utcnow()
+        self._session.commit()
+
     def delete(self):
         """
         Delete corresponding row from the database.
         """
         si.delete(self._node)
+        self.__class__.__cache__ = self.__cache__[self.__cache__[CLASS_LOW] != self]

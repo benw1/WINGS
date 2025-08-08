@@ -18,6 +18,7 @@ class Job(OptOwner):
         DO NOT USE CONSTRUCTOR: constructing a Job object adds a new row
         to the database: USE INSTEAD ITS WPIPE COUNTERPART.
     """
+    __UNIQ_ATTRS__ = ['task_id', 'config_id', 'firing_event_id', 'attempt']
     __tablename__ = 'jobs'
     id = sa.Column(sa.Integer, sa.ForeignKey('optowners.id'), primary_key=True)
     attempt = sa.Column(sa.Integer)

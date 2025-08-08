@@ -30,7 +30,8 @@ COMMIT_FLAG
 commit
     Flush and commit pending changes if COMMIT_FLAG is True
 """
-from .core import argparse, tn, sa, orm, exc, PARSER, Engine, Base, Session
+import itertools
+from .core import contextlib, argparse, tn, sa, orm, exc, PARSER, Engine, Base, Session
 from .User import User
 from .Node import Node
 from .Pipeline import Pipeline
@@ -65,6 +66,15 @@ COMMIT_FLAG = True
 boolean: flag to control the automatic committing.
 """
 
+# INSTANCES = []
+
+
+def _consolidate_cached_instances():
+    from .. import User, Node, Pipeline, Input, Option, Target, Configuration, Parameter, DataProduct, Task, Mask, Job, Event
+    return list(itertools.chain.from_iterable(
+        [cls._return_cached_instances()
+         for cls in [User, Node, Pipeline, Input, Option, Target, Configuration, Parameter, DataProduct, Task, Mask, Job, Event]]))
+
 
 def deactivate_commit():
     global COMMIT_FLAG
@@ -95,12 +105,13 @@ def hold_commit():
 
 class BeginSession:
     def __init__(self, **local_kw):
-        global SESSION
+        global SESSION  # , INSTANCES
         self.EXISTING_SESSION = SESSION is not None
         if self.EXISTING_SESSION:
             self.SESSION = SESSION
         else:
             SESSION = self.SESSION = Session(**local_kw)
+            self.add_all(_consolidate_cached_instances())
 
     def __dir__(self):
         return super(BeginSession, self).__dir__() + self.SESSION.__dir__()
@@ -111,17 +122,21 @@ class BeginSession:
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        global SESSION
+        global SESSION  # , INSTANCES
         if not self.EXISTING_SESSION:
+            # INSTANCES = self.identity_map.values()[:]
             self.close()
             SESSION = None
             del self.SESSION
 
     def __getattr__(self, item):
-        if item in self.SESSION.__dir__():
+        if (item in self.SESSION.__dir__() if self.is_alive() else False) if item != 'SESSION' else False:
             return getattr(self.SESSION, item)
         else:
             raise AttributeError("'%s' object has no attribute '%s'" % (self.__class__.__name__, item))
+
+    def is_alive(self):
+        return hasattr(self, 'SESSION')
 
     def commit(self):
         if COMMIT_FLAG:
@@ -168,8 +183,45 @@ class BeginSession:
                            after=after)
 
 
+@contextlib.contextmanager
+def retrying_session(retry, session):
+    with retry, session:
+        yield session
+
+
 def begin_session(**local_kw):
-    return BeginSession(**local_kw)
+    def __before(retry_state):
+        retry_state.session = BeginSession(**local_kw)
+
+    def __after(retry_state):
+        if retry_state.attempt_number == 1:
+            try:
+                retry_state.outcome.result()
+            except (exc.OperationalError, exc.PendingRollbackError) as Err:
+                print("Failed attempt to access database due to \n%s\n%s\nEntering retrying loop" % (Err.orig,
+                                                                                                     Err.statement))
+        if retry_state.session.is_alive():
+            retry_state.session.rollback()
+
+    for retry in tn.Retrying(retry=(tn.retry_if_exception_type(exc.OperationalError) |
+                                    tn.retry_if_exception_type(exc.PendingRollbackError)),
+                             before=__before,
+                             after=__after,
+                             wait=tn.wait_random()):
+        retry.session = retry.retry_state.session  # BeginSession(**local_kw)
+        yield retrying_session(retry, retry.session)
+
+
+# def begin_session(**local_kw):
+#     for retry in tn.Retrying(retry=tn.retry_if_exception_type(exc.OperationalError)):
+#         retry.session = BeginSession(**local_kw)
+#         with retry:
+#             with retry.session:
+#                 yield retry.session
+
+
+# def begin_session(**local_kw):
+#     return BeginSession(**local_kw)
 
 
 def delete(entry):
@@ -181,14 +233,16 @@ def delete(entry):
     entry : sqlintf object
         Proxy of entry to delete.
     """
-    with begin_session() as session:
-        session.delete(entry)
-        session.commit()
+    for session in begin_session():
+        with session as session:
+            session.delete(entry)
+            session.commit()
 
 
 def show_engine_status():
-    with begin_session() as session:
-        a = session.execute("SHOW ENGINE INNODB STATUS;").fetchall()
+    for session in begin_session():
+        with session as session:
+            a = session.execute("SHOW ENGINE INNODB STATUS;").fetchall()
     return a[0][2]
 
 
