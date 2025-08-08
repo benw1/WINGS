@@ -236,8 +236,11 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     # tot_dens = np.float(nstars) / area
     # print("MAX TOTAL DENSITY = ", tot_dens)
     filtsinm = []
+    
     allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
     magni = np.arange(len(datafile.data))
+    #allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
+
     for filt in allfilts:
         try:
             test = datafile.data[filt]

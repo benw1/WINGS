@@ -274,6 +274,7 @@ class Job(OptOwner):
         if cls._to_cache:
             cls._to_cache[CLASS_LOW] = cls._inst
             cls.__cache__.loc[len(cls.__cache__)] = cls._to_cache
+            del cls._to_cache
         new_cls_inst = cls._inst
         delattr(cls, '_inst')
         if old_cls_inst is not None:
@@ -358,7 +359,7 @@ class Job(OptOwner):
     @state.setter
     @_in_session()
     def state(self, state):
-        self._job.state = state
+        self._job.state = state[:256]
         self.update_timestamp()
         # self._job.timestamp = datetime.datetime.utcnow()
         # self._session.commit()
