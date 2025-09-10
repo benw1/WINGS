@@ -47,7 +47,7 @@ parallel --jobs {{pbs.njobs}} --sshloginfile $PBS_NODEFILE --workdir $PWD < {{pb
 #SBATCH --partition={{slurm.partition}}
 ## Resources
 ## Nodes
-#SBATCH --nodes={{slurm.nnodes}} --ntasks-per-node={{slurm.njobs}} 
+#SBATCH --nodes={{slurm.nnodes}} --ntasks-per-node={{slurm.njobs}} --cpus-per-task={{slurm.ncpus}} 
 ## Walltime (4 hours)
 #SBATCH --time={{slurm.walltime}}
 ## Memory per node

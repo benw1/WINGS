@@ -1,17 +1,18 @@
 #! /usr/bin/env python
 import wpipe as wp
-
+import time
 
 def register(task):
     _temp = task.mask(source='*', name='start', value=task.name)
     _temp = task.mask(source='*', name='images_prepped', value='*')
 
 
-def write_dolphot_pars(target, config, thisjob, detname):
+def write_dolphot_pars(target, config, thisjob, detname, chip):
     #parfile_name = target.name + "_" + detname + ".param"
-    parfile_name = detname + ".param"
+    chipname = "chip"+str(chip)+"."
+    parfile_name = detname + "_" + chipname + "param"
     parfile_path = config.confpath + '/' + parfile_name
-    thisjob.logprint(''.join(["Writing dolphot pars now in ", parfile_path, "\n"]))
+    thisjob.logprint(''.join(["Writing dolphot pars now in ", parfile_path, "\n"])) #doesn't create this file
     #my_dp = config.dataproducts
     #datadp = my_dp[my_dp.subtype == 'dolphot_data']
     my_dp = [ _temp for _temp in config.dataproducts]
@@ -30,41 +31,51 @@ def write_dolphot_pars(target, config, thisjob, detname):
         dp_id = dp.dp_id
         filt = str(dp.filtername)
         fname = dp.filename
+        if chipname not in fname:
+           thisjob.logprint(''.join([chipname, " not in ",fname,"\n"]))
+           continue
+        #print('fname = ', fname)
         if "F062" in filt and detname in fname:
-            rinds = [rinds, dp_id]
+            rinds.append(dp_id)
             count += 1
+            print('rinds = ', rinds)
         if "F087" in filt and detname in fname:
-            zinds = [zinds, dp_id]
+            zinds.append(dp_id)
             count += 1
+            print('zinds = ', zinds)
         if "F106" in filt and detname in fname:
-            yinds = [yinds, dp_id]
+            yinds.append(dp_id)
             count += 1
+            print('yinds = ', yinds)
         if "F129" in filt and detname in fname:
-            jinds = [jinds, dp_id]
+            jinds.append(dp_id)
             count += 1
+            print('jinds = ', jinds)
         if "F158" in filt and detname in fname:
-            hinds = [hinds, dp_id]
+            hinds.append(dp_id)
             count += 1
+            print('hinds = ', hinds)
         if "F184" in filt and detname in fname:
-            finds = [finds, dp_id]
+            finds.append(dp_id)
             count += 1
-    rinds = rinds[1:]
-    zinds = zinds[1:]
-    yinds = yinds[1:]
-    jinds = jinds[1:]
-    hinds = hinds[1:]
-    finds = finds[1:]
+            print('finds = ', finds)
+    #rinds = rinds[1:]
+    #zinds = zinds[1:]
+    #yinds = yinds[1:]
+    #jinds = jinds[1:]
+    #hinds = hinds[1:]
+    #finds = finds[1:]
 
     print("INDS ", rinds, zinds, yinds, jinds, hinds, hinds, finds, datadpid)
     nimg = count
     # my_params = config.parameters
     # refimage = my_params['refimage']  #will make this more flexible later
-    refdp = wp.DataProduct(hinds[0])
+    refdp = wp.DataProduct(hinds[0]) #hinds[0] is empty because there is no F158
     refimage = str(refdp.filename)
     if "sim" in refimage:
-       refimage = target.name + '_' + detname + '_' + str(refdp.dp_id) + '_' + refdp.filtername + ".fits"
+        refimage = target.name + '_' + detname + '_' + str(refdp.dp_id) + '_' + refdp.filtername + ".fits"
     else:
-       print("No sim")
+        print("No sim")
     print(refimage)
     with open(parfile_path, 'w') as d:
         d.write("Nimg = " + str(nimg) + "\n" +
@@ -73,50 +84,44 @@ def write_dolphot_pars(target, config, thisjob, detname):
         for rind in rinds:
             imdp = wp.DataProduct(rind)
             image = str(imdp.filename)
+            this_job.logprint(''.join(["RIND  ",image]))
             if 'sim' in image:
-               image = target.name + '_' + detname + '_' + str(imdp.dp_id) + '_' + imdp.filtername + ".fits"
-            rim = [rim, image]
-        rim = rim[1:]
+                image = target.name + '_' + detname + '_' + str(imdp.dp_id) + '_' + imdp.filtername + ".fits"
+            rim.append(image)
+        
         zim = []
         for zind in zinds:
             imdp = wp.DataProduct(zind)
             image = str(imdp.filename)
-            zim = [zim, image]
-        zim = zim[1:]
+            zim.append(image)
         yim = []
         for yind in yinds:
             imdp = wp.DataProduct(yind)
             image = str(imdp.filename)
-            yim = [yim, image]
-        yim = yim[1:]
+            yim.append(image)
         jim = []
         for jind in jinds:
             imdp = wp.DataProduct(jind)
             image = str(imdp.filename)
-            jim = [jim, image]
-        jim = jim[1:]
+            jim.append(image)
         him = []
         for hind in hinds:
             imdp = wp.DataProduct(hind)
             image = str(imdp.filename)
-            him = [him, image]
-        him = him[1:]
+            him.append(image)
         fim = []
         for find in finds:
-            fim = []
             imdp = wp.DataProduct(find)
             image = str(imdp.filename)
-            fim = [fim, image]
-        fim = fim[1:]
+            fim.append(image)
         # zims = set(zim)
         # yims = set(yim)
         # jims = set(jim)
         # hims = set(him)
         # fims = set(fim)
-        images = [rim,zim, yim, jim, him, fim]
+        images = rim+zim+yim+jim+him+fim
         i = 0
-        for iimage in images:
-            image = iimage[0]
+        for image in images:
             print("IMAGE ", image)
             i += 1
             d.write("img" + str(i) + "_file = " + image[:-5] + "\n")
@@ -167,9 +172,17 @@ def write_dolphot_pars(target, config, thisjob, detname):
                 "FlagMask = 4            #photometry quality flags to reject when combining magnitudes\n" +
                 "CombineChi = 0          #combined magnitude weights uses chi? (int 0=no, 1=yes)\n" +
                 "InterpPSFlib = 0        #interpolate PSF library spatially\n")
+        ncpus = 1
+        dolpath = config.parameters["dolphot_path"]
+        if "dolphot3" in dolpath:
+            maxthreads = int(config.parameters["maxthreads"])
+            if nimg/2.0 < maxthreads:
+                maxthreads = str(int(nimg/2 + 1))
+            d.write(f'MaxThreads={maxthreads}\n')  # write to file
+            ncpus = str(maxthreads)
     _dp = config.dataproduct(filename=parfile_name, relativepath=config.confpath,
                              subtype="dolphot_parameters", group='conf')
-    return _dp
+    return _dp,ncpus
 
 
 def parse_all():
@@ -183,14 +196,19 @@ if __name__ == '__main__':
     this_job = wp.Job(this_job_id)
     this_event = this_job.firing_event
     detname = this_event.options['detname']
+    chip = this_event.options['chip']
+    this_job.logprint("DETNAME AND CHIP")
+    this_job.logprint(detname)
+    this_job.logprint(chip)
     this_event_id = this_event.event_id
     this_config = this_job.config
     this_target = this_config.target
     tid = this_target.target_id
     this_job.logprint(''.join(["detname ", str(detname), "\n"]))
-    paramdp = write_dolphot_pars(this_target, this_config, this_job, detname)
+    paramdp,ncpus = write_dolphot_pars(this_target, this_config, this_job, detname, chip)
     dpid = int(paramdp.dp_id)
     this_job.logprint(''.join(["Parameter file DPID ", str(dpid), "\n"]))
-    newevent = this_job.child_event('parameters_written', tag=dpid, options={'target_id': tid, 'dp_id': dpid, 'detname': detname,'submission_type': 'scheduler'})
+    newevent = this_job.child_event('parameters_written', tag=dpid, options={'target_id': tid, 'dp_id': dpid, 'detname': detname,'submission_type': 'scheduler','ncpus':ncpus})
     newevent.fire()
     this_job.logprint('parameters_written\n')
+    time.sleep(300)
