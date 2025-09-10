@@ -94,11 +94,6 @@ def slurmconsumer(which):
                 ["nohup", "python", "-m", "wpipe.scheduler.SlurmConsumer"], cwd=homedir
             )
             while checkSlurmConnection() != 0:
-                print(
-                    "... starting server checking connection status {}".format(
-                        checkSlurmConnection()
-                    )
-                )
                 time.sleep(0.1)
                 pass
         else:
