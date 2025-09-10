@@ -5,12 +5,19 @@ Contains the scheduler.JobData class definition
 Please note that this module is private. The scheduler.JobData class is
 available in the ``wpipe.scheduler`` namespace - use that instead.
 """
+
 import os
 from .. import si
 from .PbsScheduler import DEFAULT_NODE_MODEL, DEFAULT_WALLTIME
-from .SlurmScheduler import DEFAULT_MEMORY, DEFAULT_WALLTIME, DEFAULT_ACCOUNT, DEFAULT_PARTITION, DEFAULT_NCPUS
+from .SlurmScheduler import (
+    DEFAULT_MEMORY,
+    DEFAULT_WALLTIME,
+    DEFAULT_ACCOUNT,
+    DEFAULT_PARTITION,
+    DEFAULT_NCPUS,
+)
 
-__all__ = ['JobData']
+__all__ = ["JobData"]
 
 
 # This class makes it so we can pickle and unpickle the info we need for the pbs scheduler for a job
@@ -33,41 +40,42 @@ class JobData:
         print(job.firing_event.options)
         event_options = job.firing_event.options
         try:
-            self._job_time = 0 + event_options['job_time']
+            self._job_time = 0 + event_options["job_time"]
         except KeyError:
             self._job_time = None
         try:
-            self._node_model = '' + event_options['node_model']
+            self._node_model = "" + event_options["node_model"]
         except KeyError:
             self._node_model = DEFAULT_NODE_MODEL
         try:
-            self._walltime = str(event_options['walltime'])
+            self._walltime = str(event_options["walltime"])
         except KeyError:
             self._walltime = DEFAULT_WALLTIME
         try:
-            self._memory = str(event_options['memory'])
+            self._memory = str(event_options["memory"])
         except KeyError:
             self._memory = DEFAULT_MEMORY
         try:
-            self._slurm_partition = str(event_options['partition'])
+            self._slurm_partition = str(event_options["partition"])
         except KeyError:
             self._slurm_partition = DEFAULT_PARTITION
         try:
-            self._slurm_account= str(event_options['account'])
+            self._slurm_account = str(event_options["account"])
         except KeyError:
             self._slurm_account = DEFAULT_ACCOUNT
         try:
-            self._job_openmp = bool(event_options['job_openmp'])
+            self._job_openmp = bool(event_options["job_openmp"])
         except KeyError:
             self._job_openmp = False
         try:
-            self._job_condaenv = str(event_options['conda_environment'])
+            self._job_condaenv = str(event_options["conda_environment"])
         except KeyError:
-            self._job_condaenv = os.environ.get('CONDA_DEFAULT_ENV', '')
+            self._job_condaenv = os.environ.get("CONDA_DEFAULT_ENV", "")
         try:
-            self._ncpus = str(event_options['ncpus'])
+            self._ncpus = str(event_options["ncpus"])
         except:
             self._ncpus = DEFAULT_NCPUS
+
     # These are required
     def validate(self):
         errors = ""
@@ -145,23 +153,25 @@ class JobData:
 
     # For pretty printing or logging
     def toString(self):
-        string = 'JobData:\n'
-        string += '\tTask Name: {}\n'.format(self.getTaskName())
-        string += '\tPipeline Pipe Root: {}\n'.format(self.getPipelinePipeRoot())
-        string += '\tPipeline Config Root: {}\n'.format(self.getPipelineConfigRoot())
-        string += '\tTask Executable: {}\n'.format(self.getTaskExecutable())
-        string += '\tPipeline ID: {}\n'.format(self.getPipelineId())
-        string += '\tPipeline Username: {}\n'.format(self.getPipelineUserName())
-        string += '\tJob ID: {}\n'.format(self.getJobId())
-        string += '\tSet verbosity to: {}\n'.format(self.getVerbose())
+        string = "JobData:\n"
+        string += "\tTask Name: {}\n".format(self.getTaskName())
+        string += "\tPipeline Pipe Root: {}\n".format(self.getPipelinePipeRoot())
+        string += "\tPipeline Config Root: {}\n".format(self.getPipelineConfigRoot())
+        string += "\tTask Executable: {}\n".format(self.getTaskExecutable())
+        string += "\tPipeline ID: {}\n".format(self.getPipelineId())
+        string += "\tPipeline Username: {}\n".format(self.getPipelineUserName())
+        string += "\tJob ID: {}\n".format(self.getJobId())
+        string += "\tSet verbosity to: {}\n".format(self.getVerbose())
         if self.getTime() is not None:
-            string += '\tJob Time: {}\n'.format(self.getTime())
+            string += "\tJob Time: {}\n".format(self.getTime())
         if self.getNodemodel() is not None:
-            string += '\tRequested Node model: {}\n'.format(self.getNodemodel())
+            string += "\tRequested Node model: {}\n".format(self.getNodemodel())
         if self.getWalltime() is not None:
-            string += '\tRequested Wall time: {}\n'.format(self.getWalltime())
+            string += "\tRequested Wall time: {}\n".format(self.getWalltime())
         if self.getJobOpenMP():
-            string += '\tJob requires OpenMP resources\n'
+            string += "\tJob requires OpenMP resources\n"
         if self.getCondaEnv():
-            string += '\tJob requires conda environment "{}"\n'.format(self.getCondaEnv())
+            string += '\tJob requires conda environment "{}"\n'.format(
+                self.getCondaEnv()
+            )
         return string
