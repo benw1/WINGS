@@ -51,7 +51,7 @@ def send(dp, conf, comp_name, total, job):
                 print('Generating event for dp_id: ', dpid,' and CONF: ', confid)
                 eventtag = dpid
                 event = job.child_event('new_fixed_catalog', jargs='0', value='0', tag=eventtag,
-                                        options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'config_id': confid})
+                        options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'config_id': confid, 'submission_type':'scheduler', 'memory':'100G'})
                 print("generated event", event.event_id, "Firing...")
                 event.fire()
 
@@ -82,14 +82,14 @@ def send(dp, conf, comp_name, total, job):
             print('Generating event for dp_id: ', dpid,' and CONF: ', confid)
             eventtag = dpid
             event = job.child_event('new_fixed_catalog', jargs='0', value='0', tag=eventtag,
-                                    options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'config_id': confid})
+                                    options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'config_id': confid,'submission_type':'scheduler', 'memory':'100G'})
             print("generated event", event.event_id, "Firing...")
             event.fire()
 
         else:
             print('File ', filepath, ' does not have type keyword, assuming MATCH output')
             event = job.child_event('new_match_catalog', jargs='0', value='0',
-                                    options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'config_id': confid})
+                                    options={'dp_id': dpid, 'to_run': total, 'name': comp_name, 'config_id': confid,'submission_type':'scheduler', 'memory':'100G'})
             event.fire()
     if '.hdf5' in dp.filename:
         print("hdf5 file detected")
