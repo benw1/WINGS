@@ -65,11 +65,11 @@ boolean: flag to call with the parser to use the in-memory sql database.
 """
 
 verbose = PARSER.parse_known_args()[0].verbose
+
 if sqlite:
     ENGINE_URL = "sqlite:///:memory:"
 elif "WPIPE_ENGINEURL" in os.environ.keys():
-    # ENGINE_URL = os.environ['WPIPE_ENGINEURL']
-    ENGINE_URL = "mysql+pymysql://root:password@localhost:8000/server"
+    ENGINE_URL = os.environ["WPIPE_ENGINEURL"]
 elif PARSER.parse_known_args()[0].test:
     ENGINE_URL = "mysql+pymysql://root:password@localhost:8000/server"
 else:
