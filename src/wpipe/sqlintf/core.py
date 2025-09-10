@@ -54,6 +54,8 @@ print("url check", ENGINE_URL)
 POOL_RECYLE = 3600
 
 def make_engine():
+    if verbose:
+        print(f"Using ENGINE_URL = {ENGINE_URL}")
     url_parse_results = urllib.parse.urlparse(ENGINE_URL)
     engine_url = ENGINE_URL
     hostname = url_parse_results.hostname
@@ -72,6 +74,7 @@ def make_engine():
     return sa.create_engine(engine_url, echo=verbose, pool_recycle=POOL_RECYLE)
 
 Engine = make_engine()
+print("ENGINE:",Engine)
 """
 sqlalchemy.engine.base.Engine object: handles the connection to the database.
 """
@@ -85,6 +88,7 @@ if not sqlite:
     Engine.connect().execute(query1)
     query2 = text("USE wpipe")
     Engine.connect().execute(query2)
+
     url_parse_results = urllib.parse.urlparse(ENGINE_URL)
     ENGINE_URL = url_parse_results._replace(path=url_parse_results.path.replace('server', 'wpipe')).geturl()
     Engine.dispose()

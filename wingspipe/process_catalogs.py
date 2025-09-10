@@ -133,6 +133,7 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
 
 
 def read_fixed(filepath, my_config, my_job, racent, deccent, filename):
+    allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
     if 'fit' in str(filename):
         data = fits.open(filepath)
         print(data[1].columns,"COLS")
@@ -155,6 +156,9 @@ def read_fixed(filepath, my_config, my_job, racent, deccent, filename):
     #tot_dens = np.float(nstars) / area
     #print("MAX TOTAL DENSITY = ", tot_dens)
     filtsinm = []
+
+    magni = np.arange(len(data))
+    
     for filt in allfilts:
         try:
             try:
@@ -230,7 +234,7 @@ def process_match_catalog(my_job_id, my_dp_id):
     fileroot = my_config.procpath + '/'
     procdp = my_config.dataproduct(filename=filename, relativepath=fileroot, group='proc')
     # filternames = my_params[filternames]
-    filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
+    filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
     stips_files, filters = read_match(procdp.relativepath + '/' + procdp.filename, filternames, my_config, my_job)
     comp_name = 'completed' + my_target.name
     options = {comp_name: 0}
@@ -399,13 +403,12 @@ def getgalradec(infile, ra, dec, magni, background):
     starpre = '.'.join(infile.split('.')[:-1])
     filedir = background + '/'
     outfile = starpre + '_' + filt + '.tbl'
-    flux = wtips.get_counts(magni[:, 0], zp_ab[0])
+    flux = wtips.get_counts(magni[:, 0], zp_ab[1])
     wtips.from_scratch(flux=flux, ra=ra, dec=dec, outfile=outfile, max_writing_packet=int(np.round(len(flux)/1000))+1)
     stars = wtips([outfile])
     galaxies = wtips([filedir + filt + '.txt'])  # this file will be provided pre-made
     radec = galaxies.random_radec_for(stars)
     return radec
-
 
 def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, starsonly, filtsinm, my_job):
     #filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
@@ -414,6 +417,7 @@ def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, s
     filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F146']
     zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,27.66])
     zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,26.4])
+
     starpre = '.'.join(infile.split('.')[:-1])
     filedir = '/'.join(infile.split('/')[:-1]) + '/'
     outfiles = []

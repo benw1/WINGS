@@ -175,8 +175,9 @@ if pathlib.Path(sys.argv[0]).resolve().name != 'wingspipe':
             ThisJob = Job()
             ThisEvent = ThisJob.firing_event
             if ThisJob.is_active:
-                print("Job with id %d is currently running - exiting" % ThisJob.job_id)
-                sys.exit()
+                #print("Job with id %d is currently running - exiting" % ThisJob.job_id)
+                #sys.exit()
+                ThisJob.reset()
             elif not ThisJob.not_submitted:
                 ThisJob.reset()
         ThisJob._starting_todo()

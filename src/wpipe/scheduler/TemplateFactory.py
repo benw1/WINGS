@@ -47,7 +47,7 @@ parallel --jobs {{pbs.njobs}} --sshloginfile $PBS_NODEFILE --workdir $PWD < {{pb
 #SBATCH --partition={{slurm.partition}}
 ## Resources
 ## Nodes
-#SBATCH --nodes={{slurm.nnodes}} --ntasks-per-node={{slurm.njobs}} 
+#SBATCH --nodes={{slurm.nnodes}} --ntasks-per-node={{slurm.njobs}} --cpus-per-task={{slurm.ncpus}} 
 ## Walltime (4 hours)
 #SBATCH --time={{slurm.walltime}}
 ## Memory per node
@@ -55,6 +55,7 @@ parallel --jobs {{pbs.njobs}} --sshloginfile $PBS_NODEFILE --workdir $PWD < {{pb
 ## Specify the working directory for this job
 #SBATCH --chdir={{slurm.pipe_root}}
 module load parallel-20170722 
+conda activate astroconda
 cat {{slurm.executables_list_path}} | parallel
 
 """

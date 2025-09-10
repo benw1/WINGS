@@ -18,6 +18,7 @@ DEFAULT_WALLTIME = '48:00:00'
 DEFAULT_MEMORY = '50G'
 DEFAULT_ACCOUNT = 'astro'
 DEFAULT_PARTITION = 'compute-bigmem'
+DEFAULT_NCPUS = '1'
 DEFAULT_NODE_MODEL = 'has'
 NODE_CORES_DICT = {'bro': 2 * 14, 'has': 2 * 12, 'ivy': 2 * 10, 'san': 2 * 8}
 
@@ -141,6 +142,7 @@ class SlurmScheduler(BaseScheduler):
         # create a dictionary
         slurmDict = {'nnodes': n_nodes,
                    'njobs': n_jobs_per_node,
+                   'ncpus': self._jobList[0].getNcpus(),
                    'walltime': self._jobList[0].getWalltime(),
                    'mem' : self._jobList[0].getMemory(),
                    'account' : self._jobList[0].getAccount(),
