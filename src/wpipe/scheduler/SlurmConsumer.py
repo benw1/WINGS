@@ -29,9 +29,9 @@ if my_file.is_file():
     ip = ip1.strip()
     HOST_MACHINE = ip
 
-#else:
+# else:
 #    # HOST_MACHINE = '10.64.57.84'
-HOST_MACHINE = '0.0.0.0'
+HOST_MACHINE = "0.0.0.0"
 BASE_PORT = DEFAULT_PORT = 8000
 
 
@@ -72,6 +72,7 @@ class PipelineObjectProtocol(asyncio.Protocol):
 
         logging.info("Submitting job to scheduler ...")
         logging.info(jobdata.toString())
+        # Slrum consumer submits to the scheduler which uses threads to generate a job list to slurm
         SlurmScheduler.submit(jobdata)
 
 
