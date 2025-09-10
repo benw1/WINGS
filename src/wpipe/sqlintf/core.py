@@ -42,14 +42,15 @@ verbose = PARSER.parse_known_args()[0].verbose
 if sqlite:
     ENGINE_URL = 'sqlite:///:memory:'
 elif 'WPIPE_ENGINEURL' in os.environ.keys():
-    ENGINE_URL = os.environ['WPIPE_ENGINEURL']
+    # ENGINE_URL = os.environ['WPIPE_ENGINEURL']
+    ENGINE_URL = "mysql+pymysql://root:password@localhost:8000/server"
 elif PARSER.parse_known_args()[0].test:
     ENGINE_URL = "mysql+pymysql://root:password@localhost:8000/server"
+# else:
+#     raise ImportError("You must provide an engine URL via the environment variable WPIPE_ENGINEURL")
 else:
-    raise ImportError("You must provide an engine URL via the environment variable WPIPE_ENGINEURL")
-#else:
 #    ENGINE_URL = 'mysql://wings:wings2025@10.64.57.84:8020/server'
-#    # ENGINE_URL = 'mysql+mysqlconnector://root:password@localhost:8000/server'
+    ENGINE_URL = 'mysql+mysqlconnector://root:password@localhost:8000/server'
 
 
 POOL_RECYLE = 3600

@@ -12,9 +12,9 @@ import socket
 import logging
 import sys
 from datetime import datetime
-from .StreamToLogger import StreamToLogger
-from .JobData import JobData
-from .PbsScheduler import PbsScheduler
+from wpipe.scheduler.StreamToLogger import (StreamToLogger)
+from wpipe.scheduler.JobData import JobData
+from wpipe.scheduler.PbsScheduler import PbsScheduler
 from wpipe.sqlintf import SESSION
 
 __all__ = ['BASE_PORT', 'DEFAULT_PORT', 'checkPbsConnection', 'sendJobToPbs']
