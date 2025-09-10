@@ -207,7 +207,7 @@ def read_fixed(filepath, my_config, my_job, racent, deccent, filename):
     file2 = '.'.join(file1[0:len(file1) - 1])
     #file3 = my_config.procpath + '/' + file2 + str(np.around(hden, decimals=5)) + '.' + file1[-1]
     file3 = my_config.procpath + '/' + file2 + '.' + file1[-1]
-    galradec = getgalradec(file3, ra * 0.0 + racent, dec * 0.0 + deccent, magni, background, my_job)
+    galradec = getgalradec(file3, ra * 0.0 + racent, dec * 0.0 + deccent, magni, background)
     stips_lists, filters = write_stips(file3, ra, dec, magni, background,
                                        galradec, racent, deccent, starsonly, filtsinm, my_job)
     del magni

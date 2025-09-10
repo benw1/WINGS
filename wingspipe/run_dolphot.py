@@ -6,6 +6,7 @@ import wpipe as wp
 import importlib
 import os
 import glob
+import time
 
 def register(task):
     _temp = task.mask(source='*', name='start', value='*')
@@ -80,10 +81,11 @@ if __name__ == '__main__':
     this_event = this_job.firing_event
     this_event_id = this_event.event_id
     this_dp_id = this_event.options['dp_id']
-    
+    detname = this_event.options['detname']
     phot_dp_id=run_dolphot(this_job,this_dp_id)
      
-    new_event = this_job.child_event('dolphot_done', tag=phot_dp_id, options={'dp_id': phot_dp_id,'submission_type':'scheduler'})
+    new_event = this_job.child_event('dolphot_done', tag=phot_dp_id, options={'dp_id': phot_dp_id, 'detname': detname, 'submission_type':'scheduler'})
     print("Firing dolphot_done event")
     this_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  dolphot_done"]))
     new_event.fire()
+    time.sleep(120)
