@@ -9,7 +9,6 @@ available in the ``wpipe.scheduler`` namespace - use that instead.
 import datetime
 import math
 import time
-from .JobData import JobData
 
 from .BaseScheduler import BaseScheduler
 from .TemplateFactory import TemplateFactory
@@ -38,7 +37,7 @@ class SlurmScheduler(BaseScheduler):
     # Keep track of all the instances that might be spawned
     schedulers: list["SlurmScheduler"] = list()
 
-    def __init__(self, jobdata: JobData):
+    def __init__(self, jobdata: "JobData"):
         super().__init__(
             jobdata.getTime() if jobdata.getTime() is not None else 20
         )  # passed in value or default timer amount (seconds).
