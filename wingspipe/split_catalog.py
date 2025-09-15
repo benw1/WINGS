@@ -85,7 +85,8 @@ def split_healpix(job_id, dp_id):
     detlocs,detnames = get_offsets(racent, deccent)
     print(detlocs,detnames)
     my_detectors = my_params['detectors'].split(',')
-    my_detectors = [s.replace('WFI','SCA') for s in my_detectors]
+    #my_detectors = [s.replace('WFI','SCA') for s in my_detectors]
+    my_detectors = [s.replace('SCA','WFI') for s in my_detectors]
 
     print("detextors ",my_detectors," DETNAMES ",detnames)
     outfilelist = []
@@ -244,11 +245,8 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     # tot_dens = np.float(nstars) / area
     # print("MAX TOTAL DENSITY = ", tot_dens)
     filtsinm = []
-    
     allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
     magni = np.arange(len(datafile.data))
-    #allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
-
     for filt in allfilts:
         try:
             test = datafile.data[filt]

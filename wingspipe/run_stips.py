@@ -86,7 +86,7 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, detname):
     obm = ObservationModule(obs, scene_general=scene_general, psf_grid_size=int(my_params['psf_grid']), oversample=int(my_params['oversample']), fast_galaxy=True,residual_readnoise=False, residual_cosmic=False, residual_dark=False, random_seed=seed)
     
     print('detector_name in obm default:', obm.instrument.OFFSET_NAMES)
-    obm.instrument.OFFSET_NAMES = (detname,)
+    #obm.instrument.OFFSET_NAMES = (detname,)
     print('detector_name in obm changed to:', obm.instrument.OFFSET_NAMES)
     print('ObservationModule({}, scene_general={}, psf_grid_size={}, oversample={}, random_seed={})'.format(obs, scene_general, int(my_params['psf_grid']), int(my_params['oversample']), seed))
     #try:
@@ -118,7 +118,12 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, detname):
     this_job.logprint(''.join(["Checking: DP subtype IS ",str(_dp.subtype)," and config is ",str(my_config.config_id)]))
         #os.system('cp ' + fileroot + '/' + 'sim_' + str(dp_id) + '_0.fits ' + fileroot + '/' + 'sim_' + str(_dp.dp_id) + '_0.fits')
     #print('mv ' + fileroot + '/' + 'sim_' + str(dp_id) + '_0.fits ' + fileroot + '/' + 'sim_' + str(_dp.dp_id) + '_0.fits')
-    
+    truth_table_suf = "observed_"+detname+".fits"
+    truth_filename = filename.replace(".tbl", truth_table_suf)
+    _dp = my_config.dataproduct(filename=truth_filename, relativepath=my_config.procpath,
+                                group='proc', data_type='truth_table', subtype='observed_catalog',
+                                filtername=filtername, ra=my_params['racent'], dec=my_params['deccent'])
+
     return detname
 
 def get_offsets(obs_ra, obs_dec):
