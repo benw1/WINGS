@@ -25,14 +25,6 @@ DEFAULT_NCPUS = "1"
 DEFAULT_NODE_MODEL = "has"
 NODE_CORES_DICT = {"bro": 2 * 14, "has": 2 * 12, "ivy": 2 * 10, "san": 2 * 8}
 
-DEFAULT_WALLTIME = "48:00:00"
-DEFAULT_MEMORY = "50G"
-DEFAULT_ACCOUNT = "astro"
-DEFAULT_PARTITION = "astro"
-DEFAULT_NODE_MODEL = "has"
-NODE_CORES_DICT = {"bro": 2 * 14, "has": 2 * 12, "ivy": 2 * 10, "san": 2 * 8}
-
-
 class SlurmScheduler(BaseScheduler):
     # Keep track of all the instances that might be spawned
     schedulers: list["SlurmScheduler"] = list()
