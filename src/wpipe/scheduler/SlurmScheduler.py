@@ -62,7 +62,7 @@ class SlurmScheduler(BaseScheduler):
 
         # Reset the scheduler
 
-        if len(self._jobList) > listmax:
+        if len(self._jobList) >= listmax:
             super().run_it()
         else:
             super().reset()
