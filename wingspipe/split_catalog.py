@@ -35,6 +35,7 @@ def get_overlapping_files(my_config,detracor,detdeccor):
     cwd = Path(my_config.parameters["healpix_library_path"])
     print(list(cwd.glob('*.h5'))[0])
     state_file = list(cwd.glob('*.h5'))[0].with_suffix('').with_suffix('.state')
+    print("STATE: ",state_file)
     partial_moc_nuniqs = np.sort([
         int(foo[0])
         for f in cwd.glob(state_file.with_suffix('.*.h5').name)
@@ -46,6 +47,7 @@ def get_overlapping_files(my_config,detracor,detdeccor):
     partial_moc_hp_map.uniq[partial_moc_hp_map.query_polygon(detector_vertices.cartesian.xyz.T.value, inclusive=True)]
     #filelist = np.array(sorted(cwd.glob('*.h5')))[partial_moc_hp_map.query_polygon(detector_vertices.cartesian.xyz.T.value, inclusive=True)]
     filelist = np.array(sorted(cwd.glob('*.h5')))[partial_moc_hp_map.query_polygon(detector_vertices.cartesian.xyz.T.value, inclusive=True)]
+    print("FILELIST: ",filelist)
     return filelist
 
 #def get_detectors(ang):
@@ -97,7 +99,7 @@ def split_healpix(job_id, dp_id):
     for detector in my_detectors:
         detector=detector.replace('WFI','SCA')
         for detname in detnames:
-            if detname not in (my_detectors) or detcount>18:
+            if detname not in (my_detectors) or detcount>17:
                 detcount += 1
                 continue
             print("DETNAME ",detname," DETCOUNT ",detcount)
@@ -111,6 +113,9 @@ def split_healpix(job_id, dp_id):
             detracorners = [detracent - (5.0/(60.0*racor)), detracent - (5.0/(60.0*racor)),detracent + (5.0/(60.0*racor)),detracent + (5.0/(60.0*racor))] * units.deg
             detdeccorners = [detdeccent - 5.0/60.0, detdeccent + (5.0/60.0),detdeccent + (5.0/60.0),detdeccent - (5.0/60.0)] * units.deg
             catfiles = get_overlapping_files(my_config,detracorners,detdeccorners)
+            if len(catfiles)<1:
+                my_job.logprint(''.join(["No files in catfiles: ", str(len(catfiles))," skipping ",detname]))
+                continue
             outname = detname + ".filelist"
             output = my_config.confpath + "/" + outname
             with open(output, 'w') as f:
@@ -317,4 +322,5 @@ if __name__ == '__main__':
         else:
             split_catalog(job_id, dp_id, detid)
     time.sleep(150)
+    this_job.logprint("Completed")
 
