@@ -62,7 +62,7 @@ def pbsconsumer(which):
                 ["nohup", "python", "-m", "wpipe.scheduler.PbsConsumer"], cwd=homedir
             )
             while checkPbsConnection() != 0:
-                pass
+                time.sleep(0.1)
         else:
             print("PbsConsumer is already running ...")
     else:
@@ -95,7 +95,6 @@ def slurmconsumer(which):
             )
             while checkSlurmConnection() != 0:
                 time.sleep(0.1)
-                pass
         else:
             print("SlurmConsumer is already running ...")
     else:

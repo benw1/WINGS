@@ -30,6 +30,8 @@ source ~/.bashrc
 cd {{pbs.pipe_root}}
 parallel --jobs {{pbs.njobs}} --sshloginfile $PBS_NODEFILE --workdir $PWD < {{pbs.executables_list_path}}
 
+# Keep node warm for a time
+sleep 180
 """
 
         return Template(templateString)
@@ -55,7 +57,7 @@ module load parallel-20170722
 conda activate astroconda
 cat {{slurm.executables_list_path}} | parallel
 
-# Keep node warm for 2 minutes 30 seconds
+# Keep node warm for time 
 sleep 180
 """
 

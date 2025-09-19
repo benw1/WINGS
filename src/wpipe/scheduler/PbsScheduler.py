@@ -5,18 +5,20 @@ Contains the scheduler.PbsScheduler class definition
 Please note that this module is private. The scheduler.PbsScheduler class is
 available in the ``wpipe.scheduler`` namespace - use that instead.
 """
+
 import datetime
 import math
+import time
 
 from .BaseScheduler import BaseScheduler
 from .TemplateFactory import TemplateFactory
 import subprocess
 
-__all__ = ['DEFAULT_NODE_MODEL', 'DEFAULT_WALLTIME', 'PbsScheduler']
+__all__ = ["DEFAULT_NODE_MODEL", "DEFAULT_WALLTIME", "PbsScheduler"]
 
-DEFAULT_NODE_MODEL = 'has'
-DEFAULT_WALLTIME = '24:00:00'
-NODE_CORES_DICT = {'bro': 2 * 14, 'has': 2 * 12, 'ivy': 2 * 10, 'san': 2 * 8}
+DEFAULT_NODE_MODEL = "has"
+DEFAULT_WALLTIME = "24:00:00"
+NODE_CORES_DICT = {"bro": 2 * 14, "has": 2 * 12, "ivy": 2 * 10, "san": 2 * 8}
 
 
 class PbsScheduler(BaseScheduler):
@@ -24,9 +26,9 @@ class PbsScheduler(BaseScheduler):
     schedulers = list()
 
     def __init__(self, jobdata):
-
         super().__init__(
-            jobdata.getTime() if jobdata.getTime() is not None else 20)  # passed in value or default timer amount (seconds).
+            jobdata.getTime() if jobdata.getTime() is not None else 20
+        )  # passed in value or default timer amount (seconds).
         print("Creating a new scheduler ...")
 
         self._key = self.PbsKey(jobdata)
@@ -41,15 +43,24 @@ class PbsScheduler(BaseScheduler):
     ## Internal Use Only ##
     #######################
 
-    def _submitJob(self, jobdata):
+    def _submitJob(self, jobdata, listmax=10):
         # TODO: Change to event later
 
         self._jobList.append(jobdata)
 
         # Reset the scheduler
-        super().reset()
+        if len(self._jobList) >= listmax:
+            super().run_it()
+        else:
+            super().reset()
 
     def _execute(self):
+        # remove scheduler from list
+        PbsScheduler.schedulers.remove(self)
+
+        # Throttle job execute to allow any time for last jobs to submit if they anything main thread is still holding a reference to this handler.
+        time.sleep(1)
+
         print("We do the scheduling now from: " + self._key.getKey())
 
         now = datetime.datetime.now()
@@ -59,23 +70,24 @@ class PbsScheduler(BaseScheduler):
         executables_file = dt_string + ".list"  # name it with the current time
 
         pbsfilepath = self._jobList[0].getPipelineConfigRoot() + "/" + pbsfilename
-        executables_path = self._jobList[0].getPipelineConfigRoot() + "/" + executables_file
+        executables_path = (
+            self._jobList[0].getPipelineConfigRoot() + "/" + executables_file
+        )
 
         jobFileOutput = self._makeJobList()
         pbsFileOutput = self._makePbsFile(executables_path)
 
-        with open(executables_path, 'w') as f:
+        with open(executables_path, "w") as f:
             f.write(jobFileOutput)
-        with open(pbsfilepath, 'w') as f:
+        with open(pbsfilepath, "w") as f:
             f.write(pbsFileOutput)
 
         # TODO: Test this out more
-        output = subprocess.run("qsub %s" % (pbsfilepath), shell=True, capture_output=True)
+        output = subprocess.run(
+            "qsub %s" % (pbsfilepath), shell=True, capture_output=True
+        )
         print("Qsub output:")
         print(output)
-
-        # remove scheduler from list
-        PbsScheduler.schedulers.remove(self)
 
     @staticmethod
     def _checkForScheduler(jobdata):
@@ -99,13 +111,21 @@ class PbsScheduler(BaseScheduler):
         n_cpus = node_cores[node_model]
         for jobdata in self._jobList:
             jobsForJinja.append(
-                {'command': ("export OMP_NUM_THREADS=%d && " % n_cpus if omp_threads else "")
-                            + "source activate %s &&" % jobdata.getCondaEnv()
-                            + jobdata.getTaskExecutable()
-                            + ' -p ' + str(jobdata.getPipelineId())
-                            + ' -u ' + str(jobdata.getPipelineUserName())
-                            + ' -j ' + str(jobdata.getJobId())
-                            + bool(jobdata.getVerbose()) * ' -v'})
+                {
+                    "command": (
+                        "export OMP_NUM_THREADS=%d && " % n_cpus if omp_threads else ""
+                    )
+                    + "source activate %s &&" % jobdata.getCondaEnv()
+                    + jobdata.getTaskExecutable()
+                    + " -p "
+                    + str(jobdata.getPipelineId())
+                    + " -u "
+                    + str(jobdata.getPipelineUserName())
+                    + " -j "
+                    + str(jobdata.getJobId())
+                    + bool(jobdata.getVerbose()) * " -v"
+                }
+            )
 
         output = template.render(jobs=jobsForJinja)
         print()
@@ -115,7 +135,6 @@ class PbsScheduler(BaseScheduler):
         return output
 
     def _makePbsFile(self, executablesListPath):
-
         template = TemplateFactory.getPbsFileTemplate()
 
         node_cores = NODE_CORES_DICT
@@ -125,18 +144,20 @@ class PbsScheduler(BaseScheduler):
         n_nodes = [math.ceil(n_jobs / node_cores[node_model]), n_jobs][omp_threads]
         n_cpus = node_cores[node_model]
         n_jobs_per_node = [n_cpus, 1][omp_threads]
-        omp_threads = ['', 'ompthreads=%d:' % n_cpus][omp_threads]
+        omp_threads = ["", "ompthreads=%d:" % n_cpus][omp_threads]
 
         # create a dictionary
-        pbsDict = {'model': node_model,
-                   'nnodes': n_nodes,
-                   'ncpus': n_cpus,
-                   'ompthreads': omp_threads,
-                   'njobs': n_jobs_per_node,
-                   'walltime': self._jobList[0].getWalltime(),
-                   # 'condaenv': self._jobList[0].getCondaEnv(),
-                   'pipe_root': self._jobList[0].getPipelinePipeRoot(),
-                   'executables_list_path': executablesListPath}
+        pbsDict = {
+            "model": node_model,
+            "nnodes": n_nodes,
+            "ncpus": n_cpus,
+            "ompthreads": omp_threads,
+            "njobs": n_jobs_per_node,
+            "walltime": self._jobList[0].getWalltime(),
+            # 'condaenv': self._jobList[0].getCondaEnv(),
+            "pipe_root": self._jobList[0].getPipelinePipeRoot(),
+            "executables_list_path": executablesListPath,
+        }
 
         output = template.render(pbs=pbsDict)
 
@@ -158,7 +179,11 @@ class PbsScheduler(BaseScheduler):
 
         (hasScheduler, scheduler) = PbsScheduler._checkForScheduler(jobdata)
         if hasScheduler:  # check for existing schedulers and call submitJob for the retrieved scheduler
-            print('Adding job to scheduler with key {} ...'.format(scheduler._key.getKey()))
+            print(
+                "Adding job to scheduler with key {} ...".format(
+                    scheduler._key.getKey()
+                )
+            )
             scheduler._submitJob(jobdata)
         else:  # No scheduler was found but we need to do the scheduling
             PbsScheduler(jobdata)
@@ -169,11 +194,15 @@ class PbsScheduler(BaseScheduler):
 
     # out of site and out of mind
     class PbsKey(object):
-
         def __init__(self, jobdata):
             # self._key = jobdata.getTaskName()  # For debugging
-            self._key = str(jobdata.getPipelineId()) + jobdata.getTaskName() + jobdata.getNodemodel() +\
-                        jobdata.getWalltime() + ['', 'OpenMP'][jobdata.getJobOpenMP()]
+            self._key = (
+                str(jobdata.getPipelineId())
+                + jobdata.getTaskName()
+                + jobdata.getNodemodel()
+                + jobdata.getWalltime()
+                + ["", "OpenMP"][jobdata.getJobOpenMP()]
+            )
 
         def equals(self, other):
             if self._key == other.getKey():
