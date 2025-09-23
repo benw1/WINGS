@@ -68,11 +68,16 @@ def split_healpix(job_id, dp_id):
     my_params = my_config.parameters
     filepath = dp.relativepath+"/"+dp.filename
     data = np.loadtxt(filepath, dtype=str)
-    racent = float(data[1])
-    deccent = float(data[2])
     my_params["healpix_library_path"] = data[0]
-    my_params["racent"] = data[1]
-    my_params["deccent"] = data[2]
+    try:
+        racent = float(my_params['racent'])
+        deccent = float(my_params['deccent'])
+    except:
+        my_job.logprint("No position in parameters, calulating from catalog...")
+        racent = float(data[1])
+        deccent = float(data[2])
+        my_params["racent"] = data[1]
+        my_params["deccent"] = data[2]
     try:
         ang = my_params['rotation_angle']
     except:
@@ -80,6 +85,8 @@ def split_healpix(job_id, dp_id):
     detlocs,detnames = get_offsets(racent, deccent)
     print(detlocs,detnames)
     my_detectors = my_params['detectors'].split(',')
+    my_detectors = [s.replace('WFI','SCA') for s in my_detectors]
+
     print("detextors ",my_detectors," DETNAMES ",detnames)
     outfilelist = []
     ralist = []
@@ -87,6 +94,7 @@ def split_healpix(job_id, dp_id):
     detcount = 0
     total_detectors = len(my_detectors)
     for detector in my_detectors:
+        detector=detector.replace('WFI','SCA')
         for detname in detnames:
             if detname not in (my_detectors) or detcount>18:
                 detcount += 1

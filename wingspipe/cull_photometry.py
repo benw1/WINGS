@@ -46,7 +46,7 @@ REF_FITS = int(3)
 USE_RADEC = False
 
 
-def cull_photometry(this_config, this_dp_id):
+def cull_photometry(this_config, this_dp_id, detname):
     phot_dp = wp.DataProduct(this_dp_id)
     phot = phot_dp.filename
     procpath = this_config.procpath
@@ -55,10 +55,10 @@ def cull_photometry(this_config, this_dp_id):
     targroot = targname.split('.')[0]
     photpath = procpath + "/" + phot
     print("PHOT PATH: ", photpath, "\n")
-    clean_all(photpath, tol=5.0, test_size=0.75, valid_mag=30.0, targroot=targroot)
+    clean_all(detname, photpath, tol=5.0, test_size=0.75, valid_mag=30.0, targroot=targroot)
 
 
-def clean_all(filename='10_10_phot.txt',
+def clean_all(detname, filename='10_10_phot.txt',
               feature_names=None,
               filters=FILTERS,
               # ab_vega=AB_VEGA,
@@ -91,7 +91,7 @@ def clean_all(filename='10_10_phot.txt',
     filepre = filename.split('.')[0]
     if use_radec:
         sky_coord = [wcs.WCS(fits.open(fileroot + imfile)[1].header) for imfile in fits_files]
-    input_data, output_data = read_data(filename=filename,
+    input_data, output_data = read_data(detname, filename=filename,
                                         fileroot=fileroot,
                                         targroot=targroot,
                                         filters=filters)
@@ -194,9 +194,10 @@ def classify(out_df, out_lab,
     return new_labels
 
 
-def read_my_data(fileroot, filenameroot, targroot, filt):
+def read_my_data(fileroot, filenameroot, targroot, filt, detname):
+    fits_data = fits.open(fileroot + "Mixed_" + targroot + '_' + detname + '_' + filt + '_observed_' + detname + '.fits')
     #fits_data = fits.open(fileroot + "Mixed_" + filenameroot + '_' + targroot + '_' + filt + '_observed_SCA01.fits')
-    fits_data = fits.open(fileroot + "Mixed_" + filenameroot + '_' + filt + '_observed_SCA01.fits')
+    #fits_data = fits.open(fileroot + "Mixed_" + filenameroot + '_' + filt + '_observed_SCA01.fits')
     print("ALL has this many tables: ", len(fits_data))
     count = 0
     check = 0
@@ -226,7 +227,7 @@ def read_my_data(fileroot, filenameroot, targroot, filt):
     return input_data1
 
 
-def read_data(filename='10_10_phot.txt', fileroot='', targroot='', filters=FILTERS):
+def read_data(detname,filename='10_10_phot.txt', fileroot='', targroot='', filters=FILTERS):
     """
     Read in the raw fata files:
     - Input: sythetic photometry file for image generation, IPAC format
@@ -236,7 +237,7 @@ def read_data(filename='10_10_phot.txt', fileroot='', targroot='', filters=FILTE
     ordered by corresponding filternames.
     """
     filenameroot = filename.split('.')[0]
-    input_data = [read_my_data(fileroot, filenameroot, targroot, filt) for filt in FILTERSHORT]
+    input_data = [read_my_data(fileroot, filenameroot, targroot, filt, detname) for filt in FILTERSHORT]
     output_data = np.loadtxt(fileroot + filename)
     np.random.shuffle(output_data)
     print(input_data[3])
@@ -257,15 +258,19 @@ def prep_data(input_data, output_data, sky_coord=SKY_COORD,
     - Third array for labels of output data in numpy arrays
     """
     nfilt = filters.size
+    print("output",output_data)
     _xy = output_data[:, 2:4].T
     _count = output_data[:, range(13, 13 + 13 * nfilt, 13)].T
-    _vega_mags = output_data[:, range(15, 15 + 13 * nfilt, 13)].T
-    _mag_errors = output_data[:, range(17, 17 + 13 * nfilt, 13)].T
-    _snr = output_data[:, range(19, 19 + 13 * nfilt, 13)].T
-    _sharp = output_data[:, range(20, 20 + 13 * nfilt, 13)].T
-    _round = output_data[:, range(21, 21 + 13 * nfilt, 13)].T
-    _crowd = output_data[:, range(22, 22 + 13 * nfilt, 13)].T
+    _vega_mags = output_data[:, range(16, 16 + 13 * nfilt, 13)].T
+    _mag_errors = output_data[:, range(18, 18 + 13 * nfilt, 13)].T
+    _snr = output_data[:, range(20, 20 + 13 * nfilt, 13)].T
+    _sharp = output_data[:, range(21, 21 + 13 * nfilt, 13)].T
+    _round = output_data[:, range(22, 22 + 13 * nfilt, 13)].T
+    _crowd = output_data[:, range(23, 23 + 13 * nfilt, 13)].T
     in_df, out_df, labels = [], [], []
+    print("Vega",_vega_mags)
+    print("XY",_xy)
+    print("count",_count)
     for i in range(nfilt):
         in_df.append(pack_input(input_data[i], valid_mag=valid_mag))
         t = validate_output(_mag_errors[i],
@@ -281,7 +286,7 @@ def prep_data(input_data, output_data, sky_coord=SKY_COORD,
                                    radec={'opt': use_radec,
                                           'wcs1': sky_coord[i],
                                           'wcs2': sky_coord[ref_fits]}))
-    print("IN_DF ",in_df,len(in_df),in_df[0])
+    #print("IN_DF ",in_df,len(in_df),in_df[0])
     return in_df, out_df, labels
 
 
@@ -292,6 +297,7 @@ def validate_output(err, count, snr, shr, rnd, crd):
     - Remove low information entries, such as magnitude errors >0.5 & SNR <1
     - Remove missing value indicators such as +/- 9.99
     """
+    print("Err",err)
     return (err < 0.5) & (count >= 0) & (snr >= 1) & (crd != 9.999) & \
            (shr != 9.999) & (shr != -9.999) & (rnd != 9.999) & (rnd != -9.999)
 
@@ -835,4 +841,5 @@ if __name__ == '__main__':
         dp_id = this_event.options['dp_id']
         print(this_job.config_id)
         myConfig = this_job.config
-        cull_photometry(myConfig, dp_id)
+        detname = this_event.options['detname']
+        cull_photometry(myConfig, dp_id, detname)

@@ -148,12 +148,12 @@ if __name__ == '__main__':
     dec_dither = this_event.options['dec_dither']
     print('event', this_event_id, 'dp', this_dp_id)
     detname = this_event.options['detname']
-    print('DETNAME',detname)
-    checkname = run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither), detname)
-    to_run = this_event.options['to_run']
     catalogID = this_event.options['dp_id']
     catalogDP = wp.DataProduct(catalogID)
     this_conf = catalogDP.config
+    print('DETNAME',detname)
+    checkname = run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither), detname)
+    to_run = this_event.options['to_run']
     this_target = this_conf.target
     #try:
     #    ndetect = my_params['ndetect']
