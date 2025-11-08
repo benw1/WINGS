@@ -9,7 +9,7 @@ import glob
 import time
 
 def register(task):
-    _temp = task.mask(source='*', name='start', value='*')
+    _temp = task.mask(source='*', name='start', value=task.name)
     _temp = task.mask(source='*', name='parameters_written', value='*')
 
 

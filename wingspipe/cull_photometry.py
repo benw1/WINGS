@@ -3,6 +3,7 @@ import os
 import graphviz
 import pickle
 import warnings
+import time
 
 import numpy as np
 import pandas as pd
@@ -25,7 +26,7 @@ warnings.filterwarnings('ignore')
 
 
 def register(task):
-    _temp = task.mask(source='*', name='start', value='*')
+    _temp = task.mask(source='*', name='start', value=task.name)
     _temp = task.mask(source='*', name='dolphot_done', value='*')
 
 
@@ -61,7 +62,7 @@ def cull_photometry(this_config, this_dp_id, detname):
 def clean_all(detname, filename='10_10_phot.txt',
               feature_names=None,
               filters=FILTERS,
-              # ab_vega=AB_VEGA,
+              ab_vega=AB_VEGA,
               fits_files=None,
               ref_fits=REF_FITS,
               sky_coord=SKY_COORD,
@@ -272,7 +273,7 @@ def prep_data(input_data, output_data, sky_coord=SKY_COORD,
     print("XY",_xy)
     print("count",_count)
     for i in range(nfilt):
-        in_df.append(pack_input(input_data[i], valid_mag=valid_mag))
+        in_df.append(pack_input(input_data[i], AB_VEGA[i], valid_mag=valid_mag))
         t = validate_output(_mag_errors[i],
                             _count[i], _snr[i],
                             _sharp[i], _round[i],
@@ -315,14 +316,15 @@ def scale_features(_df):
     return _df
 
 
-def pack_input(data, valid_mag=30.):
+def pack_input(data, ab_vega, valid_mag=30.):
     """
     return Pandas Dataframes for input AstroPy tables containing
     sources that are brighter than specified magnitude (valid_mag)
     """
-    t = data['vegamag'] < valid_mag
-    return pd.DataFrame({'x': data['x'][t], 'y': data['y'][t], 'm': data['vegamag'][t], 'type': data['type'][t]})
-
+    #t = data['vegamag'] < valid_mag
+    t = data['abmag'] < valid_mag
+    #return pd.DataFrame({'x': data['x'][t], 'y': data['y'][t], 'm': data['vegamag'][t], 'type': data['type'][t]})
+    return pd.DataFrame({'x': data['x'][t], 'y': data['y'][t], 'm': data['abmag'][t]-ab_vega, 'type': data['type'][t]})
 
 def pack_output(xy, mags, errs, count, snr, shr, rnd, crd, t):
     """
@@ -454,8 +456,10 @@ def save_cats(in_dat, out_dat, out_df, labels,
     _X, _Y = out_dat[:, 2].T, out_dat[:, 3].T
     for data, df, label, filt in zip(in_dat, out_df, labels, filters):
         i += 1
-        t = data['vegamag'] < valid_mag
-        _df1 = pd.DataFrame({'x': data['x'], 'y': data['y'], 'mag': data['vegamag']})
+        #t = data['vegamag'] < valid_mag
+        t = data['abmag'] < valid_mag
+        #_df1 = pd.DataFrame({'x': data['x'], 'y': data['y'], 'mag': data['vegamag']})
+        _df1 = pd.DataFrame({'x': data['x'], 'y': data['y'], 'mag': data['abmag']})
         _df2 = df[label == 1]
 
         x1, y1 = _df1['x'].values, _df1['y'].values
@@ -479,7 +483,7 @@ def save_cats(in_dat, out_dat, out_df, labels,
         data['recovmag'] = re_mag
         data['recov_x'] = re_x
         data['recov_y'] = re_y
-        ascii.write(data, fileroot + nameroot + '_' + str(filt) + '_recov_input.txt', format='ipac')
+        ascii.write(data, fileroot + nameroot + '_' + str(filt) + '_recov_input.txt', format='ipac', overwrite=True)
         # Extend output list with input mag
         inmag = np.repeat(99.99, len(x2))
         _t = in2 != -1
@@ -769,15 +773,16 @@ def plot_hess(color, mag, binsize=0.1, threshold=25):
         return color, mag
     # mmin, mmax = np.amin(mag), np.amax(mag)
     cmin, cmax = np.amin(color), np.amax(color)
-    nmbins = np.ceil((cmax - cmin) / binsize)
-    ncbins = np.ceil((cmax - cmin) / binsize)
+    nmbins = int(np.ceil((cmax - cmin) / binsize))
+    ncbins = int(np.ceil((cmax - cmin) / binsize))
+    print("BINS ",int(nmbins), " ",int(ncbins))
     hist_value, x_ticks, y_ticks = np.histogram2d(color, mag, bins=(ncbins, nmbins))
     x_ctrds = 0.5 * (x_ticks[:-1] + x_ticks[1:])
     y_ctrds = 0.5 * (y_ticks[:-1] + y_ticks[1:])
     y_grid, x_grid = np.meshgrid(y_ctrds, x_ctrds)
     masked_hist = np.ma.array(hist_value, mask=(hist_value == 0))
     levels = np.logspace(np.log10(threshold),
-                         np.log10(np.amax(masked_hist)), (nmbins / ncbins) * 20)
+                         np.log10(np.amax(masked_hist)), (int(nmbins / ncbins) * 20))
     if (np.amax(masked_hist) > threshold) & (len(levels) > 1):
         cntr = plt.contourf(x_grid, y_grid, masked_hist, cmap=cm.jet, levels=levels, zorder=0)
         cntr.cmap.set_under(alpha=0)
@@ -809,8 +814,14 @@ def get_stat(typ_in, typ_out):
     all_in, all_recov = len(typ_in), len(typ_out)
     stars_in = len(typ_in[typ_in == 'point'])
     stars_recov = len(typ_out[typ_out == 'point'])
-    recovery_rate = (stars_recov / stars_in)
-    false_rate = 1 - (stars_recov / all_recov)
+    try:
+        recovery_rate = (stars_recov / stars_in)
+    except:
+        recovery_rate = 0.0
+    try:
+        false_rate = 1 - (stars_recov / all_recov)
+    except:
+        false_rate = 0.0
     return recovery_rate, false_rate
 
 
@@ -827,14 +838,14 @@ if __name__ == '__main__':
     args = parse_all()
     if args.config_id:
         myConfig = wp.Configuration(args.config_id)
-        # cull_photometry(myConfig)
+        cull_photometry(myConfig)
     elif args.target_id:
         myTarget = wp.Target(int(args.target_id))
         pid = myTarget.pipeline_id
         allConf = myTarget.configurations
         for myConfig in allConf:
             print(myConfig)
-            # cull_photometry(myConfig)
+            cull_photometry(myConfig)
     else:
         this_job = wp.ThisJob
         this_event = wp.ThisEvent
@@ -843,3 +854,9 @@ if __name__ == '__main__':
         myConfig = this_job.config
         detname = this_event.options['detname']
         cull_photometry(myConfig, dp_id, detname)
+    new_event = this_job.child_event('culling_done', tag=dp_id, options={'dp_id': dp_id, 'detname': detname, 'submission_type':'scheduler'})
+    print("Firing culling_done event")
+    this_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  culling_done"]))
+    new_event.fire()
+    time.sleep(120)
+

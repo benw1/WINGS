@@ -15,8 +15,9 @@ def write_dolphot_pars(target, config, thisjob, detname, chip):
     thisjob.logprint(''.join(["Writing dolphot pars now in ", parfile_path, "\n"])) #doesn't create this file
     #my_dp = config.dataproducts
     #datadp = my_dp[my_dp.subtype == 'dolphot_data']
-    my_dp = [ _temp for _temp in config.dataproducts]
-    datadp = [ _temp for _temp in config.dataproducts if _temp.subtype == 'dolphot_data']
+    #my_dp = [ _temp for _temp in config.dataproducts]
+    #datadp = [ _temp for _temp in config.dataproducts if _temp.subtype == 'dolphot_data']
+    datadp = wp.DataProduct.select(config_id=str(config.config_id), subtype='dolphot_data')
     datadpid = [_dp.dp_id for _dp in datadp]
     dataname = [_dp.filename for _dp in datadp]
     print("DATANAME ",dataname)

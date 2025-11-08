@@ -305,12 +305,29 @@ def process_df_catalog(my_config,my_event,my_job,df):
         _dp = my_config.dataproduct(filename=stips_cat, relativepath=my_config.procpath, group='proc',
                                     filtername=filtname, subtype='stips_input_catalog')
         dpid = _dp.dp_id
-        new_event = my_job.child_event('new_stips_catalog', tag=filtname,
+        try:
+            dithers = my_config.parameters['dither']
+        except:
+            print("No dithers found, setting to 1")
+            dithers = 1
+        if dithers > 1:
+            for dither in range(dithers):
+                tag = filtname + "_" + str(dither)
+                ra_dither = 0.16 * float(dither)
+                dec_dither = 0.16 * float(dither)
+                new_event = my_job.child_event('new_stips_catalog', tag=tag,
+                    options={'dp_id': dpid, 'detname': detname, 'to_run': total*dithers, 'name': comp_name,'ra_dither': ra_dither,
+                                                    'dec_dither': dec_dither,'submission_type' : 'scheduler'})
+                my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
+                new_event.fire()
+            i += 1
+        else:
+            new_event = my_job.child_event('new_stips_catalog', tag=filtname,
                 options={'dp_id': dpid, 'detname': detname, 'to_run': total, 'name': comp_name,'ra_dither': 0.0,
                                                 'dec_dither': 0.0,'submission_type' : 'scheduler'})
-        my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
-        new_event.fire()
-        i += 1
+            my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
+            new_event.fire()
+            i += 1
     time.sleep(150)
 
 

@@ -71,7 +71,7 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, detname):
     print("Running ",filename,float(ra),float(dec))
     print("SEED ",seed)
     scene_general = {'ra': float(ra), 'dec': float(dec), 'pa': pa, 'seed': seed}
-    obs = {'fast_galaxy': True,'instrument': 'WFI', 'filters': [filtername], 'detectors': 1, 'distortion': False, 'pupil_mask': '', 'background': 'avg',  'observations_id': dp_id, 'exptime': my_params['exptime'], 'residual_readnoise' : False, 'offsets': [{'offset_id': event_id, 'offset_centre': False, 'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
+    obs = {'fast_galaxy': True,'instrument': 'WFI', 'filters': [filtername], 'detectors': 1, 'distortion': False, 'pupil_mask': '', 'background': 'avg',  'observations_id': dp_id+event_id, 'exptime': my_params['exptime'], 'residual_readnoise' : False, 'offsets': [{'offset_id': event_id, 'offset_centre': False, 'offset_ra': ra_dith, 'offset_dec': dec_dith, 'offset_pa': 0.0}]}
     #obm = ObservationModule(obs, scene_general=scene_general, psf_grid_size=int(my_params['psf_grid']), oversample=int(my_params['oversample']), random_seed=seed)
     
     print(obs)
@@ -83,12 +83,14 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, detname):
     
     #obm=ObservationModule(obs, scene_general=scene_general, psf_grid_size=int(my_params['psf_grid']), oversample=int(my_params['oversample']), random_seed=seed)
     print('ObservationModule({}, scene_general={}, psf_grid_size={}, oversample={}, fast_galaxy=True, residual_readnoise=False, residual_cosmic=False, residual_dark=False,random_seed={})'.format(obs, scene_general, int(my_params['psf_grid']), int(my_params['oversample']), seed))
-    obm = ObservationModule(obs, scene_general=scene_general, psf_grid_size=int(my_params['psf_grid']), oversample=int(my_params['oversample']), fast_galaxy=True,residual_readnoise=False, residual_cosmic=False, residual_dark=False, random_seed=seed)
+    #obm = ObservationModule(obs, scene_general=scene_general, psf_grid_size=int(my_params['psf_grid']), oversample=int(my_params['oversample']), fast_galaxy=True,residual_readnoise=False, residual_cosmic=False, residual_dark=False, random_seed=seed)
+    obm = ObservationModule(obs, scene_general=scene_general, fast_galaxy=True,residual_readnoise=False, residual_cosmic=False, residual_dark=False, random_seed=seed)
     
     print('detector_name in obm default:', obm.instrument.OFFSET_NAMES)
-    #obm.instrument.OFFSET_NAMES = (detname,)
+    obm.instrument.OFFSET_NAMES = (detname,)
     print('detector_name in obm changed to:', obm.instrument.OFFSET_NAMES)
-    print('ObservationModule({}, scene_general={}, psf_grid_size={}, oversample={}, random_seed={})'.format(obs, scene_general, int(my_params['psf_grid']), int(my_params['oversample']), seed))
+    #print('ObservationModule({}, scene_general={}, psf_grid_size={}, oversample={}, random_seed={})'.format(obs, scene_general, int(my_params['psf_grid']), int(my_params['oversample']), seed))
+    print('ObservationModule({}, scene_general={}, random_seed={})'.format(obs, scene_general, seed))
     #try:
     #    os.symlink(my_params['psf_cache'],my_config.procpath+"/psf_cache")
     #except:
@@ -110,8 +112,7 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, detname):
     #    detname = '.'.join(targname.split('.')[:-1])
     detname = my_event.options["detname"]
     this_job.logprint(''.join(["Making DataProduct with DETNAME and confid", detname, str(my_config.config_id), "\n"]))
-
-    _dp = my_config.dataproduct(filename='sim_' + str(dp_id) + '_0.fits', relativepath=my_config.procpath,
+    _dp = my_config.dataproduct(filename='sim_' + str(dp_id+event_id) + '_0.fits', relativepath=my_config.procpath,
                                 group='proc', data_type='stips_image', subtype=detname,
                                 filtername=filtername, ra=my_params['racent'], dec=my_params['deccent'])
     this_job.logprint(''.join(["Checking: DP ID IS ",str(_dp.dp_id)," and FILENAME is ",_dp.filename]))
@@ -127,7 +128,7 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, detname):
     return detname
 
 def get_offsets(obs_ra, obs_dec):
-    obs18par = {'fast_galaxy': False,'instrument': 'WFI', 'detectors': 18, 'distortion': False, 'offsets': [{'offset_id': 1, 'offset_centre': False, 'offset_ra': 0.0, 'offset_dec': 0.0, 'offset_pa': 0.0}]}
+    obs18par = {'fast_galaxy': False,'instrument': 'WFI', 'detectors': 18, 'distortion': False, 'offsets': [{'offset_id': 1, 'offset_centre': False, 'offset_ra': ra_dith, 'offset_dec': dec_dith, 'offset_pa': 0.0}]}
     residuals = {'residual_flat': False, 'residual_dark': False, 'residual_cosmic': False, 'residual_poisson': True, 'residual_readnoise': False}
     obm18 = ObservationModule(obs18par, ra=obs_ra, dec=obs_dec, residuals=residuals)
 
@@ -157,6 +158,7 @@ if __name__ == '__main__':
     catalogDP = wp.DataProduct(catalogID)
     this_conf = catalogDP.config
     print('DETNAME',detname)
+
     checkname = run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither), detname)
     to_run = this_event.options['to_run']
     this_target = this_conf.target
