@@ -27,6 +27,7 @@ def write_dolphot_pars(target, config, thisjob, detname, chip):
     jinds = []
     hinds = []
     finds = []
+    kinds = []
     count = 0
     for dp in datadp:
         dp_id = dp.dp_id
@@ -60,6 +61,10 @@ def write_dolphot_pars(target, config, thisjob, detname, chip):
             finds.append(dp_id)
             count += 1
             print('finds = ', finds)
+        if "F213" in filt and detname in fname:
+            finds.append(dp_id)
+            count += 1
+            print('kinds = ', kinds)
     #rinds = rinds[1:]
     #zinds = zinds[1:]
     #yinds = yinds[1:]
@@ -67,7 +72,7 @@ def write_dolphot_pars(target, config, thisjob, detname, chip):
     #hinds = hinds[1:]
     #finds = finds[1:]
 
-    print("INDS ", rinds, zinds, yinds, jinds, hinds, hinds, finds, datadpid)
+    print("INDS ", rinds, zinds, yinds, jinds, hinds, hinds, finds, kinds, datadpid)
     nimg = count
     # my_params = config.parameters
     # refimage = my_params['refimage']  #will make this more flexible later

@@ -246,13 +246,31 @@ if __name__ == "__main__":
     photfile = my_config.procpath+"/"+this_dp.filename
 
     file_paths = glob.glob(procpath+'/*.hdf5')
-
+    my_job.logprint(
+        f"file paths are {file_paths}\n")
     all_dfs = []
     for file_path in file_paths:
+       my_job.logprint(
+           f"reading {file_path}")
        df = pd.read_hdf(file_path, key='data')
+       xmin = np.min(df['ra'].tolist())
+       xmax = np.max(df['ra'].tolist())
+       ymin = np.min(df['dec'].tolist())
+       ymax = np.max(df['dec'].tolist())
+
+       my_job.logprint(
+           f"This dataframe has {len(df)} rows.\n")
+       my_job.logprint(
+           f"Min and max RA and DECs are {xmin} {xmax} {ymin} {ymax}.\n")
+
        all_dfs.append(df)
+       my_job.logprint(
+           f"The dataframe now has {len(all_dfs)} rows.\n")
 
     combined_df = pd.concat(all_dfs, ignore_index=True)
+
+    my_job.logprint(
+        f"The combined dataframe now has {len(combined_df)} rows.\n")
     ds=vaex.from_pandas(combined_df)
     #df = pd.read_hdf(photfile, key='data')
     #ds = vaex.from_pandas(df)

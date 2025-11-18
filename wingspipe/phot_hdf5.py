@@ -39,7 +39,7 @@ from pathlib import Path
 
 def register(task):
     _temp = task.mask(source="*", name="start", value=task.name)
-    _temp = task.mask(source="*", name="dolphot_done", value="*")
+    _temp = task.mask(source="*", name="culling_done", value="*")
 
 
 if __name__ == "__main__":
@@ -325,7 +325,7 @@ def name_columns(colfile):
     print('Filters found: {}'.format(filters_final))
     return df, filters_final
 
-def add_wcs(df, photfile, my_config):
+def add_wcs(df, photfile, my_config, detname):
     """Converts x and y columns to world coordinates using drizzled file
     that dolphot uses for astrometry
 
@@ -351,9 +351,68 @@ def add_wcs(df, photfile, my_config):
         drzfiles = wp.DataProduct.select(config_id=my_config.config_id, subtype="reference_prepped")
         # neither of these should happen but just in case
         if len(drzfiles) == 0:
-            print('No drizzled files found; grabbing first image in list')
-            drzfiles = wp.DataProduct.select(config_id=my_config.config_id, subtype="dolphot_data")
-            drzfile = my_config.procpath+"/"+str(drzfiles[0].filename).strip()
+            print('No drizzled files found; looking for reference')
+            datadp = wp.DataProduct.select(config_id=str(my_config.config_id), subtype='dolphot_data')
+            datadpid = [_dp.dp_id for _dp in datadp]
+            dataname = [_dp.filename for _dp in datadp]
+            print("DATANAME ",dataname)
+            rinds = []
+            zinds = []
+            yinds = []
+            jinds = []
+            hinds = []
+            finds = []
+            kinds = []
+            count = 0
+            chipname = "chip1"
+            for dp in datadp:
+                dp_id = dp.dp_id
+                filt = str(dp.filtername)
+                fname = dp.filename
+                if chipname not in fname:
+                   thisjob.logprint(''.join([chipname, " not in ",fname,"\n"]))
+                   continue
+                #print('fname = ', fname)
+                if "F062" in filt and detname in fname:
+                    rinds.append(dp_id)
+                    count += 1
+                    print('rinds = ', rinds)
+                if "F087" in filt and detname in fname:
+                    zinds.append(dp_id)
+                    count += 1
+                    print('zinds = ', zinds)
+                if "F106" in filt and detname in fname:
+                    yinds.append(dp_id)
+                    count += 1
+                    print('yinds = ', yinds)
+                if "F129" in filt and detname in fname:
+                    jinds.append(dp_id)
+                    count += 1
+                    print('jinds = ', jinds)
+                if "F158" in filt and detname in fname:
+                    hinds.append(dp_id)
+                    count += 1
+                    print('hinds = ', hinds)
+                if "F184" in filt and detname in fname:
+                    finds.append(dp_id)
+                    count += 1
+                    print('finds = ', finds)
+                if "F213" in filt and detname in fname:
+                    finds.append(dp_id)
+                    count += 1
+                    print('kinds = ', kinds)
+
+            print("INDS ", rinds, zinds, yinds, jinds, hinds, hinds, finds, kinds, datadpid)
+            nimg = count
+            # my_params = config.parameters
+            # refimage = my_params['refimage']  #will make this more flexible later
+            refdp = wp.DataProduct(hinds[0]) #hinds[0] is empty because there is no F158
+            refimage = str(refdp.filename)
+            if "sim" in refimage:
+                refimage = target.name + '_' + detname + '_' + str(refdp.dp_id) + '_' + refdp.filtername + ".fits"
+            else:
+                print("No sim")
+            drzfile = my_config.procpath+"/"+str(refdp.filename).strip()
             print('Using {} as astrometric reference'.format(drzfile))
             ra, dec = WCS(drzfile).all_pix2world(df.x.values, df.y.values, 0) #0-based coord system matches dolphot
             print(df.x.values, df.y.values,ra,dec)
@@ -390,7 +449,7 @@ def add_wcs(df, photfile, my_config):
 
     return df
 
-def read_dolphot(my_config, photfile, columns_df, filters):
+def read_dolphot(my_config, photfile, columns_df, filters, detname):
     """Reads in raw dolphot output (.phot file) to a DataFrame with named
     columns, and optionally writes it to a HDF5 file.
 
@@ -451,7 +510,7 @@ def read_dolphot(my_config, photfile, columns_df, filters):
          #df0 = cull_photometry(df0, filter_detectors,my_config)
          df0 = cull_photometry(df0, filters,my_config)
          #my_config.parameters["det_filters"] = ','.join(filters)
-         df0 = add_wcs(df0, photfile, my_config)
+         df0 = add_wcs(df0, photfile, my_config, detname)
          df0.to_hdf(outfile, key='data', mode='a', format='table', 
                     complevel=9, complib='zlib')
          outfile_full = outfile.replace('.hdf5','_full.hdf5')
@@ -483,7 +542,7 @@ def read_dolphot(my_config, photfile, columns_df, filters):
          df0 = df[colnames[colnames.str.find(r'\ (') == -1]]
          df0 = cull_photometry(df0, filters,my_config)
          #my_config.parameters["det_filters"] = ','.join(filters)
-         df0 = add_wcs(df0, photfile, my_config)
+         df0 = add_wcs(df0, photfile, my_config, detname)
          df0.to_hdf(outfile, key='data', mode='a', format='table',
                     complevel=9, complib='zlib')
 
@@ -529,7 +588,7 @@ if __name__ == '__main__':
     import time
     t0 = time.time()
     #df = read_dolphot(my_config, photfile, columns_df, filters)
-    outfile = read_dolphot(my_config, photfile, columns_df, filters)
+    outfile = read_dolphot(my_config, photfile, columns_df, filters, detname)
     head_tail=os.path.split(outfile)
     outfile_stats = os.stat(outfile)
     size = outfile_stats.st_size / (1024 * 1024 * 1024)

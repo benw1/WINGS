@@ -200,13 +200,14 @@ def split_catalog(job_id, dp_id, detid):
         except:
             ds = vaex.open(cat)
             ds_small = ds[(ds.ra < ralim2) & (ds.ra > ralim1) & (ds.dec < declim2) & (ds.dec > declim1)]
-            ds2 = ds_small['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184']
+            ds2 = ds_small['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f213']
             ds2.rename('roman_f062','F062')
             ds2.rename('roman_f087','F087')
             ds2.rename('roman_f106','F106')
             ds2.rename('roman_f129','F129')
             ds2.rename('roman_f158','F158')
             ds2.rename('roman_f184','F184')
+            ds2.rename('roman_f213','F213')
             outfile = rreplace(outfile, '.hdf5', '.csv', 1)
             filename = rreplace(filename, '.hdf5', '.csv', 1)
             ds2.export_csv(outfile)
@@ -250,7 +251,7 @@ def read_fixed(filepath, my_config, my_job, racent, deccent):
     # tot_dens = np.float(nstars) / area
     # print("MAX TOTAL DENSITY = ", tot_dens)
     filtsinm = []
-    allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184']
+    allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184', 'F213']
     magni = np.arange(len(datafile.data))
     for filt in allfilts:
         try:

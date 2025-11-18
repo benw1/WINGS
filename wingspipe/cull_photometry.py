@@ -33,11 +33,11 @@ def register(task):
 FEAT_NAMES = ['err', 'SNR', 'Sharpness', 'Crowding']
 
 # filter names
-FILTERS = np.array(['F062', 'F087', 'F106', 'F129', 'F158', 'F184'])
-FILTERSHORT = np.array(['F062', 'F087', 'F106', 'F129', 'F158', 'F184'])
+FILTERS = np.array(['F062', 'F087', 'F106', 'F129', 'F158', 'F184', 'F213'])
+FILTERSHORT = np.array(['F062', 'F087', 'F106', 'F129', 'F158', 'F184', 'F213'])
 
 # AB magnitude Zero points
-AB_VEGA = np.array([0.2, 0.487, 0.653, 0.958, 1.287, 1.552])
+AB_VEGA = np.array([0.2, 0.487, 0.653, 0.958, 1.287, 1.552, 0.0])
 
 FITS_FILES = ["sim_1_0.fits", "sim_2_0.fits", "sim_3_0.fits",
               "sim_4_0.fits", "sim_5_0.fits"]
@@ -179,8 +179,11 @@ def classify(out_df, out_lab,
         clf.fit(train_f, train_l)
         pred_l = clf.predict(test_f)
         if opt['evaluate'] | opt['summary']:
-            print_report(filt, test_l, pred_l, feature_names,
-                         opt['summary'])
+            try:
+                print_report(filt, test_l, pred_l, feature_names,
+                             opt['summary'])
+            except:
+                print("couldn't report for ",filt," skipping")
         if opt['tree']:
             dot_data = export_graphviz(clf, out_file=None,
                                        leaves_parallel=True,
@@ -773,16 +776,15 @@ def plot_hess(color, mag, binsize=0.1, threshold=25):
         return color, mag
     # mmin, mmax = np.amin(mag), np.amax(mag)
     cmin, cmax = np.amin(color), np.amax(color)
-    nmbins = int(np.ceil((cmax - cmin) / binsize))
-    ncbins = int(np.ceil((cmax - cmin) / binsize))
-    print("BINS ",int(nmbins), " ",int(ncbins))
+    nmbins = np.ceil((cmax - cmin) / binsize)
+    ncbins = np.ceil((cmax - cmin) / binsize)
     hist_value, x_ticks, y_ticks = np.histogram2d(color, mag, bins=(ncbins, nmbins))
     x_ctrds = 0.5 * (x_ticks[:-1] + x_ticks[1:])
     y_ctrds = 0.5 * (y_ticks[:-1] + y_ticks[1:])
     y_grid, x_grid = np.meshgrid(y_ctrds, x_ctrds)
     masked_hist = np.ma.array(hist_value, mask=(hist_value == 0))
     levels = np.logspace(np.log10(threshold),
-                         np.log10(np.amax(masked_hist)), (int(nmbins / ncbins) * 20))
+                         np.log10(np.amax(masked_hist)), (nmbins / ncbins) * 20)
     if (np.amax(masked_hist) > threshold) & (len(levels) > 1):
         cntr = plt.contourf(x_grid, y_grid, masked_hist, cmap=cm.jet, levels=levels, zorder=0)
         cntr.cmap.set_under(alpha=0)
@@ -814,10 +816,7 @@ def get_stat(typ_in, typ_out):
     all_in, all_recov = len(typ_in), len(typ_out)
     stars_in = len(typ_in[typ_in == 'point'])
     stars_recov = len(typ_out[typ_out == 'point'])
-    try:
-        recovery_rate = (stars_recov / stars_in)
-    except:
-        recovery_rate = 0.0
+    recovery_rate = (stars_recov / stars_in)
     try:
         false_rate = 1 - (stars_recov / all_recov)
     except:

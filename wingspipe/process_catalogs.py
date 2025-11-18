@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 import gc
 import os
+import re
 import subprocess
 from astropy.io import fits
 import pandas as pd
@@ -32,11 +33,12 @@ def process_healpix_list(my_config,my_dp_id):
     healpix_list = np.loadtxt(filepath,dtype=str)
     ds0 = vaex.open_many(healpix_list)
     print("SIZE",ds0.shape,ds0['roman_f158'])
-    ds1 = ds0[ds0.roman_f158 < 30.0]
+    ds1 = ds0[ds0.roman_f158 < 28.0]
     print("SIZE2",ds1.shape)
 
     #df = ds1['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f213','roman_f146'].to_pandas_df()
-    df = ds1['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f146'].to_pandas_df()
+    df = ds1['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f213'].to_pandas_df()
+    #df = ds1['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f146'].to_pandas_df()
     ds0.close()
     del ds0
     gc.collect()
@@ -76,6 +78,13 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
         #total = len(stips_files) * (int(ra_dithers) * int(dec_dithers))*np.int(my_params['ndetect'])
         total = len(stips_files) * (int(ra_dithers) * int(dec_dithers))
         i = 0
+        data = run_hyakalloc_and_process_output()
+        result = find_partition_with_most_available_cpus(data)
+        if result:
+            partition, cpus = result
+            print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
+        else:
+            print("Could not parse resource data or find free CPUs information.")
         for stips_cat in stips_files:
             filtname = filters[i]
             _dp = my_config.dataproduct(filename=stips_cat, relativepath=my_config.procpath, group='proc',
@@ -100,9 +109,10 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
                     #new_event = my_job.child_event('new_stips_catalog', tag=eventtag,
                     #                               options={'dp_id': newdpid, 'to_run': total, 'name': comp_name,'submission_type' : 'pbs',
                     #                                        'ra_dither': ra_dither, 'dec_dither': dec_dither, 'detname': detname})
+
                     new_event = my_job.child_event('new_stips_catalog', tag=eventtag,
                                                    options={'dp_id': newdpid, 'to_run': total, 'name': comp_name,
-                                                            'ra_dither': ra_dither, 'dec_dither': dec_dither, 'detname': detname})
+                                                       'ra_dither': ra_dither, 'dec_dither': dec_dither, 'detname': detname, 'partition': partition})
                     dithnum += 1
                     my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
                     new_event.fire()
@@ -118,13 +128,20 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
         #total = len(stips_files)*np.int(my_params['ndetect'])
         total = len(stips_files)
         i = 0
+        data = run_hyakalloc_and_process_output()
+        result = find_partition_with_most_available_cpus(data)
+        if result:
+            partition, cpus = result
+            print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
+        else:
+            print("Could not parse resource data or find free CPUs information.")
         for stips_cat in stips_files:
             filtname = filters[i]
             _dp = my_config.dataproduct(filename=stips_cat, relativepath=my_config.procpath, group='proc',
                                         filtername=filtname, subtype='stips_input_catalog')
             dpid = _dp.dp_id
             new_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                           options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type' : 'scheduler', 'ra_dither': 0.0, 'dec_dither': 0.0,'detname': detname})
+                    options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type' : 'scheduler', 'ra_dither': 0.0, 'dec_dither': 0.0,'detname': detname, 'partition': partition})
             my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
             my_job.logprint(''.join(["event detname is ", str(detname)]))
             new_event.fire()
@@ -139,16 +156,18 @@ def read_fixed(filepath, my_config, my_job, racent, deccent, filename):
         print(data[1].columns,"COLS")
         nstars = len(data[1].data['ra'])
         magni = np.arange(len(data[1].data))
+        allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213']
         #allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
-        allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F146']
+        #allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F146']
     if '.csv' in str(filename):
         data = pd.read_csv(filepath)
         print(data.columns, "COLS")
         #data.columns = map(str.upper, data.columns)
         nstars = len(data['ra'])
         magni = np.arange(len(data))
+        allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213']
         #allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
-        allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F146']
+        #allfilts = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F146']
 
     my_params = my_config.parameters
     #area = float(my_params["area"])
@@ -241,6 +260,13 @@ def process_match_catalog(my_job_id, my_dp_id):
     my_job.options = options
     total = len(stips_files)
     i = 0
+    data = run_hyakalloc_and_process_output()
+    result = find_partition_with_most_available_cpus(data)
+    if result:
+        partition, cpus = result
+        print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
+    else:
+        print("Could not parse resource data or find free CPUs information.")
     for stips_cat in stips_files:
         filtname = filters[i]
         _dp = my_config.dataproduct(filename=stips_cat, relativepath=my_config.procpath, group='proc',
@@ -248,7 +274,7 @@ def process_match_catalog(my_job_id, my_dp_id):
         dpid = _dp.dp_id
         new_event = my_job.child_event('new_stips_catalog', tag=filtname,
                                        options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'ra_dither': 0.0, 
-                                                'dec_dither': 0.0,'submission_type' : 'scheduler'})
+                                           'dec_dither': 0.0,'submission_type' : 'scheduler', 'partition': partition})
         my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
         new_event.fire()
         i += 1
@@ -270,13 +296,15 @@ def process_df_catalog(my_config,my_event,my_job,df):
     dec = df['dec']
     racent = my_event.options["racent"]
     deccent = my_event.options["deccent"]
+    magni = np.array([df['roman_f062'],df['roman_f087'],df['roman_f106'],df['roman_f129'],df['roman_f158'],df['roman_f184'],df['roman_f213']]).T
     #magni = np.array([df['roman_f062'],df['roman_f087'],df['roman_f106'],df['roman_f129'],df['roman_f158'],df['roman_f184'],df['roman_f213'],df['roman_f146']]).T
-    magni = np.array([df['roman_f062'],df['roman_f087'],df['roman_f106'],df['roman_f129'],df['roman_f158'],df['roman_f184'],df['roman_f146']]).T
+    #magni = np.array([df['roman_f062'],df['roman_f087'],df['roman_f106'],df['roman_f129'],df['roman_f158'],df['roman_f184'],df['roman_f146']]).T
     background = my_params["background_dir"]
 
     
     #filtsinm = ['F062','F087','F106','F129','F158','F184','F213','F146']
-    filtsinm = ['F062','F087','F106','F129','F158','F184','F146']
+    #filtsinm = ['F062','F087','F106','F129','F158','F184','F146']
+    filtsinm = ['F062','F087','F106','F129','F158','F184','F213']
     h = df['roman_f158']
     htot_keep = (h > 23.0) & (h < 24.0)
     hkeep = h[htot_keep]
@@ -299,7 +327,14 @@ def process_df_catalog(my_config,my_event,my_job,df):
     options = {comp_name: 0}
     my_job.options = options
     total = len(stips_files)
-    i = 0
+    i = 0    
+    data = run_hyakalloc_and_process_output()
+    result = find_partition_with_most_available_cpus(data)
+    if result:
+        partition, cpus = result
+        print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
+    else:
+        print("Could not parse resource data or find free CPUs information.")
     for stips_cat in stips_files:
         filtname = filters[i]
         _dp = my_config.dataproduct(filename=stips_cat, relativepath=my_config.procpath, group='proc',
@@ -317,14 +352,14 @@ def process_df_catalog(my_config,my_event,my_job,df):
                 dec_dither = 0.16 * float(dither)
                 new_event = my_job.child_event('new_stips_catalog', tag=tag,
                     options={'dp_id': dpid, 'detname': detname, 'to_run': total*dithers, 'name': comp_name,'ra_dither': ra_dither,
-                                                    'dec_dither': dec_dither,'submission_type' : 'scheduler'})
+                        'dec_dither': dec_dither,'submission_type' : 'scheduler', 'partition': partition})
                 my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
                 new_event.fire()
             i += 1
         else:
             new_event = my_job.child_event('new_stips_catalog', tag=filtname,
                 options={'dp_id': dpid, 'detname': detname, 'to_run': total, 'name': comp_name,'ra_dither': 0.0,
-                                                'dec_dither': 0.0,'submission_type' : 'scheduler'})
+                    'dec_dither': 0.0,'submission_type' : 'scheduler', 'partition': partition})
             my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
             new_event.fire()
             i += 1
@@ -363,6 +398,9 @@ def read_match(filepath, cols, my_config, my_job):
         if col == 'F184':
             print("F is column ", count)
             fcol = count
+        if col == 'F213':
+            print("K is column ", count)
+            kcol = count
     h = data[:, hcol]
     htot_keep = (h > 23.0) & (h < 24.0)
     hkeep = h[htot_keep]
@@ -371,7 +409,8 @@ def read_match(filepath, cols, my_config, my_job):
     del h
     my_job.logprint(''.join(["H(23-24) DENSITY = ", str(hden)]))
     stips_in = []
-    filtsinm = ['F087', 'F106', 'F129', 'F158', 'F184']
+    #filtsinm = ['F087', 'F106', 'F129', 'F158', 'F184']
+    filtsinm = ['F087', 'F106', 'F129', 'F158', 'F184','F213']
     magni1, magni2, magni3, magni4, magni5 = data[:, zcol], data[:, ycol], data[:, jcol], data[:, hcol], data[:, fcol]
     racent = float(my_params['racent'])
     deccent = float(my_params['deccent'])
@@ -431,9 +470,12 @@ def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, s
     #filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213','F146']
     #zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,26.06,27.66])
     #zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,24.528,26.4])
-    filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F146']
-    zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,27.66])
-    zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,26.4])
+    #filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F146']
+    #zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,27.66])
+    #zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,26.4])
+    filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213']
+    zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,26.06])
+    zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,26.06])
 
     starpre = '.'.join(infile.split('.')[:-1])
     filedir = '/'.join(infile.split('/')[:-1]) + '/'
@@ -505,6 +547,13 @@ def link_stips_catalogs(my_config):
     options = {comp_name: 0}
     my_job.options = options
     print("DPS0 :", stips_input.dp_id[0])
+    data = run_hyakalloc_and_process_output()
+    result = find_partition_with_most_available_cpus(data)
+    if result:
+        partition, cpus = result
+        print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
+    else:
+        print("Could not parse resource data or find free CPUs information.")
     for i in range(len(stips_input)):
         print("DP ", stips_input.dp_id[i])
         dp = stips_input[i]
@@ -523,6 +572,7 @@ def link_stips_catalogs(my_config):
             dither_size = my_params['dither_size']
             centdec = my_params['deccent']
             total = len(stips_input) * (int(ra_dithers) * int(dec_dithers))
+          
             for k in range(int(ra_dithers)):
                 ra_dither = dither_size * np.cos(float(centdec) * 3.14159 / 180.0) * int(k)
                 for j in range(int(dec_dithers)):
@@ -531,16 +581,88 @@ def link_stips_catalogs(my_config):
                     my_event = my_job.child_event('new_stips_catalog', tag=eventtag,
                                                   options={'dp_id': dpid, 'to_run': total, 'name': comp_name,
                                                            'submission_type':'scheduler', 'ra_dither': ra_dither, 
-                                                           'dec_dither': dec_dither})
+                                                           'dec_dither': dec_dither, 'partition': partition})
                     #Should there be a detname key here (line above)?
                     my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
                     my_event.fire()
 
         except KeyError:
             my_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                                          options={'dp_id': dpid, 'to_run': total, 'ra_dither': 0.0, 'dec_dither': 0.0, 'name': comp_name,'submission_type':'scheduler'})
+                    options={'dp_id': dpid, 'to_run': total, 'ra_dither': 0.0, 'dec_dither': 0.0, 'name': comp_name,'submission_type':'scheduler', 'partition': partition})
             my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
             my_event.fire()
+
+def find_partition_with_most_available_cpus(input_data):
+    """
+    Parses the input string to find the partition with the maximum number of free CPUs.
+
+    Args:
+        input_data: A string in the specified format containing resource information.
+
+    Returns:
+        A tuple (partition_name, free_cpus) for the partition with the most CPUs available,
+        or None if no data is found.
+    """
+    lines = input_data.strip().split('\n')
+    free_cpus_by_partition = {}
+    current_partition = None
+    
+    # Regex to capture Partition name, CPUs, and status (TOTAL/USED/FREE) from the table rows
+    # It accounts for variable spacing and empty Account columns.
+    partition_regex = re.compile(r"│\s*.*?│\s*(.*?)\s*│\s*(\d+)\s*│\s*.*?│\s*.*?│\s*(TOTAL|USED|FREE)\s*│")
+    
+    for line in lines:
+        match = partition_regex.search(line)
+        if match:
+            partition_name, cpus_str, status = match.groups()
+            cpus = int(cpus_str)
+
+            # If the partition name is present, update the current partition.
+            if partition_name.strip():
+                current_partition = partition_name.strip()
+            
+            # If we are tracking a partition and the status is 'FREE', record the free CPUs.
+            if current_partition and status == 'FREE':
+                # Store the free CPUs for this partition. This handles multiple FREE lines per partition
+                # by simply overwriting (which is fine since each partition only has one 'FREE' line).
+                free_cpus_by_partition[current_partition] = cpus
+
+    if not free_cpus_by_partition:
+        return None
+
+    # Find the partition with the maximum number of free CPUs
+    best_partition = max(free_cpus_by_partition, key=free_cpus_by_partition.get)
+    most_cpus = free_cpus_by_partition[best_partition]
+
+    return best_partition, most_cpus
+
+def run_hyakalloc_and_process_output():
+    """
+    Runs the 'hyakalloc' command using subprocess and sends its
+    stdout to the find_cpus function.
+    """
+    command_name = "hyakalloc"
+
+    try:
+        # Run the command and capture its output (stdout)
+        # 'text=True' ensures the output is a string, not bytes
+        # 'check=True' will raise an exception if the command fails (non-zero exit code)
+        result = subprocess.run(
+            [command_name], 
+            capture_output=True, 
+            text=True, 
+            check=True
+        )
+        
+        # Pass the captured standard output to the find_cpus function
+        return result.stdout
+
+    except FileNotFoundError:
+        print(f"Error: The command '{command_name}' was not found.")
+        print("Please ensure 'hyakalloc' is installed and accessible in your system's PATH.")
+        # As a fallback for demonstration purposes if you don't have the command:
+        # Mocking the output from your prompt:
+
 
 
 def parse_all():
@@ -579,6 +701,7 @@ if __name__ == '__main__':
             if ndetect > 1:
                 for i in range(ndetect):
                     dpid = dp_id
+
                     new_event = my_job.child_event('split_catalog', tag=i+1,
                                        options={'dp_id': dpid,'submission_type':'scheduler', 'detectors': i+1, 'ra_dither': 0.0, 'dec_dither': 0.0})
                     my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  split_catalog"]))

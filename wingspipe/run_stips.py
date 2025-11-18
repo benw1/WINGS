@@ -13,7 +13,8 @@ filtdict = {'R': 'F062',
             'Y': 'F106',
             'J': 'F129',
             'H': 'F158',
-            'F': 'F184'}
+            'F': 'F184',
+            'K': 'F213'}
 
 
 def register(task):
@@ -95,21 +96,17 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, detname):
     #    os.symlink(my_params['psf_cache'],my_config.procpath+"/psf_cache")
     #except:
     #    print("Try-except line 72 failed, config path error")
-    print("START obm.nextobservation")
-    obm.nextObservation()
-    source_count_catalogues = obm.addCatalogue(str(filename))
-    print("START psf_file")
-    psf_file = obm.addError()
-    fits_file, mosaic_file, params = obm.finalize(mosaic=False)
-    #detname = filename1.split('_')[1]
-    #try:
-    #    ndetect = my_params['ndetect']
-    #except:
-    #    ndetect = 1
-    #if ndetect == 1:
-    #    this_target = my_config.target
-    #    targname = this_target.name
-    #    detname = '.'.join(targname.split('.')[:-1])
+    if os.path.isfile(my_config.procpath +'/sim_' + str(dp_id+event_id) + '_0.fits'):
+        this_job.logprint(f"Image already exists... not running STIPS")
+    else:
+ 
+        print("START obm.nextobservation")
+        obm.nextObservation()
+        source_count_catalogues = obm.addCatalogue(str(filename))
+        print("START psf_file")
+        psf_file = obm.addError()
+        fits_file, mosaic_file, params = obm.finalize(mosaic=False)
+
     detname = my_event.options["detname"]
     this_job.logprint(''.join(["Making DataProduct with DETNAME and confid", detname, str(my_config.config_id), "\n"]))
     _dp = my_config.dataproduct(filename='sim_' + str(dp_id+event_id) + '_0.fits', relativepath=my_config.procpath,
