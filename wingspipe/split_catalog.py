@@ -71,6 +71,8 @@ def split_healpix(job_id, dp_id):
     filepath = dp.relativepath+"/"+dp.filename
     data = np.loadtxt(filepath, dtype=str)
     my_params["healpix_library_path"] = data[0]
+    my_params["racent"] = data[1]
+    my_params["deccent"] = data[2]
     try:
         racent = float(my_params['racent'])
         deccent = float(my_params['deccent'])

@@ -130,13 +130,11 @@ def fixwcs(imgpath):
 
     hdul = fits.open(imgpath, mode='update')
     head = hdul[1].header
-    #cd11 = head['PC1_1']
-    #cd22 = head['PC2_2']
-    detector = head['DETECTOR']
-    print("DETECTOR ",detector)
-    detector2 = detector.replace('WFI','SCA')
-    print("NEW DETECTOR ",detector2)
-    head['DETECTOR'] = detector2
+    #detector = head['DETECTOR']
+    #print("DETECTOR ",detector)
+    #detector2 = detector.replace('WFI','SCA')
+    #print("NEW DETECTOR ",detector2)
+    #head['DETECTOR'] = detector2
     try:
         cd11 = head['CD1_1']
     except:
