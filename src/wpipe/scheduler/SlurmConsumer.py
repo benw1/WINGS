@@ -85,11 +85,14 @@ def checkSlurmConnection():
 
 
 # Used by clients to send to the SlurmConsumer
-def sendJobToSlurm(pipejob):
+def sendJobToSlurm(pipejob, max_retries=3, retry_delay=0.5):
     # TODO: How do we parse for the host machine automatically?
+    import time
+    import os
 
     # Turn our object into bytes for sending
     serialized = None
+    jobData = None
     if pipejob == "poisonpill":
         logging.info("Got poisonpill for sending ...")
         serialized = pipejob.encode()
@@ -106,11 +109,39 @@ def sendJobToSlurm(pipejob):
 
     logging.info("Sending to server ...")
 
-    # open TCP connection and sendall bytes
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((HOST_MACHINE, DEFAULT_PORT))
-        s.sendall(serialized)
-        s.close()
+    # open TCP connection and sendall bytes with retry logic
+    for attempt in range(max_retries):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.connect((HOST_MACHINE, DEFAULT_PORT))
+                s.sendall(serialized)
+                s.close()
+                return  # Success
+        except ConnectionRefusedError:
+            if attempt < max_retries - 1:
+                logging.warning(
+                    "Connection refused (attempt %d/%d), retrying in %.1fs ..."
+                    % (attempt + 1, max_retries, retry_delay * (attempt + 1))
+                )
+                time.sleep(retry_delay * (attempt + 1))
+            else:
+                logging.error(
+                    "Connection refused after %d attempts, saving to failed_jobs."
+                    % max_retries
+                )
+                # Save failed job to file for later retry
+                if jobData is not None:
+                    import json
+
+                    failed_jobs_dir = os.path.expanduser("~/.slurmconsumer/failed_jobs")
+                    os.makedirs(failed_jobs_dir, exist_ok=True)
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                    failed_job_path = os.path.join(
+                        failed_jobs_dir, "job_{}.json".format(timestamp)
+                    )
+                    with open(failed_job_path, "w") as f:
+                        json.dump(jobData.to_dict(), f, indent=2)
+                    logging.error("Failed job saved to %s" % failed_job_path)
 
 
 def periodicLog():
