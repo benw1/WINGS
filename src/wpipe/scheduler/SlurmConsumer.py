@@ -124,14 +124,14 @@ def sendJobToSlurm(pipejob, max_retries=3, retry_delay=0.5):
         except ConnectionRefusedError:
             if attempt < max_retries - 1:
                 logging.warning(
-                    "Connection refused (attempt %d/%d), retrying in %.1fs ...",
-                    attempt + 1, max_retries, retry_delay * (attempt + 1)
+                    "Connection refused (attempt %d/%d), retrying in %.1fs ..."
+                    % (attempt + 1, max_retries, retry_delay * (attempt + 1))
                 )
                 time.sleep(retry_delay * (attempt + 1))
             else:
                 logging.error(
-                    "Connection refused after %d attempts, saving to failed_jobs.",
-                    max_retries
+                    "Connection refused after %d attempts, saving to failed_jobs."
+                    % max_retries
                 )
                 # Save failed job to file for later retry
                 if jobData is not None:
@@ -145,7 +145,7 @@ def sendJobToSlurm(pipejob, max_retries=3, retry_delay=0.5):
                     )
                     with open(failed_job_path, "w") as f:
                         json.dump(jobData.to_dict(), f, indent=2)
-                    logging.error("Failed job saved to %s", failed_job_path)
+                    logging.error("Failed job saved to %s" % failed_job_path)
 
 
 def periodicLog():
