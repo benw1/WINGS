@@ -18,7 +18,7 @@ from datetime import datetime
 from wpipe.scheduler.StreamToLogger import StreamToLogger
 from wpipe.scheduler.JobData import JobData
 from wpipe.scheduler.PbsScheduler import PbsScheduler
-from wpipe.scheduler.Utils import setup_signal_handlers
+from wpipe.scheduler.Utils import setup_signal_handlers, save_failed_job
 from wpipe.sqlintf import SESSION
 
 __all__ = ["BASE_PORT", "DEFAULT_PORT", "checkPbsConnection", "sendJobToPbs"]
@@ -123,17 +123,11 @@ def sendJobToPbs(pipejob, max_retries=3, retry_delay=0.5):
                 )
                 # Save failed job to file for later retry
                 if jobData is not None:
-                    import json
-
-                    failed_jobs_dir = os.path.expanduser("~/.pbsconsumer/failed_jobs")
-                    os.makedirs(failed_jobs_dir, exist_ok=True)
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                    failed_job_path = os.path.join(
-                        failed_jobs_dir, "job_{}.json".format(timestamp)
-                    )
-                    with open(failed_job_path, "w") as f:
-                        json.dump(jobData.to_dict(), f, indent=2)
-                    logging.error("Failed job saved to %s", failed_job_path)
+                    try:
+                        failed_job_path = save_failed_job("pbs", jobData)
+                        logging.error("Failed job saved to %s", failed_job_path)
+                    except Exception as e:
+                        logging.error("Failed to save job: %s", str(e))
 
 
 def periodicLog():
