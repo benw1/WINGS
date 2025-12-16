@@ -150,7 +150,7 @@ class PbsScheduler(BaseScheduler):
         pbsDict = {
             "model": node_model,
             "nnodes": n_nodes,
-            "ncpus": n_cpus,
+            "ncpus": n_cpus + 1,  # +1 for consumer overhead
             "ompthreads": omp_threads,
             "njobs": n_jobs_per_node,
             "walltime": self._jobList[0].getWalltime(),

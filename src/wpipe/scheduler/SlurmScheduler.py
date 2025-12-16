@@ -160,7 +160,7 @@ class SlurmScheduler(BaseScheduler):
         # create a dictionary
         slurmDict = {
             "nnodes": n_nodes,
-            "njobs": n_jobs_per_node,
+            "njobs": n_jobs_per_node + 1,  # +1 for consumer overhead
             "ncpus": self._jobList[0].getNcpus(),
             "walltime": self._jobList[0].getWalltime(),
             "mem": self._jobList[0].getMemory(),
