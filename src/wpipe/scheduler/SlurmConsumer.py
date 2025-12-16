@@ -11,13 +11,16 @@ import asyncio
 import pickle
 import socket
 import logging
+import os
 import sys
+import signal
 from datetime import datetime
 from pathlib import Path
 
 from .StreamToLogger import StreamToLogger
 from .JobData import JobData
 from .SlurmScheduler import SlurmScheduler
+from .Utils import setup_signal_handlers
 from wpipe.sqlintf import SESSION
 
 __all__ = ["BASE_PORT", "DEFAULT_PORT", "checkSlurmConnection", "sendJobToSlurm"]
@@ -66,7 +69,7 @@ class PipelineObjectProtocol(asyncio.Protocol):
             errors = jobdata.validate()
             if errors != "":
                 logging.error(
-                    "Errors in received JobData object (nothing to do): %s" % errors
+                    "Errors in received JobData object (nothing to do): %s", errors
                 )
                 return
 
@@ -120,14 +123,14 @@ def sendJobToSlurm(pipejob, max_retries=3, retry_delay=0.5):
         except ConnectionRefusedError:
             if attempt < max_retries - 1:
                 logging.warning(
-                    "Connection refused (attempt %d/%d), retrying in %.1fs ..."
-                    % (attempt + 1, max_retries, retry_delay * (attempt + 1))
+                    "Connection refused (attempt %d/%d), retrying in %.1fs ...",
+                    attempt + 1, max_retries, retry_delay * (attempt + 1)
                 )
                 time.sleep(retry_delay * (attempt + 1))
             else:
                 logging.error(
-                    "Connection refused after %d attempts, saving to failed_jobs."
-                    % max_retries
+                    "Connection refused after %d attempts, saving to failed_jobs.",
+                    max_retries
                 )
                 # Save failed job to file for later retry
                 if jobData is not None:
@@ -141,7 +144,7 @@ def sendJobToSlurm(pipejob, max_retries=3, retry_delay=0.5):
                     )
                     with open(failed_job_path, "w") as f:
                         json.dump(jobData.to_dict(), f, indent=2)
-                    logging.error("Failed job saved to %s" % failed_job_path)
+                    logging.error("Failed job saved to %s", failed_job_path)
 
 
 def periodicLog():
@@ -171,6 +174,9 @@ if __name__ == "__main__":
     stderr_logger = logging.getLogger("STDERR")
     sl = StreamToLogger(stderr_logger, logging.ERROR)
     sys.stderr = sl
+
+    # Setup signal handlers to log unexpected terminations
+    setup_signal_handlers("SlurmConsumer")
 
     # Setup loop
     logging.info("Setting up asyncio loop ...")
