@@ -66,7 +66,12 @@ def pbsconsumer(which: str):
             elif not os.path.isdir(homedir):
                 raise FileExistsError("{} is not a directory".format(homedir))
             subprocess.Popen(
-                ["nohup", "python", "-m", "wpipe.scheduler.PbsConsumer"], cwd=homedir
+                ["nohup", "python", "-m", "wpipe.scheduler.PbsConsumer"],
+                cwd=homedir,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                start_new_session=True
             )
             while checkPbsConnection() != 0:
                 time.sleep(0.1)
@@ -108,7 +113,12 @@ def slurmconsumer(which):
             elif not os.path.isdir(homedir):
                 raise FileExistsError("{} is not a directory".format(homedir))
             subprocess.Popen(
-                ["nohup", "python", "-m", "wpipe.scheduler.SlurmConsumer"], cwd=homedir
+                ["nohup", "python", "-m", "wpipe.scheduler.SlurmConsumer"],
+                cwd=homedir,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                start_new_session=True
             )
             while checkSlurmConnection() != 0:
                 time.sleep(0.1)
