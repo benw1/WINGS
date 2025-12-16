@@ -348,8 +348,8 @@ def process_df_catalog(my_config,my_event,my_job,df):
         if dithers > 1:
             for dither in range(dithers):
                 tag = filtname + "_" + str(dither)
-                ra_dither = 0.16 * float(dither)
-                dec_dither = 0.16 * float(dither)
+                ra_dither = 105.0 * float(dither)
+                dec_dither = 105.0 * float(dither)
                 new_event = my_job.child_event('new_stips_catalog', tag=tag,
                     options={'dp_id': dpid, 'detname': detname, 'to_run': total*dithers, 'name': comp_name,'ra_dither': ra_dither,
                         'dec_dither': dec_dither,'submission_type' : 'scheduler', 'partition': partition})

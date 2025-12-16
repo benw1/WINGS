@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 import os 
+import shutil
 #import subprocess
 from stips.observation_module import ObservationModule
 import numpy as np
@@ -22,11 +23,12 @@ def register(task):
     _temp = task.mask(source='*', name='new_stips_catalog', value='*')
 
 
-def run_stips(event_id, dp_id, ra_dith, dec_dith, detname):
+def run_stips(event_id, dp_id, ra_dith, dec_dith, detname, this_job):
     catalog_dp = wp.DataProduct(dp_id)
     my_config = catalog_dp.config
     my_event = wp.Event(event_id)
     my_params = my_config.parameters
+    job_id = this_job.job_id
     racent = float(my_params['racent']) + (float(ra_dith) / 3600.0)
     deccent = float(my_params['deccent']) + (float(dec_dith) / 3600.0)
     
@@ -46,8 +48,10 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, detname):
     filtername = filtroot
     os.chdir(my_config.procpath) #this is changing the working directory to the proc path
     print('my_config.procpath = ', my_config.procpath)
-    filename = fileroot + '/' + filename1 
     filetype = filename1.split('.')[-1]
+    orig_file = fileroot + '/' + filename1
+    uniq_file = fileroot + '/' + str(ra_dith) + str(dec_dith) + filename1
+    shutil.copyfile(orig_file, uniq_file)
     print('filetype = ', filetype)
     seed = np.random.randint(9999)+1000
 
@@ -63,16 +67,16 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, detname):
             ra = myfile[1].data['ra'][0]
             dec = myfile[1].data['dec'][0]
     else:
-        with open(filename) as myfile:
+        with open(uniq_file) as myfile:
             head = [next(myfile) for x in range(3)]
         pos = head[2].split(' ')
         crud,ra = pos[2].split('(')
         dec,crud =  pos[4].split(')')
 
-    print("Running ",filename,float(ra),float(dec))
+    print("Running ",uniq_file,float(ra),float(dec))
     print("SEED ",seed)
     scene_general = {'ra': float(ra), 'dec': float(dec), 'pa': pa, 'seed': seed}
-    obs = {'fast_galaxy': True,'instrument': 'WFI', 'filters': [filtername], 'detectors': 1, 'distortion': False, 'pupil_mask': '', 'background': 'avg',  'observations_id': dp_id+event_id, 'exptime': my_params['exptime'], 'residual_readnoise' : False, 'offsets': [{'offset_id': event_id, 'offset_centre': False, 'offset_ra': ra_dith, 'offset_dec': dec_dith, 'offset_pa': 0.0}]}
+    obs = {'fast_galaxy': True,'instrument': 'WFI', 'filters': [filtername], 'detectors': 1, 'distortion': False, 'pupil_mask': '', 'background': 'avg',  'observations_id': job_id, 'exptime': my_params['exptime'], 'residual_readnoise' : False, 'offsets': [{'offset_id': job_id, 'offset_centre': False, 'offset_ra': ra_dith, 'offset_dec': dec_dith, 'offset_pa': 0.0}]}
     #obm = ObservationModule(obs, scene_general=scene_general, psf_grid_size=int(my_params['psf_grid']), oversample=int(my_params['oversample']), random_seed=seed)
     
     print(obs)
@@ -96,28 +100,33 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, detname):
     #    os.symlink(my_params['psf_cache'],my_config.procpath+"/psf_cache")
     #except:
     #    print("Try-except line 72 failed, config path error")
-    if os.path.isfile(my_config.procpath +'/sim_' + str(dp_id+event_id) + '_0.fits'):
+    if os.path.isfile(my_config.procpath +'/sim_' + str(job_id) + '_0.fits'):
         this_job.logprint(f"Image already exists... not running STIPS")
     else:
  
         print("START obm.nextobservation")
         obm.nextObservation()
-        source_count_catalogues = obm.addCatalogue(str(filename))
+        source_count_catalogues = obm.addCatalogue(str(uniq_file))
         print("START psf_file")
         psf_file = obm.addError()
         fits_file, mosaic_file, params = obm.finalize(mosaic=False)
 
     detname = my_event.options["detname"]
     this_job.logprint(''.join(["Making DataProduct with DETNAME and confid", detname, str(my_config.config_id), "\n"]))
-    _dp = my_config.dataproduct(filename='sim_' + str(dp_id+event_id) + '_0.fits', relativepath=my_config.procpath,
-                                group='proc', data_type='stips_image', subtype=detname,
-                                filtername=filtername, ra=my_params['racent'], dec=my_params['deccent'])
-    this_job.logprint(''.join(["Checking: DP ID IS ",str(_dp.dp_id)," and FILENAME is ",_dp.filename]))
-    this_job.logprint(''.join(["Checking: DP subtype IS ",str(_dp.subtype)," and config is ",str(my_config.config_id)]))
+    image_dps = wp.DataProduct.select(config_id=str(this_conf.config_id), data_type="stips_image", subtype=detname)
+    len1 = len(image_dps)
+    _dp = my_config.dataproduct(filename='sim_' + str(job_id) + '_0.fits', relativepath=my_config.procpath, group='proc', data_type='stips_image', subtype=detname, filtername=filtername, ra=my_params['racent'], dec=my_params['deccent'])
+    image_dps = wp.DataProduct.select(config_id=str(this_conf.config_id), data_type="stips_image", subtype=detname)
+    len2 = len(image_dps)
+    if len2 > len1:
+        this_job.logprint(''.join(["Checking: DP ID IS ",str(_dp.dp_id)," and FILENAME is ",_dp.filename]))
+        this_job.logprint(''.join(["Checking: DP subtype IS ",str(_dp.subtype)," and config is ",str(my_config.config_id)]))
+    else:
+        raise Exception(f"DataPriduct creation failed for {str(job_id)} as {len2} is not greater than {len1}")
         #os.system('cp ' + fileroot + '/' + 'sim_' + str(dp_id) + '_0.fits ' + fileroot + '/' + 'sim_' + str(_dp.dp_id) + '_0.fits')
     #print('mv ' + fileroot + '/' + 'sim_' + str(dp_id) + '_0.fits ' + fileroot + '/' + 'sim_' + str(_dp.dp_id) + '_0.fits')
     truth_table_suf = "observed_"+detname+".fits"
-    truth_filename = filename.replace(".tbl", truth_table_suf)
+    truth_filename = uniq_file.replace(".tbl", truth_table_suf)
     _dp = my_config.dataproduct(filename=truth_filename, relativepath=my_config.procpath,
                                 group='proc', data_type='truth_table', subtype='observed_catalog',
                                 filtername=filtername, ra=my_params['racent'], dec=my_params['deccent'])
@@ -156,7 +165,7 @@ if __name__ == '__main__':
     this_conf = catalogDP.config
     print('DETNAME',detname)
 
-    checkname = run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither), detname)
+    checkname = run_stips(this_event_id, this_dp_id, float(ra_dither), float(dec_dither), detname, this_job)
     to_run = this_event.options['to_run']
     this_target = this_conf.target
     #try:
@@ -182,6 +191,8 @@ if __name__ == '__main__':
     this_job.logprint(''.join(["Got ", str(len(image_dps)), " images \n"]))
     this_job.logprint(''.join(["Completed ", str(update_option), " of ", str(to_run), "\n"]))
     if update_option == to_run:
+        if len(image_dps) < to_run:
+            raise Exception(f"Lost an image as counts should be {to_run} but is {len(image_dps)}")
         this_job.logprint(''.join(["Completed ", str(update_option), " and to run is ", str(to_run), " firing event\n"]))
         DP = wp.DataProduct(this_dp_id)
         tid = DP.target_id
@@ -203,6 +214,7 @@ if __name__ == '__main__':
                                                       'name': comp_name, 'to_run': total, 'detname': detname, 'walltime': '2:00:00'})
             this_job.logprint(''.join(["event detname is ", str(detname)]))
             new_event.fire()
+            time.sleep(2)
             #this_job.logprint('stips_done but not firing any events for now\n')
             this_job.logprint(''.join(["Event= ", str(this_event.event_id)]))
         time.sleep(300)

@@ -31,7 +31,8 @@ if my_file.is_file():
 
 # else:
 #    # HOST_MACHINE = '10.64.57.84'
-HOST_MACHINE = "0.0.0.0"
+#HOST_MACHINE = "0.0.0.0"
+HOST_MACHINE = "127.0.0.1"
 BASE_PORT = DEFAULT_PORT = 8000
 
 

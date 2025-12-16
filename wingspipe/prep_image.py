@@ -55,7 +55,7 @@ def send(dpid, conf, comp_name, total, job):
     return
 
 
-def prep_image(imgpath, filtname, config, thisjob, dp_id):
+def prep_image(imgpath, filtname, config, thisjob, dp_id,detname):
     thisjob.logprint(''.join(['running ', imgpath, ' in filter ', filtname]))
     print("GOT DP ", str(dp_id))
     dp = wp.DataProduct(int(dp_id))
@@ -81,7 +81,10 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id):
     #    return 0
     try:
         dp.filename = new_image_name
-    except:
+        _dpnew = config.dataproduct(filename=new_image_name, relativepath=config.procpath,group='proc', data_type='stips_image', subtype=detname,filtername=filtname)
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
         print("name already changed")
     fixwcs(imgpath)
     _t1 = [dolphot_path + 'romanmask', '-exptime=' + str(my_params['exptime']), '-rdnoise=0.0001', imgpath]
@@ -189,8 +192,13 @@ if __name__ == '__main__':
         this_target = this_config.target
         this_dp = wp.DataProduct(this_dp_id)
         filtername = this_dp.filtername
+        try:
+            detname = this_event.options['detname']
+        except:
+            detname = this_target.name
+            this_job.logprint(''.join(["FAILED TEST event detname is ", str(detname)]))
         imagepath = this_dp.relativepath + '/' + this_dp.filename
-        needcheck = prep_image(imagepath, filtername, this_config, this_job, this_dp_id)
+        needcheck = prep_image(imagepath, filtername, this_config, this_job, this_dp_id,detname)
         this_job.logprint(''.join(["Needcheck ", str(needcheck), "\n"]))
         parent_job_id = this_event.parent_job_id
         parent_job = this_event.parent_job
@@ -214,6 +222,7 @@ if __name__ == '__main__':
         catalogID = this_event.options['dp_id']
         catalogDP = wp.DataProduct(catalogID)
         this_conf = catalogDP.config
+        dither = this_conf.parameters["dither"]
         this_job.logprint(''.join(["Completed ", str(update_option), " of ", str(to_run), "\n"]))
         if update_option >= to_run:
             '''
@@ -233,23 +242,27 @@ if __name__ == '__main__':
                 this_job.logprint(''.join(["Event= ", str(new_event.event_id),"\n",detname,"\n","images_prepped\n"]))
                 time.sleep(1)
             '''
-            try:
-                detname = this_event.options['detname']
-            except:
-                detname = this_target.name
-                this_job.logprint(''.join(["FAILED TEST event detname is ", str(detname)]))
             for j in range(needcheck):
                 tag = detname+str(j+1)
                 chip = str(j+1)
                 this_job.logprint("DTNAME AND CHIP")
                 this_job.logprint(detname)
                 this_job.logprint(chip)
-                new_event = this_job.child_event('images_prepped', tag=tag, options={'target_id': tid,'detname': detname, 'chip': chip, 'submission_type': 'scheduler'})
-                this_job.logprint('about to fire')
-                this_job.logprint(''.join(["event detname is ", str(detname)]))
-                new_event.fire()
-                this_job.logprint('fired')
-                this_job.logprint('images_prepped\n')
-                this_job.logprint(''.join(["Event= ", str(new_event.event_id),"\n",detname,"\n","images_prepped\n"]))
+                if dither == 1:
+                    new_event = this_job.child_event('images_prepped', tag=tag, options={'target_id': tid,'detname': detname, 'chip': chip, 'submission_type': 'scheduler'})
+                    this_job.logprint('about to fire')
+                    this_job.logprint(''.join(["event detname is ", str(detname)]))
+                    new_event.fire()
+                    this_job.logprint('fired')
+                    this_job.logprint('images_prepped\n')
+                    this_job.logprint(''.join(["Event= ", str(new_event.event_id),"\n",detname,"\n","images_prepped\n"]))
+                if dither > 1:
+                    new_event = this_job.child_event('multi_dither_prepped', tag=tag, options={'target_id': tid,'detname': detname, 'chip': chip, 'submission_type': 'scheduler'})
+                    this_job.logprint('about to fire')
+                    this_job.logprint(''.join(["event detname is ", str(detname)]))
+                    new_event.fire()
+                    this_job.logprint('fired')
+                    this_job.logprint('multi_dither_prepped\n')
+                    this_job.logprint(''.join(["Event= ", str(new_event.event_id),"\n",detname,"\n","multi_dither_prepped\n"]))
 
             time.sleep(300)

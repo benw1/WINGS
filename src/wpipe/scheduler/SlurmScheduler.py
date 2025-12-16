@@ -17,10 +17,10 @@ import subprocess
 
 __all__ = ["DEFAULT_NODE_MODEL", "DEFAULT_WALLTIME", "SlurmScheduler"]
 
-DEFAULT_WALLTIME = "48:00:00"
+DEFAULT_WALLTIME = "18:00:00"
 DEFAULT_MEMORY = "50G"
 DEFAULT_ACCOUNT = "astro"
-DEFAULT_PARTITION = "compute-bigmem"
+DEFAULT_PARTITION = "cpu-g2"
 DEFAULT_NCPUS = "1"
 DEFAULT_NODE_MODEL = "has"
 NODE_CORES_DICT = {"bro": 2 * 14, "has": 2 * 12, "ivy": 2 * 10, "san": 2 * 8}
@@ -132,6 +132,14 @@ class SlurmScheduler(BaseScheduler):
                     + bool(jobdata.getVerbose()) * " -v"
                 }
             )
+        jobsForJinja.append(
+            {
+                "command": (
+                    "export OMP_NUM_THREADS=%d && " % n_cpus if omp_threads else ""
+                )
+                + "source ~/.bashrc && micromamba activate %s && slurmconsumer.py start &"% jobdata.getCondaEnv()
+            }
+        )
 
         output = template.render(jobs=jobsForJinja)
         print()
@@ -148,7 +156,7 @@ class SlurmScheduler(BaseScheduler):
         node_cores = NODE_CORES_DICT
         node_model = self._jobList[0].getNodemodel()
         omp_threads = self._jobList[0].getJobOpenMP()
-        n_jobs = len(self._jobList)
+        n_jobs = len(self._jobList)+1
         n_nodes = [math.ceil(n_jobs / node_cores[node_model]), n_jobs][omp_threads]
         n_cpus = node_cores[node_model]
 

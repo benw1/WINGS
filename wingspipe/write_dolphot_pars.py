@@ -5,6 +5,7 @@ import time
 def register(task):
     _temp = task.mask(source='*', name='start', value=task.name)
     _temp = task.mask(source='*', name='images_prepped', value='*')
+    _temp = task.mask(source='*', name='reference_prepped', value='*')
 
 
 def write_dolphot_pars(target, config, thisjob, detname, chip):
@@ -76,7 +77,11 @@ def write_dolphot_pars(target, config, thisjob, detname, chip):
     nimg = count
     # my_params = config.parameters
     # refimage = my_params['refimage']  #will make this more flexible later
-    refdp = wp.DataProduct(hinds[0]) #hinds[0] is empty because there is no F158
+    this_event = thisjob.firing_event
+    if "reference" in this_event.name:
+        refdp = wp.DataProduct(this_event.options['dp_id'])
+    else:
+        refdp = wp.DataProduct(hinds[0]) #hinds[0] is empty because there is no F158
     refimage = str(refdp.filename)
     if "sim" in refimage:
         refimage = target.name + '_' + detname + '_' + str(refdp.dp_id) + '_' + refdp.filtername + ".fits"

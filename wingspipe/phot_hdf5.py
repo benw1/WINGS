@@ -109,6 +109,10 @@ def cull_photometry(df, filter_detectors, my_config, snrcut=4.0):
         (name format: '<filter>_(g)st')
     """
     try:
+        objcut = my_config.parameters["objcut"]
+    except:
+        objcut = 3
+    try:
         snrcut = my_config.parameters["snrcut"]
     except:
         snrcut = 4.0
@@ -177,13 +181,14 @@ def cull_photometry(df, filter_detectors, my_config, snrcut=4.0):
         try:
             print('Making ST and GST cuts for {}'.format(filt))
             # make boolean arrays for each set of culling parameters
+            obj_condition = df.loc[:,'objtype_gl'] < objcut
             snr_condition = df.loc[:,'{}_snr'.format(filt.lower())] > snrcut
             #sharp_condition = df.loc[:,'{}_sharp'.format(f)]**2 < cut_params['{}sharp'.format(d)]
             #crowd_condition = df.loc[:,'{}_crowd'.format(f)] < cut_params['{}crowd'.format(d)]
             sharp_condition = df.loc[:,'{}_sharp'.format(filt.lower())]**2 < my_config.parameters['{}_sharp'.format(d)]
             crowd_condition = df.loc[:,'{}_crowd'.format(filt.lower())] < my_config.parameters['{}_crowd'.format(d)]
             # add st and gst columns
-            df.loc[:,'{}_st'.format(filt.lower())] = (snr_condition & sharp_condition).astype(bool)
+            df.loc[:,'{}_st'.format(filt.lower())] = (obj_condition & snr_condition & sharp_condition).astype(bool)
             df.loc[:,'{}_gst'.format(filt.lower())] = (df['{}_st'.format(filt.lower())] & crowd_condition).astype(bool)
             print('Found {} out of {} stars meeting ST criteria for {}'.format(
                 df.loc[:,'{}_st'.format(filt.lower())].sum(), df.shape[0], filt.lower()))

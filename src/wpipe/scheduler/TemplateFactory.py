@@ -53,12 +53,10 @@ sleep 180
 #SBATCH --mem={{slurm.mem}}
 ## Specify the working directory for this job
 #SBATCH --chdir={{slurm.pipe_root}}
-module load parallel-20170722 
-conda activate astroconda
 cat {{slurm.executables_list_path}} | parallel
 
 # Keep node warm for time 
-sleep 180
+#sleep 180
 """
 
         return Template(templateString)
