@@ -8,6 +8,7 @@ available in the ``wpipe.scheduler`` namespace - use that instead.
 
 import datetime
 import math
+import threading
 import time
 
 from .BaseScheduler import BaseScheduler
@@ -24,6 +25,7 @@ NODE_CORES_DICT = {"bro": 2 * 14, "has": 2 * 12, "ivy": 2 * 10, "san": 2 * 8}
 class PbsScheduler(BaseScheduler):
     # Keep track of all the instances that might be spawned
     schedulers = list()
+    _lock = threading.Lock()
 
     def __init__(self, jobdata):
         super().__init__(
@@ -34,7 +36,8 @@ class PbsScheduler(BaseScheduler):
         self._key = self.PbsKey(jobdata)
         self._jobList = list()
 
-        PbsScheduler.schedulers.append(self)  # add this new scheduler to the list
+        with PbsScheduler._lock:
+            PbsScheduler.schedulers.append(self)  # add this new scheduler to the list
 
         # run the submit now that the object is created
         self._submitJob(jobdata)
@@ -56,7 +59,8 @@ class PbsScheduler(BaseScheduler):
 
     def _execute(self):
         # remove scheduler from list
-        PbsScheduler.schedulers.remove(self)
+        with PbsScheduler._lock:
+            PbsScheduler.schedulers.remove(self)
 
         # Throttle job execute to allow any time for last jobs to submit if they anything main thread is still holding a reference to this handler.
         time.sleep(1)
@@ -172,13 +176,13 @@ class PbsScheduler(BaseScheduler):
 
     @staticmethod
     def submit(jobdata):
-        # If no schedulers exist then create a new one and exit this method
-        if len(PbsScheduler.schedulers) == 0:
-            PbsScheduler(jobdata)
-            return
+        with PbsScheduler._lock:
+            if len(PbsScheduler.schedulers) == 0:
+                PbsScheduler(jobdata)
+                return
+            has, scheduler = PbsScheduler._checkForScheduler(jobdata)
 
-        (hasScheduler, scheduler) = PbsScheduler._checkForScheduler(jobdata)
-        if hasScheduler:  # check for existing schedulers and call submitJob for the retrieved scheduler
+        if has:  # check for existing schedulers and call submitJob for the retrieved scheduler
             print(
                 "Adding job to scheduler with key {} ...".format(
                     scheduler._key.getKey()
