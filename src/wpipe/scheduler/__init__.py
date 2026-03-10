@@ -26,15 +26,16 @@ sendJobToPbs
 """
 
 import os
+import socket
 import subprocess
+import sys
 import time
-from datetime import datetime
 
 # from .PbsScheduler import PbsScheduler
 from .PbsConsumer import checkPbsConnection, sendJobToPbs
-from .PbsConsumer import HOST_MACHINE as PBS_HOST, DEFAULT_PORT as PBS_PORT
+from .PbsConsumer import DEFAULT_PORT as PBS_PORT
 from .SlurmConsumer import checkSlurmConnection, sendJobToSlurm
-from .SlurmConsumer import HOST_MACHINE as SLURM_HOST, DEFAULT_PORT as SLURM_PORT
+from .SlurmConsumer import DEFAULT_PORT as SLURM_PORT
 from .JobData import JobData
 
 __all__ = [
@@ -49,237 +50,251 @@ __all__ = [
 ]
 
 
-def _create_consumer_wrapper_script(consumer_type: str, homedir: str) -> str:
+def _get_head_node(consumer_type: str) -> str:
+    """Return the head node hostname.
+
+    Checks, in order:
+    1. Env var WPIPE_SLURM_HEAD_NODE (or WPIPE_PBS_HEAD_NODE)
+    2. ~/.slurmconsumer/config  (INI format: [slurmconsumer] / head_node = hostname)
+    3. RuntimeError with clear instructions if neither is configured
     """
-    Create a bash wrapper script that monitors consumer process and logs termination.
+    upper = consumer_type.upper()
+    env_var = "WPIPE_{}_HEAD_NODE".format(upper)
+    head_node = os.environ.get(env_var)
+    if head_node:
+        return head_node
 
-    Only creates the script if it doesn't exist or content has changed.
-    Safe for shared home directories across compute nodes.
+    import configparser
+    config_file = os.path.expanduser(
+        "~/.{}consumer/config".format(consumer_type)
+    )
+    if os.path.exists(config_file):
+        config = configparser.ConfigParser()
+        config.read(config_file)
+        section = "{}consumer".format(consumer_type)
+        if config.has_option(section, "head_node"):
+            head_node = config.get(section, "head_node").strip()
+            if head_node:
+                return head_node
 
-    Parameters
-    ----------
-    consumer_type : str
-        Type of consumer ("pbs" or "slurm")
-    homedir : str
-        Home directory for the consumer (~/.pbsconsumer or ~/.slurmconsumer)
-
-    Returns
-    -------
-    str
-        Path to the wrapper script
-    """
-    wrapper_script_path = os.path.join(homedir, "run_consumer.sh")
-    termination_log = os.path.join(homedir, "termination.log")
-    consumer_module = "wpipe.scheduler.{}Consumer".format(
-        consumer_type.capitalize()
+    raise RuntimeError(
+        "Head node not configured for {}consumer. "
+        "Set the {} environment variable to the head/login node hostname, "
+        "or create ~/.{}consumer/config with:\n"
+        "  [{}consumer]\n"
+        "  head_node = <hostname>".format(
+            consumer_type, env_var, consumer_type, consumer_type
+        )
     )
 
-    wrapper_content = """#!/bin/bash
-# Consumer wrapper script - monitors process and logs termination
-# Generated automatically - do not edit manually
 
-CONSUMER_MODULE="{consumer_module}"
-TERMINATION_LOG="{termination_log}"
-PID=$$
-PPID=${{PPID}}
+def _is_on_head_node(head_node: str) -> bool:
+    """Return True if currently running on the head node."""
+    current = socket.gethostname()
+    return current.split(".")[0] == head_node.split(".")[0]
 
-# Function to log termination information
-log_termination() {{
-    local EXIT_CODE=$1
-    local SIGNAL_NAME=$2
-    local TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
-    echo "===== Consumer Termination: $TIMESTAMP =====" >> "$TERMINATION_LOG"
-    echo "Exit Code: $EXIT_CODE" >> "$TERMINATION_LOG"
-    echo "Signal: $SIGNAL_NAME" >> "$TERMINATION_LOG"
-    echo "Consumer PID: $PID" >> "$TERMINATION_LOG"
-    echo "Parent PID: $PPID" >> "$TERMINATION_LOG"
+def _check_stale_lock(consumer_type: str) -> bool:
+    """Check for a stale address file.
 
-    # Try to get parent process info from /proc
-    if [ -d "/proc/$PPID" ]; then
-        if [ -f "/proc/$PPID/comm" ]; then
-            PARENT_NAME=$(cat /proc/$PPID/comm 2>/dev/null || echo "unknown")
-            echo "Parent Process Name: $PARENT_NAME" >> "$TERMINATION_LOG"
-        fi
-        if [ -f "/proc/$PPID/cmdline" ]; then
-            PARENT_CMD=$(cat /proc/$PPID/cmdline 2>/dev/null | tr '\\0' ' ' || echo "unknown")
-            echo "Parent Command: $PARENT_CMD" >> "$TERMINATION_LOG"
-        fi
-    fi
+    Returns True if a stale file was found and cleaned up.
+    Raises RuntimeError if the consumer is already running.
+    """
+    from .Utils import read_address_file, remove_address_file
 
-    # Get hostname and user info
-    echo "Hostname: $(hostname)" >> "$TERMINATION_LOG"
-    echo "User: $(whoami)" >> "$TERMINATION_LOG"
-    echo "Working Directory: $(pwd)" >> "$TERMINATION_LOG"
+    result = read_address_file(consumer_type)
+    if result is None:
+        return False
 
-    # Determine signal from exit code if applicable
-    if [ $EXIT_CODE -gt 128 ] && [ $EXIT_CODE -lt 192 ]; then
-        SIGNAL_NUM=$((EXIT_CODE - 128))
-        echo "Likely killed by signal number: $SIGNAL_NUM" >> "$TERMINATION_LOG"
-    fi
+    host, port, _ = result
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(2.0)
+    connected = s.connect_ex((host, port))
+    s.close()
 
-    echo "=============================================" >> "$TERMINATION_LOG"
-    echo "" >> "$TERMINATION_LOG"
-}}
+    if connected == 0:
+        raise RuntimeError(
+            "{}consumer is already running at {}:{}".format(
+                consumer_type.capitalize(), host, port
+            )
+        )
 
-# Run the consumer and capture exit code
-python -m "$CONSUMER_MODULE"
-EXIT_CODE=$?
-
-# Determine signal name from exit code
-if [ $EXIT_CODE -eq 0 ]; then
-    SIGNAL_NAME="Normal Exit"
-elif [ $EXIT_CODE -eq 130 ]; then
-    SIGNAL_NAME="SIGINT (Ctrl+C)"
-elif [ $EXIT_CODE -eq 143 ]; then
-    SIGNAL_NAME="SIGTERM"
-elif [ $EXIT_CODE -eq 137 ]; then
-    SIGNAL_NAME="SIGKILL"
-elif [ $EXIT_CODE -eq 129 ]; then
-    SIGNAL_NAME="SIGHUP"
-elif [ $EXIT_CODE -eq 141 ]; then
-    SIGNAL_NAME="SIGPIPE"
-elif [ $EXIT_CODE -gt 128 ]; then
-    SIGNAL_NUM=$((EXIT_CODE - 128))
-    SIGNAL_NAME="Signal $SIGNAL_NUM"
-else
-    SIGNAL_NAME="Non-zero exit"
-fi
-
-# Log termination
-log_termination $EXIT_CODE "$SIGNAL_NAME"
-
-# Exit with same code as consumer
-exit $EXIT_CODE
-""".format(
-        consumer_module=consumer_module,
-        termination_log=termination_log
+    # Connection refused or timed out — stale file
+    print(
+        "Stale address file found for {}consumer at {}:{}. "
+        "Cleaning up ...".format(consumer_type.capitalize(), host, port)
     )
-
-    # Only create/update if script doesn't exist or content changed
-    should_write = True
-    if os.path.exists(wrapper_script_path):
-        try:
-            with open(wrapper_script_path, "r") as f:
-                existing_content = f.read()
-            if existing_content == wrapper_content:
-                should_write = False
-        except (IOError, OSError):
-            # If we can't read it, recreate it
-            should_write = True
-
-    if should_write:
-        with open(wrapper_script_path, "w") as f:
-            f.write(wrapper_content)
-        # Make script executable
-        os.chmod(wrapper_script_path, 0o755)
-
-    return wrapper_script_path
+    remove_address_file(consumer_type)
+    return True
 
 
 def pbsconsumer(which: str):
     connection = checkPbsConnection()
     print(
-        "PbsConsumer connection status to {}:{} (0 = running): {}".format(
-            PBS_HOST, PBS_PORT, connection
-        )
+        "PbsConsumer connection status (0 = running): {}".format(connection)
     )
     if which == "check":
         return print(connection)
     elif which == "start":
         if connection != 0:
-            print("Starting PbsConsumer on {}:{} ...".format(PBS_HOST, PBS_PORT))
+            # Check for stale lock; raises if already running
+            try:
+                _check_stale_lock("pbs")
+            except RuntimeError as e:
+                print(str(e))
+                return
+
+            head_node = _get_head_node("pbs")
+
             homedir = os.path.expanduser("~/.pbsconsumer")
-            if not os.path.exists(homedir):
-                os.mkdir(homedir)
-            elif not os.path.isdir(homedir):
-                raise FileExistsError("{} is not a directory".format(homedir))
+            os.makedirs(homedir, exist_ok=True)
 
-            # Create wrapper script that monitors consumer and logs termination
-            wrapper_script = _create_consumer_wrapper_script("pbs", homedir)
+            consumer_module = "wpipe.scheduler.PbsConsumer"
 
-            subprocess.Popen(
-                ["nohup", wrapper_script],
-                cwd=homedir,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                stdin=subprocess.DEVNULL,
-                start_new_session=True
-            )
-            while checkPbsConnection() != 0:
-                time.sleep(0.1)
-        else:
+            if _is_on_head_node(head_node):
+                print("Starting PbsConsumer locally on head node ...")
+                subprocess.Popen(
+                    ["nohup", sys.executable, "-m", consumer_module],
+                    cwd=homedir,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    stdin=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+            else:
+                print("Starting PbsConsumer on head node {} via SSH ...".format(head_node))
+                ssh_cmd = [
+                    "ssh",
+                    "-o", "BatchMode=yes",
+                    "-o", "ConnectTimeout=10",
+                    head_node,
+                    "nohup {} -m {} </dev/null >/dev/null 2>&1 &".format(
+                        sys.executable, consumer_module
+                    ),
+                ]
+                try:
+                    result = subprocess.run(ssh_cmd, timeout=15)
+                except subprocess.TimeoutExpired:
+                    raise RuntimeError(
+                        "SSH to {} timed out. "
+                        "Is WPIPE_PBS_HEAD_NODE correct? "
+                        "Is the head node reachable?".format(head_node)
+                    )
+                if result.returncode != 0:
+                    raise RuntimeError(
+                        "SSH to {} failed (returncode {}). "
+                        "Is WPIPE_PBS_HEAD_NODE correct? "
+                        "Is passwordless SSH configured (ssh-copy-id)?".format(
+                            head_node, result.returncode
+                        )
+                    )
+
+            # Poll until connected (up to 30s)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if checkPbsConnection() == 0:
+                    print("PbsConsumer is up.")
+                    return
+                time.sleep(0.5)
             print(
-                "PbsConsumer is already running on {}:{} ...".format(PBS_HOST, PBS_PORT)
+                "WARNING: PbsConsumer did not come up within 30s. "
+                "Check ~/.pbsconsumer/ for logs."
             )
+        else:
+            print("PbsConsumer is already running.")
     else:
         if connection == 0:
             if which == "stop":
-                print(
-                    "Shutting down PbsConsumer on {}:{} ...".format(PBS_HOST, PBS_PORT)
-                )
+                print("Shutting down PbsConsumer ...")
                 sendJobToPbs("poisonpill")
             elif which == "log":
                 print("Printing current PbsConsumer log ...")
                 # TODO
         else:
-            print(
-                "No server found at {}:{}, nothing to do ...".format(PBS_HOST, PBS_PORT)
-            )
+            print("No PbsConsumer found, nothing to do ...")
 
 
 def slurmconsumer(which):
     connection = checkSlurmConnection()
     print(
-        "SlurmConsumer connection status to {}:{} (0 = running): {}".format(
-            SLURM_HOST, SLURM_PORT, connection
-        )
+        "SlurmConsumer connection status (0 = running): {}".format(connection)
     )
     if which == "check":
         return print(connection)
     elif which == "start":
         if connection != 0:
-            print("Starting SlurmConsumer on {}:{} ...".format(SLURM_HOST, SLURM_PORT))
+            # Check for stale lock; raises if already running
+            try:
+                _check_stale_lock("slurm")
+            except RuntimeError as e:
+                print(str(e))
+                return
+
+            head_node = _get_head_node("slurm")
+
             homedir = os.path.expanduser("~/.slurmconsumer")
-            if not os.path.exists(homedir):
-                os.mkdir(homedir)
-            elif not os.path.isdir(homedir):
-                raise FileExistsError("{} is not a directory".format(homedir))
+            os.makedirs(homedir, exist_ok=True)
 
-            # Create wrapper script that monitors consumer and logs termination
-            wrapper_script = _create_consumer_wrapper_script("slurm", homedir)
+            consumer_module = "wpipe.scheduler.SlurmConsumer"
 
-            subprocess.Popen(
-                ["nohup", wrapper_script],
-                cwd=homedir,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                stdin=subprocess.DEVNULL,
-                start_new_session=True
-            )
-            while checkSlurmConnection() != 0:
-                time.sleep(0.1)
-        else:
-            print(
-                "SlurmConsumer is already running on {}:{} ...".format(
-                    SLURM_HOST, SLURM_PORT
+            if _is_on_head_node(head_node):
+                print("Starting SlurmConsumer locally on head node ...")
+                subprocess.Popen(
+                    ["nohup", sys.executable, "-m", consumer_module],
+                    cwd=homedir,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    stdin=subprocess.DEVNULL,
+                    start_new_session=True,
                 )
+            else:
+                print("Starting SlurmConsumer on head node {} via SSH ...".format(head_node))
+                ssh_cmd = [
+                    "ssh",
+                    "-o", "BatchMode=yes",
+                    "-o", "ConnectTimeout=10",
+                    head_node,
+                    "nohup {} -m {} </dev/null >/dev/null 2>&1 &".format(
+                        sys.executable, consumer_module
+                    ),
+                ]
+                try:
+                    result = subprocess.run(ssh_cmd, timeout=15)
+                except subprocess.TimeoutExpired:
+                    raise RuntimeError(
+                        "SSH to {} timed out. "
+                        "Is WPIPE_SLURM_HEAD_NODE correct? "
+                        "Is the head node reachable?".format(head_node)
+                    )
+                if result.returncode != 0:
+                    raise RuntimeError(
+                        "SSH to {} failed (returncode {}). "
+                        "Is WPIPE_SLURM_HEAD_NODE correct? "
+                        "Is passwordless SSH configured (ssh-copy-id)?".format(
+                            head_node, result.returncode
+                        )
+                    )
+
+            # Poll until connected (up to 30s)
+            deadline = time.time() + 30
+            while time.time() < deadline:
+                if checkSlurmConnection() == 0:
+                    print("SlurmConsumer is up.")
+                    return
+                time.sleep(0.5)
+            print(
+                "WARNING: SlurmConsumer did not come up within 30s. "
+                "Check ~/.slurmconsumer/ for logs."
             )
+        else:
+            print("SlurmConsumer is already running.")
     else:
         if connection == 0:
             if which == "stop":
-                print(
-                    "Shutting down SlurmConsumer on {}:{} ...".format(
-                        SLURM_HOST, SLURM_PORT
-                    )
-                )
+                print("Shutting down SlurmConsumer ...")
                 sendJobToSlurm("poisonpill")
             elif which == "log":
                 print("Printing current SlurmConsumer log ...")
                 # TODO
         else:
-            print(
-                "No server found at {}:{}, nothing to do ...".format(
-                    SLURM_HOST, SLURM_PORT
-                )
-            )
+            print("No SlurmConsumer found, nothing to do ...")

@@ -239,6 +239,58 @@ def create_signal_handler(consumer_name: str) -> Callable:
     return signal_handler
 
 
+def read_address_file(consumer_type: str):
+    """Read host/port/pid from address file. Returns None if missing/malformed.
+    Checks env vars WPIPE_SLURM_HOST/WPIPE_SLURM_PORT (or PBS) first."""
+    upper = consumer_type.upper()
+    host_env = os.environ.get("WPIPE_{}_HOST".format(upper))
+    port_env = os.environ.get("WPIPE_{}_PORT".format(upper))
+    if host_env and port_env:
+        try:
+            return host_env, int(port_env), -1
+        except ValueError:
+            pass
+
+    address_file = os.path.expanduser(
+        "~/.{}consumer/server.address".format(consumer_type)
+    )
+    try:
+        with open(address_file, "r") as f:
+            content = f.read().strip()
+        parts = content.split(":")
+        if len(parts) != 3:
+            return None
+        host, port, pid = parts
+        return host, int(port), int(pid)
+    except (FileNotFoundError, ValueError, OSError):
+        return None
+
+
+def write_address_file(consumer_type: str, hostname: str, port: int, pid: int) -> None:
+    """Atomic write: write to .tmp then os.rename() to server.address."""
+    address_dir = os.path.expanduser("~/.{}consumer".format(consumer_type))
+    os.makedirs(address_dir, exist_ok=True)
+    address_file = os.path.join(address_dir, "server.address")
+    tmp_file = address_file + ".tmp"
+    content = "{}:{}:{}".format(hostname, port, pid)
+    with open(tmp_file, "w") as f:
+        f.write(content)
+    os.rename(tmp_file, address_file)
+    logging.info("Wrote address file: %s", content)
+
+
+def remove_address_file(consumer_type: str) -> None:
+    """Remove address file; swallows FileNotFoundError (idempotent)."""
+    address_file = os.path.expanduser(
+        "~/.{}consumer/server.address".format(consumer_type)
+    )
+    logging.info("Removing address file: %s", address_file)
+    try:
+        os.remove(address_file)
+    except FileNotFoundError:
+        pass
+
+
 def setup_signal_handlers(consumer_name: str) -> None:
     """
     Set up signal handlers for a consumer process.
