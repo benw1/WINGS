@@ -199,7 +199,8 @@ def make_cmd(ds, path, targname, detname, red_filter, blue_filter, y_filter, n_e
             xmax = 10
     if ymin < 15.0:
         ymin = 15.0
-    print(blue_filter,red_filter," has ",ds_gst.length()," stars in CMD.")
+    print(blue_filter,red_filter," has ",ds_gst.length()," stars in CMD here.")
+    print("Xmin and ymin are ",xmin,ymin)
 
     if ds_gst.length() >= 20000:
         fig, ax = plt.subplots(1, figsize=(7.,5.5))
@@ -239,7 +240,7 @@ def make_cmd(ds, path, targname, detname, red_filter, blue_filter, y_filter, n_e
         for axis in ['top','bottom','left','right']:
            ax.spines[axis].set_linewidth(2)
         plt.minorticks_on()
-    plt.xlim(int(xmin-0.5), int(xmax+0.5))
+    plt.xlim(int(xmin-1), int(xmax+0.5))
     plt.ylim(int(ymin-0.5), int(ymax+0.5))
     plt.ylabel(ylab,fontsize=20)
     plt.xlabel(color,fontsize=20)
@@ -341,7 +342,7 @@ def make_cmd_all(ds, path, targname, detname, red_filter, blue_filter, y_filter,
     if ymin < 15.0:
         ymin = 15.0
     print(blue_filter,red_filter," has ",ds_gst.length()," stars in CMD.")
-
+    print("Xmin Ymin =",xmin,ymin)
     if ds_gst.length() >= 20000:
         fig, ax = plt.subplots(1, figsize=(7.,5.5))
         plt.rcParams.update({'font.size': 20})
@@ -380,7 +381,7 @@ def make_cmd_all(ds, path, targname, detname, red_filter, blue_filter, y_filter,
         for axis in ['top','bottom','left','right']:
            ax.spines[axis].set_linewidth(2)
         plt.minorticks_on()
-    plt.xlim(int(xmin-0.5), int(xmax+0.5))
+    plt.xlim(int(xmin-1), int(xmax+0.5))
     plt.ylim(int(ymin-0.5), int(ymax+0.5))
     plt.ylabel(ylab,fontsize=20)
     plt.xlabel(color,fontsize=20)
@@ -454,16 +455,16 @@ if __name__ == "__main__":
     sort_inds = np.argsort(waves)
         
     num_all_filters = len(filters)
-    for i in range(num_all_filters-1):
-       for j in range(num_all_filters-i-1):
-           ind2=i+1+j
-           my_job.logprint(filters[sort_inds[i]])  
-           my_job.logprint(filters[sort_inds[ind2]])  
-           try:
-               make_cmd(ds, procpath, my_target.name, detname, filters[sort_inds[ind2]].lower(),filters[sort_inds[i]].lower(),filters[sort_inds[ind2]].lower())
-           except:
-               my_job.logprint(f"{filters[sort_inds[i]].lower()} and {filters[sort_inds[ind2]].lower()} failed")
-               continue
+    #for i in range(num_all_filters-1):
+    #   for j in range(num_all_filters-i-1):
+    #       ind2=i+1+j
+    #       my_job.logprint(filters[sort_inds[i]])  
+    #       my_job.logprint(filters[sort_inds[ind2]])  
+    #       try:
+    #           make_cmd(ds, procpath, my_target.name, detname, filters[sort_inds[ind2]].lower(),filters[sort_inds[i]].lower(),filters[sort_inds[ind2]].lower())
+    #       except:
+    #           my_job.logprint(f"{filters[sort_inds[i]].lower()} and {filters[sort_inds[ind2]].lower()} failed")
+    #           continue
 
 
     file_paths = glob.glob(procpath+'/*.hdf5')

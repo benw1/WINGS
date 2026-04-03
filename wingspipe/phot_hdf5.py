@@ -353,7 +353,7 @@ def add_wcs(df, photfile, my_config, detname):
     except:
         my_config.parameters['run_single'] = "F"
     if my_config.parameters['run_single'] == "F":
-        drzfiles = wp.DataProduct.select(config_id=my_config.config_id, subtype="reference_prepped")
+        drzfiles = wp.DataProduct.select(config_id=my_config.config_id, subtype="reference_image")
         # neither of these should happen but just in case
         if len(drzfiles) == 0:
             print('No drizzled files found; looking for reference')
@@ -425,9 +425,9 @@ def add_wcs(df, photfile, my_config, detname):
             df.insert(5, 'dec', dec)
         elif len(drzfiles) > 1:
             my_job.logprint('Multiple drizzled files found: {}'.format(drzfiles))
-            ref_filt = my_config.parameters["reference_filter"]
+            ref_detector = detname
             for cand_ref in drzfiles:
-                if cand_ref.options["filter"] == ref_filt:
+                if ref_detector in cand_ref.filename:
                     drzfile = my_config.procpath+"/"+str(cand_ref.filename).strip()
             my_job.logprint('Using {} as astrometric reference'.format(drzfile))
             ra, dec = WCS(drzfile).all_pix2world(df.x.values, df.y.values, 0) #0-based coord system matches dolphot
@@ -635,7 +635,7 @@ if __name__ == '__main__':
         next_event.fire()
         next_event = my_job.child_event(
         name="spatial",
-        options={"dp_id": hd5_dp.dp_id, "memory": mem,"detname": this_event.options["detname"], 'submission_type':'scheduler'}
+        options={"dp_id": hd5_dp.dp_id, "memory": "200G","detname": this_event.options["detname"], 'submission_type':'scheduler'}
         )  # next event
         next_event.fire()
         #next_event = my_job.child_event(

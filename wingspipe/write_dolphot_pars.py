@@ -165,7 +165,7 @@ def write_dolphot_pars(target, config, thisjob, detname, chip):
                 "Align = 3               #align images? (int 0=no,1=const,2=lin,3=cube)\n" +
                 "AlignOnly = 0           #exit after alignment\n" +
                 "SubResRef = 1           #subpixel resolution for reference image (int>0)\n" +
-                "SecondPass = 3          #second pass finding stars (int 0=no,1=yes)\n" +
+                "SecondPass = 2          #second pass finding stars (int 0=no,1=yes)\n" +
                 "SearchMode = 1          #algorithm for astrometry (0=max SNR/chi, 1=max SNR)\n" +
                 "Force1 = 0              #force type 1/2 (stars)? (int 0=no,1=yes)\n" +
                 "PSFres = 0              #make PSF residual image? (int 0=no,1=yes)\n" +

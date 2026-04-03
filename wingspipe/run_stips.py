@@ -50,7 +50,7 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, detname, this_job):
     print('my_config.procpath = ', my_config.procpath)
     filetype = filename1.split('.')[-1]
     orig_file = fileroot + '/' + filename1
-    uniq_file = fileroot + '/' + str(ra_dith) + str(dec_dith) + filename1
+    uniq_file = fileroot + '/' + str(job_id) + str(ra_dith) + str(dec_dith) + filename1
     shutil.copyfile(orig_file, uniq_file)
     print('filetype = ', filetype)
     seed = np.random.randint(9999)+1000
@@ -102,6 +102,7 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, detname, this_job):
     #    print("Try-except line 72 failed, config path error")
     if os.path.isfile(my_config.procpath +'/sim_' + str(job_id) + '_0.fits'):
         this_job.logprint(f"Image already exists... not running STIPS")
+        raise ValueError("This one is done!")
     else:
  
         print("START obm.nextobservation")
@@ -112,10 +113,15 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, detname, this_job):
         fits_file, mosaic_file, params = obm.finalize(mosaic=False)
 
     detname = my_event.options["detname"]
+    truth_table_suf = "_observed_"+detname+".fits"
+    truth_filename = uniq_file.replace(".tbl", truth_table_suf)
+    _dp_truth = my_config.dataproduct(filename=truth_filename, relativepath=my_config.procpath,
+                                group='proc', data_type='truth_table', subtype='observed_catalog',
+                                filtername=filtername, ra=racent, dec=deccent)
     this_job.logprint(''.join(["Making DataProduct with DETNAME and confid", detname, str(my_config.config_id), "\n"]))
     image_dps = wp.DataProduct.select(config_id=str(this_conf.config_id), data_type="stips_image", subtype=detname)
     len1 = len(image_dps)
-    _dp = my_config.dataproduct(filename='sim_' + str(job_id) + '_0.fits', relativepath=my_config.procpath, group='proc', data_type='stips_image', subtype=detname, filtername=filtername, ra=my_params['racent'], dec=my_params['deccent'])
+    _dp = my_config.dataproduct(filename='sim_' + str(job_id) + '_0.fits', relativepath=my_config.procpath, group='proc', data_type='stips_image', subtype=detname, filtername=filtername, ra=racent, dec=deccent)
     image_dps = wp.DataProduct.select(config_id=str(this_conf.config_id), data_type="stips_image", subtype=detname)
     len2 = len(image_dps)
     if len2 > len1:
@@ -125,11 +131,6 @@ def run_stips(event_id, dp_id, ra_dith, dec_dith, detname, this_job):
         raise Exception(f"DataPriduct creation failed for {str(job_id)} as {len2} is not greater than {len1}")
         #os.system('cp ' + fileroot + '/' + 'sim_' + str(dp_id) + '_0.fits ' + fileroot + '/' + 'sim_' + str(_dp.dp_id) + '_0.fits')
     #print('mv ' + fileroot + '/' + 'sim_' + str(dp_id) + '_0.fits ' + fileroot + '/' + 'sim_' + str(_dp.dp_id) + '_0.fits')
-    truth_table_suf = "observed_"+detname+".fits"
-    truth_filename = uniq_file.replace(".tbl", truth_table_suf)
-    _dp = my_config.dataproduct(filename=truth_filename, relativepath=my_config.procpath,
-                                group='proc', data_type='truth_table', subtype='observed_catalog',
-                                filtername=filtername, ra=my_params['racent'], dec=my_params['deccent'])
 
     return detname
 

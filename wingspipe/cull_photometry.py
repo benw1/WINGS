@@ -32,19 +32,51 @@ def register(task):
 
 FEAT_NAMES = ['err', 'SNR', 'Sharpness', 'Crowding']
 
-# filter names
-FILTERS = np.array(['F062', 'F087', 'F106', 'F129', 'F158', 'F184', 'F213'])
-FILTERSHORT = np.array(['F062', 'F087', 'F106', 'F129', 'F158', 'F184', 'F213'])
+try:
+    this_job = wp.ThisJob
+    this_event = wp.ThisEvent
+    this_config = this_job.config
+    # AB magnitude Zero points
+    AB_VEGA_ALL = np.array([0.2, 0.487, 0.653, 0.958, 1.287, 1.552, 0.0])
+    # filter names
+    ALLFILTERS = np.array(['F062', 'F087', 'F106', 'F129', 'F158', 'F184', 'F213'])
+    FILTERS = []
+    FILTERSHORT = []
+    AB_VEGA = []
+    for i in range(len(ALLFILTERS)):
+        inputfiledp = 0
+        del inputfiledp
+        testfilt = ALLFILTERS[i]
+        datadp = wp.DataProduct.select(config_id=str(this_config.config_id), subtype='observed_catalog', filtername=testfilt)
+        for dp in datadp:
+            if testfilt in dp.filename:
+                print("MATCHED ",testfilt," and ",dp.filename)
+                inputfiledp = dp
+        try:
+            print("obscat filename is ",inputfiledp.filename)
+            FILTERS = np.append(FILTERS, str(testfilt))
+            FILTERSHORT = np.append(FILTERSHORT, str(testfilt))
+            AB_VEGA = np.append(AB_VEGA,AB_VEGA_ALL[i])
+        except:
+            continue
+    print("FILTERS ARE: ", FILTERSHORT)    
+    print("ZPS ARE: ", AB_VEGA)    
+    SKY_COORD = np.zeros(len(FILTERS))
 
-# AB magnitude Zero points
-AB_VEGA = np.array([0.2, 0.487, 0.653, 0.958, 1.287, 1.552, 0.0])
+except:
+    print("no pipeline, initializing...")
+    FILTERS = []
+    FILTERSHORT = []
+    AB_VEGA = []
+    SKY_COORD = np.zeros(1)
 
 FITS_FILES = ["sim_1_0.fits", "sim_2_0.fits", "sim_3_0.fits",
               "sim_4_0.fits", "sim_5_0.fits"]
 
-SKY_COORD = np.zeros(len(FILTERS))
-REF_FITS = int(3)
-USE_RADEC = False
+#REF_FITS = int(3)
+REF_FITS = int(0)
+USE_RADEC = True
+#USE_RADEC = False
 
 
 def cull_photometry(this_config, this_dp_id, detname):
@@ -55,15 +87,39 @@ def cull_photometry(this_config, this_dp_id, detname):
     targname = target.name
     targroot = targname.split('.')[0]
     photpath = procpath + "/" + phot
+    drzfiles = wp.DataProduct.select(config_id=this_config.config_id, subtype="reference_image")
+    wfifiles = wp.DataProduct.select(config_id=this_config.config_id, data_type="stips_image")
     print("PHOT PATH: ", photpath, "\n")
-    clean_all(detname, photpath, tol=5.0, test_size=0.75, valid_mag=30.0, targroot=targroot)
+    ref_detector = detname
+    datadp = wp.DataProduct.select(config_id=str(this_config.config_id), subtype='observed_catalog')
+    for dp in datadp:
+        if detname in dp.filename:
+            inputfiledp = dp
+    catalog_ra = inputfiledp.ra 
+    catalog_dec = inputfiledp.dec
+    print("INPUT Catalog RA and Dec are ",catalog_ra,catalog_dec)
+    for cand_ref in drzfiles:
+        if ref_detector in cand_ref.filename:
+            reference_image_filename = str(cand_ref.filename).strip()
+            drzfile = this_config.procpath+"/"+str(cand_ref.filename).strip()
+    print('Using {} as output astrometric reference'.format(drzfile))
+    for cand_stips in wfifiles:
+        print("CAND FILE and RA: ",cand_stips.filename,cand_stips.ra)
+        if ref_detector in cand_stips.filename and cand_stips.ra == catalog_ra and cand_stips.dec == catalog_dec:
+            stips_filename = str(cand_stips.filename).strip()
+            stipsfile = this_config.procpath+"/"+str(cand_stips.filename).strip()
+    print('Using {} as input astrometric reference'.format(stipsfile))
+
+    #clean_all(detname, photpath, tol=5.0, test_size=0.75, valid_mag=30.0, targroot=targroot)
+    clean_all(detname, this_config, photpath, fits_files=[reference_image_filename,reference_image_filename,reference_image_filename,reference_image_filename,reference_image_filename,reference_image_filename,reference_image_filename],stips_files=[stips_filename,stips_filename,stips_filename,stips_filename,stips_filename,stips_filename,stips_filename], tol=5.0, test_size=0.75, valid_mag=30.0, targroot=targroot)
 
 
-def clean_all(detname, filename='10_10_phot.txt',
+def clean_all(detname, this_config, filename='10_10_phot.txt',
               feature_names=None,
               filters=FILTERS,
               ab_vega=AB_VEGA,
               fits_files=None,
+              stips_files=None,
               ref_fits=REF_FITS,
               sky_coord=SKY_COORD,
               tol=2., test_size=0.1, valid_mag=30.,
@@ -91,18 +147,27 @@ def clean_all(detname, filename='10_10_phot.txt',
     fileroot += '/'
     filepre = filename.split('.')[0]
     if use_radec:
-        sky_coord = [wcs.WCS(fits.open(fileroot + imfile)[1].header) for imfile in fits_files]
-    input_data, output_data = read_data(detname, filename=filename,
+        #sky_coord = [wcs.WCS(fits.open(fileroot + imfile)[1].header) for imfile in fits_files]
+        dolphot_sky_coord = [wcs.WCS(fits.open(fileroot + imfile)[0].header) for imfile in fits_files]
+        stips_sky_coord = [wcs.WCS(fits.open(fileroot + imfile)[1].header) for imfile in stips_files]
+        print("FILES: ",fileroot + fits_files[0])
+        #sky_coord = [wcs.WCS(fits.open(fileroot + imfile)[0].header) for imfile in fits_files]
+    input_data, output_data = read_data(detname, this_config, filename=filename,
                                         fileroot=fileroot,
                                         targroot=targroot,
                                         filters=filters)
+    #print("Sending input_data ",input_data)
+    #print("Sending output_data ",output_data)
     in_df, out_df, out_lab = prep_data(input_data, output_data,
                                        use_radec=use_radec,
-                                       sky_coord=sky_coord,
+                                       dolphot_sky_coord=dolphot_sky_coord,
+                                       stips_sky_coord=stips_sky_coord,
                                        filters=filters,
                                        tol=tol,
                                        valid_mag=valid_mag,
                                        ref_fits=ref_fits)
+    print("DFs going to plotting lengths are: ",len(in_df)," and ",len(out_df))
+    #print("They are: ",in_df," and ",out_df)
     clf = MLPc(hidden_layer_sizes=(10, 10, 10),
                activation='logistic',
                solver='lbfgs',
@@ -119,7 +184,8 @@ def clean_all(detname, filename='10_10_phot.txt',
                           clf=clf)
     if opt['plots']:
         make_plots(in_df, out_df, new_labels,
-                   sky_coord=sky_coord,
+                   stips_sky_coord=stips_sky_coord,
+                   dolphot_sky_coord=dolphot_sky_coord,
                    filters=filters,
                    fileroot=fileroot,
                    nameroot=filepre,
@@ -129,7 +195,8 @@ def clean_all(detname, filename='10_10_phot.txt',
                    show_plot=show_plot)
     if opt['saveClean']:
         save_cats(input_data, output_data, out_df, new_labels,
-                  sky_coord=sky_coord,
+                  stips_sky_coord=stips_sky_coord,
+                  dolphot_sky_coord=dolphot_sky_coord,
                   filters=filters,
                   fileroot=fileroot,
                   nameroot=filepre,
@@ -198,8 +265,14 @@ def classify(out_df, out_lab,
     return new_labels
 
 
-def read_my_data(fileroot, filenameroot, targroot, filt, detname):
-    fits_data = fits.open(fileroot + "Mixed_" + targroot + '_' + detname + '_' + filt + '_observed_' + detname + '.fits')
+def read_my_data(fileroot, filenameroot, targroot, filt, detname, this_config):
+    datadp = wp.DataProduct.select(config_id=str(this_config.config_id), subtype='observed_catalog', filtername=filt)
+    for dp in datadp:
+        if detname in dp.filename:
+            inputfiledp = dp
+    print("Mixed file being read is ",inputfiledp.filename)
+    fits_data = fits.open(inputfiledp.filename)
+    #fits_data = fits.open(fileroot + "Mixed_" + targroot + '_' + detname + '_' + filt + '_observed_' + detname + '.fits')
     #fits_data = fits.open(fileroot + "Mixed_" + filenameroot + '_' + targroot + '_' + filt + '_observed_SCA01.fits')
     #fits_data = fits.open(fileroot + "Mixed_" + filenameroot + '_' + filt + '_observed_SCA01.fits')
     print("ALL has this many tables: ", len(fits_data))
@@ -215,7 +288,7 @@ def read_my_data(fileroot, filenameroot, targroot, filt, detname):
             count += 1
             if count == 1:
                 input_data1 = [Table.read(table)][0]
-                print("INPUT1: ", input_data1)
+                #print("INPUT1: ", input_data1)
             else:
                 print("COUNT: ", count)
                 new = Table.read(table)
@@ -225,13 +298,13 @@ def read_my_data(fileroot, filenameroot, targroot, filt, detname):
         else:
             check += 1
     fits_data.close()
-    print("INPUTEND: ", len(input_data1))
+    print("INPUTEND: ", len(input_data1))#, input_data1)
     # We do not want the first item? If we do,
     # change to: return input_data1
     return input_data1
 
 
-def read_data(detname,filename='10_10_phot.txt', fileroot='', targroot='', filters=FILTERS):
+def read_data(detname,this_config, filename='10_10_phot.txt', fileroot='', targroot='', filters=FILTERS):
     """
     Read in the raw fata files:
     - Input: sythetic photometry file for image generation, IPAC format
@@ -241,14 +314,15 @@ def read_data(detname,filename='10_10_phot.txt', fileroot='', targroot='', filte
     ordered by corresponding filternames.
     """
     filenameroot = filename.split('.')[0]
-    input_data = [read_my_data(fileroot, filenameroot, targroot, filt, detname) for filt in FILTERSHORT]
+    input_data = [read_my_data(fileroot, filenameroot, targroot, filt, detname, this_config) for filt in FILTERSHORT]
     output_data = np.loadtxt(fileroot + filename)
     np.random.shuffle(output_data)
-    print(input_data[3])
+    #print("INPUTTEST :",input_data[3])
+    #print("OUTPUTTEST :",output_data[3])
     return input_data, output_data
 
 
-def prep_data(input_data, output_data, sky_coord=SKY_COORD,
+def prep_data(input_data, output_data, dolphot_sky_coord=SKY_COORD, stips_sky_coord=None,
               filters=FILTERS, use_radec=False,
               tol=2., valid_mag=30., ref_fits=0.):
     """
@@ -262,7 +336,7 @@ def prep_data(input_data, output_data, sky_coord=SKY_COORD,
     - Third array for labels of output data in numpy arrays
     """
     nfilt = filters.size
-    print("output",output_data)
+    #print("output",output_data)
     _xy = output_data[:, 2:4].T
     _count = output_data[:, range(13, 13 + 13 * nfilt, 13)].T
     _vega_mags = output_data[:, range(16, 16 + 13 * nfilt, 13)].T
@@ -276,7 +350,9 @@ def prep_data(input_data, output_data, sky_coord=SKY_COORD,
     print("XY",_xy)
     print("count",_count)
     for i in range(nfilt):
+        #print("Prior to packing:: ",i," ",input_data[i])
         in_df.append(pack_input(input_data[i], AB_VEGA[i], valid_mag=valid_mag))
+        #print("after packing:: ",i," ",in_df)
         t = validate_output(_mag_errors[i],
                             _count[i], _snr[i],
                             _sharp[i], _round[i],
@@ -284,13 +360,16 @@ def prep_data(input_data, output_data, sky_coord=SKY_COORD,
         out_df.append(pack_output(_xy, _vega_mags[i], _mag_errors[i],
                                   _count[i], _snr[i], _sharp[i], _round[i],
                                   _crowd[i], t))
+        #print("OUTDF: ",out_df) 
+        print("Labels input wcs1 and wcs2: ",str(i),stips_sky_coord[i],dolphot_sky_coord[ref_fits])
         labels.append(label_output(in_df[i], out_df[i],
                                    tol=tol,
                                    valid_mag=valid_mag,
                                    radec={'opt': use_radec,
-                                          'wcs1': sky_coord[i],
-                                          'wcs2': sky_coord[ref_fits]}))
+                                          'wcs1': stips_sky_coord[i],
+                                          'wcs2': dolphot_sky_coord[ref_fits]}))
     #print("IN_DF ",in_df,len(in_df),in_df[0])
+    #print("OUT_DF ",out_df,len(out_df),out_df[0])
     return in_df, out_df, labels
 
 
@@ -327,7 +406,9 @@ def pack_input(data, ab_vega, valid_mag=30.):
     #t = data['vegamag'] < valid_mag
     t = data['abmag'] < valid_mag
     #return pd.DataFrame({'x': data['x'][t], 'y': data['y'][t], 'm': data['vegamag'][t], 'type': data['type'][t]})
-    return pd.DataFrame({'x': data['x'][t], 'y': data['y'][t], 'm': data['abmag'][t]-ab_vega, 'type': data['type'][t]})
+    #return pd.DataFrame({'x': data['x'][t], 'y': data['y'][t], 'm': data['abmag'][t]-ab_vega, 'type': data['type'][t]})
+    return pd.DataFrame({'x': data['x'][t].byteswap().newbyteorder(), 'y': data['y'][t].byteswap().newbyteorder(), 'm': data['abmag'][t].byteswap().newbyteorder()-ab_vega, 'type': data['type'][t].byteswap().newbyteorder()})
+    #return pd.DataFrame({'ra' : data['ra'][t], 'dec' : data['dec'][t], 'x': data['x'][t], 'y': data['y'][t], 'm': data['abmag'][t]-ab_vega, 'type': data['type'][t]})
 
 def pack_output(xy, mags, errs, count, snr, shr, rnd, crd, t):
     """
@@ -362,6 +443,7 @@ def label_output(in_df, out_df, tol=2., valid_mag=30., radec=None):
     t = (mags < valid_mag)
     in_x, in_y, typ_in = in_x[t], in_y[t], typ_in[t]
     out_x, out_y = out_df['x'].values, out_df['y'].values
+    print("Calling match_in_out from label")
     tmp, typ_out = match_in_out(tol, in_x, in_y, out_x, out_y, typ_in, radec=radec)
     typ_out[typ_out == 'sersic'] = 'other'
     mag_diff = np.zeros(len(in_x))
@@ -390,7 +472,8 @@ def input_pair(df, i, j, radec=None):
     if radec['opt']:
         ra1, dec1 = xy_to_wcs(np.array([x1, y1]).T, radec['wcs1'])
         ra2, dec2 = xy_to_wcs(np.array([x2, y2]).T, radec['wcs2'])
-        in12 = match_cats(0.05, ra1, dec1, ra2, dec2)
+        print("Calling match_cats in input pair")
+        in12 = match_cats(2.0, ra1, dec1, ra2, dec2)
     else:
         in12 = match_lists(0.1, x1, y1, x2, y2)
     m1_in, x1, y1, typ1_in = m1_in[in12 != -1], x1[in12 != -1], y1[in12 != -1], typ1_in[in12 != -1]
@@ -442,16 +525,19 @@ def clean_pair(in_pair, out_pair, tol=2., radec=None):
         radec = {'opt': False, 'wcs1': '', 'wcs2': ''}
     x1, y1, typ_in = in_pair['X'], in_pair['Y'], in_pair['typ_in']
     x2, y2 = out_pair['xy'][0], out_pair['xy'][1]
+    #print("OUTPAIR: ",x2,y2)
     m1_out, m2_out = out_pair['mag'][0], out_pair['mag'][1]
     t1, t2 = out_pair['lbl'][0], out_pair['lbl'][1]
     t = (t1 == 1) & (t2 == 1)
     x2, y2, m1_out, m2_out = x2[t], y2[t], m1_out[t], m2_out[t]
+    #print("OUTPAIR after [t]: ",x2,y2)
+    print("Calling match_in_out from clean_pair")
     tmp, typ_out = match_in_out(tol, x1, y1, x2, y2, typ_in, radec=radec)
     return dict(zip(['m1', 'm2', 'x', 'y', 'typ_out'], [m1_out, m2_out, x2, y2, typ_out]))
 
 
-def save_cats(in_dat, out_dat, out_df, labels,
-              sky_coord=SKY_COORD, fileroot='', nameroot='',
+def save_cats(in_dat, out_dat, out_df, labels,stips_sky_coord=SKY_COORD,
+              dolphot_sky_coord=SKY_COORD, fileroot='', nameroot='',
               filters=FILTERS, tol=2., ref_fits=0.,
               use_radec=False, valid_mag=30.):
     i = -1
@@ -468,9 +554,11 @@ def save_cats(in_dat, out_dat, out_df, labels,
         x1, y1 = _df1['x'].values, _df1['y'].values
         x2, y2 = _df2['x'].values, _df2['y'].values
         if use_radec:
-            ra1, dec1 = xy_to_wcs(np.array([x1, y1]).T, sky_coord[i])
-            ra2, dec2 = xy_to_wcs(np.array([x2, y2]).T, sky_coord[ref_fits])
+            ra1, dec1 = xy_to_wcs(np.array([x1, y1]).T, stips_sky_coord[i])
+            ra2, dec2 = xy_to_wcs(np.array([x2, y2]).T, dolphot_sky_coord[ref_fits])
+            print("Calling match_cats from save_cats for input to output")
             in1 = match_cats(tol * 0.11, ra1, dec1, ra2, dec2)
+            print("Calling match_cats from save_cats for output to input")
             in2 = match_cats(tol * 0.11, ra2, dec2, ra1[t], dec1[t])
         else:
             in1 = match_lists(tol, x1, y1, x2, y2)
@@ -528,12 +616,17 @@ def match_cats(tol, ra1, dec1, ra2, dec2):
     return index of 2nd list at coresponding position in the 1st
     return -1 if no match is found within matching radius (tol)
     """
+    #print("MATCHCATS ra dec ra2 dec2: ",ra1,dec1,ra2,dec2)
+    print("Lengths: ",len(ra1),len(dec1),len(ra2),len(dec2))
     c1 = SkyCoord(ra=ra1 * u.degree, dec=dec1 * u.degree)
     c2 = SkyCoord(ra=ra2 * u.degree, dec=dec2 * u.degree)
     in1, sep, tmp = match_coordinates_sky(c1, c2, storekdtree=False)
-    sep = sep.to(u.arcsec)
+    #sep = sep.to(u.arcsec)
     in1[in1 == ra2.size] = -1
-    in1[sep > tol * u.arcsec] = -1
+    #in1[sep > tol * u.arcsec] = -1
+    #print("SEP: ",sep.to(u.degree), "len ",len(sep))
+    in1[sep > 0.0001 * u.degree] = -1
+    print("LOSEPLEN: ",len(in1[sep<0.0001*u.degree]))
     return in1
 
 
@@ -551,8 +644,15 @@ def match_in_out(tol, in_x, in_y, out_x, out_y, typ_in, radec=None):
     if radec is None:
         radec = {'opt': False, 'wcs1': '', 'wcs2': ''}
     if radec['opt']:
+        #print("in_x, in_y, out_x, out_y:")
+        #print(in_x, in_y, out_x, out_y)
         ra1, dec1 = xy_to_wcs(np.array([in_x, in_y]).T, radec['wcs1'])
         ra2, dec2 = xy_to_wcs(np.array([out_x, out_y]).T, radec['wcs2'])
+        #ra1, dec1 = xy_to_wcs(np.array([in_x, in_y]).T, stips_sky_coord[0])
+        #ra2, dec2 = xy_to_wcs(np.array([out_x, out_y]).T, dolphot_sky_coord[0])
+        print("match_in_out lengths ra dec ra2 dec2:")
+        print(len(ra1), len(dec1), len(ra2), len(dec2))
+        print("Calling match_cats from match_in_out")
         in1 = match_cats(tol * 0.11, ra1, dec1, ra2, dec2)
     else:
         in1 = match_lists(tol, in_x, in_y, out_x, out_y)
@@ -597,8 +697,8 @@ def print_report(filt, test_labels, pred_labels, feat_nms, feat_imp=None, short_
     return print('\n')
 
 
-def make_plots(in_df, out_df, new_labels,
-               sky_coord=SKY_COORD, fileroot='', nameroot='',
+def make_plots(in_df, out_df, new_labels,stips_sky_coord=SKY_COORD,
+               dolphot_sky_coord=SKY_COORD, fileroot='', nameroot='',
                filters=FILTERS,
                tol=5., ref_fits=0.,
                use_radec=False,
@@ -619,11 +719,15 @@ def make_plots(in_df, out_df, new_labels,
     for i in range(len(filters) - 1):
         for j in range(i, len(filters) - 1):
             radec1 = {'opt': use_radec,
-                      'wcs1': sky_coord[i], 'wcs2': sky_coord[j + 1]}
+                      'wcs1': stips_sky_coord[i], 'wcs2': stips_sky_coord[j + 1]}
+            #radec2 = {'opt': use_radec,
+            #          'wcs1': dolphot_sky_coord[i], 'wcs2': dolphot_sky_coord[ref_fits]}
             radec2 = {'opt': use_radec,
-                      'wcs1': sky_coord[i], 'wcs2': sky_coord[ref_fits]}
+                      'wcs1': stips_sky_coord[i], 'wcs2': dolphot_sky_coord[ref_fits]}
+            print("WCS1 check: ",radec1)
+            print("WCS2 check: ",radec2)
             in_pair, out_pair = paired_in(i, j, radec1), paired_out(i, j)
-            print("PAIRED IN",in_pair,"LENGTH ",len(in_pair))
+            print("PAIRED IN LENGTH ",len(in_pair))
             cln_pair = clean_pair(in_pair, out_pair, tol=tol, radec=radec2)
             make_cmd_and_xy(in_pair, out_pair, cln_pair,
                             fileroot=fileroot, tol=tol, filepre=nameroot,
@@ -666,13 +770,14 @@ def make_cmd_and_xy(all_in={}, all_out={}, clean_out={},
     if ('input' in opt) & (len(all_in) > 0):
         m1_in, m2_in, typ_in = all_in['m1_in'], all_in['m2_in'], all_in['typ_in']
         stars, other = typ_in == 'point', typ_in != 'point'
-        print('Stars: {:d}  Others: {:d}'.format(int(np.sum(stars)), int(np.sum(other))))
+        print('Input Stars: {:d}  Others: {:d}'.format(int(np.sum(stars)), int(np.sum(other))))
         plot_me(m1_in, m2_in, stars, other,
                 'Input CMD (Vega)', 'input', 'Vega')
     if ('output' in opt) & (len(all_out) > 0):
         m1, m2 = all_out['mag'][0], all_out['mag'][1]
         if 'input' in opt:
             in_x, in_y, out_x, out_y = all_in['X'], all_in['Y'], all_out['xy'][0], all_out['xy'][1]
+            print("Calling match_in_out from make_cmd_and_xy")
             in1, typ_out = match_in_out(tol, in_x, in_y, out_x, out_y, typ_in, radec=radec)
             # stars, other = typ_out == 'point', typ_out != 'point'
             if ('diff' in opt) | ('diff2' in opt):
@@ -687,12 +792,12 @@ def make_cmd_and_xy(all_in={}, all_out={}, clean_out={},
         else:
             typ_out = np.repeat('other', len(m1))
         stars, other = typ_out == 'point', typ_out != 'point'
-        print('Stars: {:d}  Others: {:d}'.format(int(np.sum(stars)), int(np.sum(other))))
+        print('Output Stars: {:d}  Others: {:d}'.format(int(np.sum(stars)), int(np.sum(other))))
         plot_me(m1, m2, stars, other, 'Full CMD', 'output', 'full')
     if ('clean' in opt) & (len(clean_out) > 0):
         m1, m2, typ_out = clean_out['m1'], clean_out['m2'], clean_out['typ_out']
         stars, other = typ_out == 'point', typ_out != 'point'
-        print('Stars: {:d}  Others: {:d}'.format(int(np.sum(stars)), int(np.sum(other))))
+        print('Clean Stars: {:d}  Others: {:d}'.format(int(np.sum(stars)), int(np.sum(other))))
         plot_me(m1, m2, stars, other, 'Cleaned CMD', 'clean', 'clean')
         rr, fr = get_stat(all_in['typ_in'], clean_out['typ_out'])
         print('Recovery Rate:\t {:.2f}\nFalse Rate: \t {:.2f}\n'.format(rr, fr))
@@ -837,14 +942,22 @@ if __name__ == '__main__':
     args = parse_all()
     if args.config_id:
         myConfig = wp.Configuration(args.config_id)
-        cull_photometry(myConfig)
+        try:
+            cull_photometry(myConfig)
+        except Exception as e:
+            print(f"Culling failed: {e}")
+            #raise Exception
     elif args.target_id:
         myTarget = wp.Target(int(args.target_id))
         pid = myTarget.pipeline_id
         allConf = myTarget.configurations
         for myConfig in allConf:
             print(myConfig)
-            cull_photometry(myConfig)
+            try:
+                cull_photometry(myConfig)
+            except Exception as e:
+                print(f"Culling failed: {e}")
+                #raise Exception
     else:
         this_job = wp.ThisJob
         this_event = wp.ThisEvent
@@ -852,7 +965,11 @@ if __name__ == '__main__':
         print(this_job.config_id)
         myConfig = this_job.config
         detname = this_event.options['detname']
-        cull_photometry(myConfig, dp_id, detname)
+        try:
+            cull_photometry(myConfig, dp_id, detname)
+        except Exception as e:
+            print(f"Culling failed: {e}")
+            #raise Exception
     new_event = this_job.child_event('culling_done', tag=dp_id, options={'dp_id': dp_id, 'detname': detname, 'submission_type':'scheduler'})
     print("Firing culling_done event")
     this_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  culling_done"]))

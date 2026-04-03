@@ -81,7 +81,7 @@ def prep_image(imgpath, filtname, config, thisjob, dp_id,detname):
     #    return 0
     try:
         dp.filename = new_image_name
-        _dpnew = config.dataproduct(filename=new_image_name, relativepath=config.procpath,group='proc', data_type='stips_image', subtype=detname,filtername=filtname)
+        _dpnew = config.dataproduct(filename=new_image_name, relativepath=config.procpath,group='proc', data_type='stips_image', ra=dp.ra, dec=dp.dec, subtype=detname,filtername=filtname)
 
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -223,6 +223,19 @@ if __name__ == '__main__':
         catalogDP = wp.DataProduct(catalogID)
         this_conf = catalogDP.config
         dither = this_conf.parameters["dither"]
+        try:
+            dithers1 = this_conf.parameters['dither']
+            print("DITHERS 1:", dithers1)
+            if ',' in dithers1:
+                dithers2 = dithers1.split(',')
+                dither = int(dithers2[0][1:])
+            else:
+                dither = int(dithers1)
+                totims = int(total*dithers)
+        except Exception as e:
+            print("No dithers found, setting to 1", e)
+            dither = 1
+
         this_job.logprint(''.join(["Completed ", str(update_option), " of ", str(to_run), "\n"]))
         if update_option >= to_run:
             '''

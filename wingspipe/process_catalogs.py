@@ -38,6 +38,7 @@ def process_healpix_list(my_config,my_dp_id):
 
     #df = ds1['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f213','roman_f146'].to_pandas_df()
     df = ds1['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f213'].to_pandas_df()
+    #df = ds1['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184'].to_pandas_df()
     #df = ds1['ra','dec','roman_f062','roman_f087','roman_f106','roman_f129','roman_f158','roman_f184','roman_f146'].to_pandas_df()
     ds0.close()
     del ds0
@@ -68,82 +69,59 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
     procdp = my_config.dataproduct(filename=filename, relativepath=fileroot, group='proc')
     stips_files, filters = read_fixed(procdp.relativepath + '/' + procdp.filename, my_config, my_job, racent, deccent,procdp.filename)
     comp_name = 'completed' + detname
+    total = len(stips_files)
+    i = 0
     options = {comp_name: 0}
     my_job.options = options
-    try:
-        ra_dithers = my_params['ra_dithers']
-        dec_dithers = my_params['dec_dithers']
-        dither_size = my_params['dither_size']
-        centdec = my_params['deccent']
-        #total = len(stips_files) * (int(ra_dithers) * int(dec_dithers))*np.int(my_params['ndetect'])
-        total = len(stips_files) * (int(ra_dithers) * int(dec_dithers))
-        i = 0
-        data = run_hyakalloc_and_process_output()
-        result = find_partition_with_most_available_cpus(data)
-        if result:
-            partition, cpus = result
-            print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
-        else:
-            print("Could not parse resource data or find free CPUs information.")
-        for stips_cat in stips_files:
-            filtname = filters[i]
-            _dp = my_config.dataproduct(filename=stips_cat, relativepath=my_config.procpath, group='proc',
-                                        filtername=filtname, subtype='stips_input_catalog')
-            stipsfilepath = my_config.procpath + '/' + stips_cat
-            dpid = _dp.dp_id
-            dithnum = 0
-            for k in range(int(ra_dithers)):
-                ra_dither = float(dither_size) * np.cos(float(centdec) * 3.14159 / 180.0) * int(k)
-                for j in range(int(dec_dithers)):
-                    dec_dither = float(dither_size) * (int(j))
-                    filename = stipsfilepath.split('/')[-1]
-                    filtroot = filename.split('_')[-1].split('.')[0]
-                    dithfilepath = stipsfilepath.replace(''.join(['_', str(filtroot)]),
-                                                         ''.join(['_', str(dithnum), '_', str(filtroot)]))
-                    print("DITHFILE ", dithfilepath)
-                    subprocess.run(['ln', '-s', stipsfilepath, dithfilepath], stdout=subprocess.PIPE)
-                    dithfilename = dithfilepath.split('/')[-1]
-                    _dp = my_config.dataproduct(filename=dithfilename, relativepath=my_config.procpath, group='raw')
-                    newdpid = _dp.dp_id
-                    eventtag = filtname+'_ra:'+str(k)+'/'+str(ra_dithers)+'_dec:'+str(j)+'/'+str(dec_dithers)
-                    #new_event = my_job.child_event('new_stips_catalog', tag=eventtag,
-                    #                               options={'dp_id': newdpid, 'to_run': total, 'name': comp_name,'submission_type' : 'pbs',
-                    #                                        'ra_dither': ra_dither, 'dec_dither': dec_dither, 'detname': detname})
+    data = run_hyakalloc_and_process_output()
+    result = find_partition_with_most_available_cpus(data)
+    if result:
+        partition, cpus = result
+        print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
+    else:
+        print("Could not parse resource data or find free CPUs information.")
 
-                    new_event = my_job.child_event('new_stips_catalog', tag=eventtag,
-                                                   options={'dp_id': newdpid, 'to_run': total, 'name': comp_name,
-                                                       'ra_dither': ra_dither, 'dec_dither': dec_dither, 'detname': detname, 'partition': partition})
-                    dithnum += 1
-                    my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
-                    new_event.fire()
+    for stips_cat in stips_files:
+        filtname = filters[i]
+        _dp = my_config.dataproduct(filename=stips_cat, relativepath=my_config.procpath, group='proc',
+                                    filtername=filtname, subtype='stips_input_catalog')
+        stipsfilepath = my_config.procpath + '/' + stips_cat
+        dpid = _dp.dp_id
+        dithnum = 0
+        try:
+            dithers1 = my_config.parameters['dither']
+            print("DITHERS 1:", dithers1)
+            if ',' in dithers1:
+                dithers2 = dithers1.split(',')
+                dithers = int(dithers2[i][1:])
+                totims = 0
+                for d in dithers2:
+                    totims += int(d[1:])
+                print("TOTIMS: ",totims)
+            else:
+                dithers = int(dithers1)
+                totims = int(total*dithers)
+        except Exception as e:
+            print("No dithers found, setting to 1", e)
+            dithers = 1
+        if dithers > 1:
+            for dither in range(dithers):
+                e = dither // 2 % 2
+                e2 = (dither+1) // 2 % 2
+                tag = filtname + "_" + str(dither)
+                ra_dither = 0.935 * e + np.floor(i/4)
+                dec_dither = 0.935 * e2 + np.floor(i/4)
+                new_event = my_job.child_event('new_stips_catalog', tag=tag,
+                        options={'dp_id': dpid, 'detname': detname, 'to_run': totims, 'name': comp_name,'ra_dither': ra_dither,
+                            'dec_dither': dec_dither,'submission_type' : 'scheduler', 'partition': partition})
+                my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
+                new_event.fire()
             i += 1
-        my_job.logprint("Dither Success")
-        print("Dither Success process")
-
-    except KeyError:
-        # except "ksdf":
-        my_job.logprint("No Dithers Found")
-        print("No Dithers Found")
-        print("STIPS",stips_files,filters)
-        #total = len(stips_files)*np.int(my_params['ndetect'])
-        total = len(stips_files)
-        i = 0
-        data = run_hyakalloc_and_process_output()
-        result = find_partition_with_most_available_cpus(data)
-        if result:
-            partition, cpus = result
-            print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
         else:
-            print("Could not parse resource data or find free CPUs information.")
-        for stips_cat in stips_files:
-            filtname = filters[i]
-            _dp = my_config.dataproduct(filename=stips_cat, relativepath=my_config.procpath, group='proc',
-                                        filtername=filtname, subtype='stips_input_catalog')
-            dpid = _dp.dp_id
             new_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                    options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'submission_type' : 'scheduler', 'ra_dither': 0.0, 'dec_dither': 0.0,'detname': detname, 'partition': partition})
+                options={'dp_id': dpid, 'detname': detname, 'to_run': total, 'name': comp_name,'ra_dither': 0.0,
+                    'dec_dither': 0.0,'submission_type' : 'scheduler', 'partition': partition})
             my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
-            my_job.logprint(''.join(["event detname is ", str(detname)]))
             new_event.fire()
             i += 1
     time.sleep(150)    
@@ -214,6 +192,10 @@ def read_fixed(filepath, my_config, my_job, racent, deccent, filename):
     if racent == 0.0:
         racent = float(my_params['racent'])
         deccent = float(my_params['deccent'])
+    if (racent < 0):
+        racent = (np.min(ra)+np.max(ra))/2.0
+        deccent = (np.min(dec)+np.max(dec))/2.0
+        my_params['racent'] = racent
     if (racent < 0):
         racent = (np.min(ra)+np.max(ra))/2.0
         deccent = (np.min(dec)+np.max(dec))/2.0
@@ -341,18 +323,31 @@ def process_df_catalog(my_config,my_event,my_job,df):
                                     filtername=filtname, subtype='stips_input_catalog')
         dpid = _dp.dp_id
         try:
-            dithers = my_config.parameters['dither']
-        except:
-            print("No dithers found, setting to 1")
+            dithers1 = my_config.parameters['dither']
+            print("DITHERS 1:", dithers1)
+            if ',' in dithers1:
+                dithers2 = dithers1.split(',')
+                dithers = int(dithers2[i][1:])
+                totims = 0
+                for d in dithers2:
+                    totims += int(d[1:])
+                print("TOTIMS: ",totims)
+            else:
+                dithers = int(dithers1)
+                totims = int(total*dithers)
+        except Exception as e:
+            print("No dithers found, setting to 1", e)
             dithers = 1
         if dithers > 1:
             for dither in range(dithers):
+                e = dither // 2 % 2
+                e2 = (dither+1) // 2 % 2
                 tag = filtname + "_" + str(dither)
-                ra_dither = 105.0 * float(dither)
-                dec_dither = 105.0 * float(dither)
+                ra_dither = 0.935 * e + np.floor(i/4)
+                dec_dither = 0.935 * e2 + np.floor(i/4)
                 new_event = my_job.child_event('new_stips_catalog', tag=tag,
-                    options={'dp_id': dpid, 'detname': detname, 'to_run': total*dithers, 'name': comp_name,'ra_dither': ra_dither,
-                        'dec_dither': dec_dither,'submission_type' : 'scheduler', 'partition': partition})
+                        options={'dp_id': dpid, 'detname': detname, 'to_run': totims, 'name': comp_name,'ra_dither': ra_dither,
+                            'dec_dither': dec_dither,'submission_type' : 'scheduler', 'partition': partition})
                 my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
                 new_event.fire()
             i += 1
@@ -453,8 +448,11 @@ def read_match(filepath, cols, my_config, my_job):
 
 def getgalradec(infile, ra, dec, magni, background):
     filt = 'F087'
-    zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,26.06,27.66])
-    zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,24.528,26.4])
+    #zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,26.06,27.66])
+    #zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,24.528,26.4])
+    #Updated ZPs from https://github.com/RomanSpaceTelescope/roman-technical-information/blob/main/data/WideFieldInstrument/Imaging/ZeroPoints/Roman_zeropoints_20240301.ecsv
+    zp_ab = np.array([26.58, 26.23, 26.32, 26.32, 26.33,25.9,25.83])
+    zp_vega = np.array([26.42,25.65,25.64,25.30,25.0,24.32,24.02])
 
     starpre = '.'.join(infile.split('.')[:-1])
     filedir = background + '/'
@@ -474,8 +472,12 @@ def write_stips(infile, ra, dec, magni, background, galradec, racent, deccent, s
     #zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,27.66])
     #zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,26.4])
     filternames = ['F062', 'F087', 'F106', 'F129', 'F158', 'F184','F213']
-    zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,26.06])
-    zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,26.06])
+    #zp_ab = np.array([26.73, 26.39, 26.41, 26.43, 26.47,26.08,26.06])
+    #zp_vega = np.array([26.471,25.991,25.858,25.520,25.219,24.588,26.06])
+    #Updated ZPs from https://github.com/RomanSpaceTelescope/roman-technical-information/blob/main/data/WideFieldInstrument/Imaging/ZeroPoints/Roman_zeropoints_20240301.ecsv
+    zp_ab = np.array([26.58, 26.23, 26.32, 26.32, 26.33,25.9,25.83])
+    zp_vega = np.array([26.42,25.65,25.64,25.30,25.0,24.32,24.02])
+
 
     starpre = '.'.join(infile.split('.')[:-1])
     filedir = '/'.join(infile.split('/')[:-1]) + '/'
@@ -696,7 +698,8 @@ if __name__ == '__main__':
             except:
                 ndetect = 1
             if ndetect == 1:
-                detname = '.'.join(targname.split('.')[:-1])
+                #detname = '.'.join(targname.split('.')[:-1])
+                detname = my_params['detectors']
                 process_fixed_catalog(job_id, dp_id, 0.0, 0.0, detname)
             if ndetect > 1:
                 for i in range(ndetect):
@@ -708,10 +711,6 @@ if __name__ == '__main__':
                     new_event.fire()
             time.sleep(150)
         elif 'split' in event.name:
-            detracent = event.options['racent']
-            detdeccent = event.options['deccent']
-            detname = event.options['detname']
-            my_params = my_config.parameters
             process_fixed_catalog(job_id, dp_id, detracent, detdeccent, detname)
 
         elif 'healpix' in event.name:
