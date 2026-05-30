@@ -8,6 +8,7 @@ available in the ``wpipe.scheduler`` namespace - use that instead.
 
 import datetime
 import math
+import threading
 import time
 
 from .BaseScheduler import BaseScheduler
@@ -29,6 +30,7 @@ NODE_CORES_DICT = {"bro": 2 * 14, "has": 2 * 12, "ivy": 2 * 10, "san": 2 * 8}
 class SlurmScheduler(BaseScheduler):
     # Keep track of all the instances that might be spawned
     schedulers: list["SlurmScheduler"] = list()
+    _lock = threading.Lock()
 
     def __init__(self, jobdata: "JobData"):
         super().__init__(
@@ -39,7 +41,8 @@ class SlurmScheduler(BaseScheduler):
         self._key = self.SlurmKey(jobdata)
         self._jobList = list()
 
-        SlurmScheduler.schedulers.append(self)  # add this new scheduler to the list
+        with SlurmScheduler._lock:
+            SlurmScheduler.schedulers.append(self)  # add this new scheduler to the list
 
         # run the submit now that the object is created
         self._submitJob(jobdata)
@@ -62,7 +65,8 @@ class SlurmScheduler(BaseScheduler):
 
     def _execute(self):
         # remove scheduler from list so we don't receive any new submissions
-        SlurmScheduler.schedulers.remove(self)
+        with SlurmScheduler._lock:
+            SlurmScheduler.schedulers.remove(self)
 
         # Throttle job execute to allow any time for last jobs to submit if they anything main thread is still holding a reference to this handler.
         time.sleep(1)
@@ -160,7 +164,7 @@ class SlurmScheduler(BaseScheduler):
         # create a dictionary
         slurmDict = {
             "nnodes": n_nodes,
-            "njobs": n_jobs_per_node,
+            "njobs": n_jobs_per_node + 1,  # +1 for consumer overhead
             "ncpus": self._jobList[0].getNcpus(),
             "walltime": self._jobList[0].getWalltime(),
             "mem": self._jobList[0].getMemory(),
@@ -184,13 +188,13 @@ class SlurmScheduler(BaseScheduler):
 
     @staticmethod
     def submit(jobdata):
-        # If no schedulers exist then create a new one and exit this method
-        if len(SlurmScheduler.schedulers) == 0:
-            SlurmScheduler(jobdata)
-            return
+        with SlurmScheduler._lock:
+            if len(SlurmScheduler.schedulers) == 0:
+                SlurmScheduler(jobdata)
+                return
+            has, scheduler = SlurmScheduler._checkForScheduler(jobdata)
 
-        (hasScheduler, scheduler) = SlurmScheduler._checkForScheduler(jobdata)
-        if hasScheduler:  # check for existing schedulers and call submitJob for the retrieved scheduler
+        if has:  # check for existing schedulers and call submitJob for the retrieved scheduler
             print(
                 "Adding job to scheduler with key {} ...".format(
                     scheduler._key.getKey()

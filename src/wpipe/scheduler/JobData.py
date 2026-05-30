@@ -175,3 +175,15 @@ class JobData:
                 self.getCondaEnv()
             )
         return string
+
+    def to_dict(self):
+        """Convert JobData to a JSON-serializable dictionary."""
+        return {
+            "task_name": self._task_name,
+            "pipeline_pipe_root": self._pipeline_pipe_root,
+            "pipeline_config_root": self._pipeline_config_root,
+            "task_executable": self._task_executable,
+            "pipeline_id": self._pipeline_id,
+            "pipeline_username": self._pipeline_username,
+            "job_id": self._job_id,
+        }

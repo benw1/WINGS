@@ -41,4 +41,4 @@ class BaseScheduler(abc.ABC):
 
     def run_it(self):
         self._threadtimer.cancel()
-        self._execute()
+        threading.Thread(target=self._execute, daemon=True).start()

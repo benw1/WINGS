@@ -114,7 +114,7 @@ sqlalchemy.engine.base.Engine object: handles the connection to the database.
 #     engine = sa.create_engine("mysql+pymysql://root:password@localhost:8000/server")
 # engine = sa.create_engine("mysql+pymysql://root:password@localhost:8000/server")  # This is for the mysql container
 
-if not sqlite:
+if not sqlite and not ENGINE_URL.startswith("sqlite"):
     query1 = text("CREATE DATABASE IF NOT EXISTS wpipe")
     Engine.connect().execute(query1)
     query2 = text("USE wpipe")
