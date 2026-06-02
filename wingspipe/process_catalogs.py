@@ -89,7 +89,7 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
         dpid = _dp.dp_id
         dithnum = 0
         try:
-            dithers1 = my_config.parameters['dither']
+            dithers1 = str(my_config.parameters['dither'])
             print("DITHERS 1:", dithers1)
             if ',' in dithers1:
                 dithers2 = dithers1.split(',')
@@ -323,7 +323,7 @@ def process_df_catalog(my_config,my_event,my_job,df):
                                     filtername=filtname, subtype='stips_input_catalog')
         dpid = _dp.dp_id
         try:
-            dithers1 = my_config.parameters['dither']
+            dithers1 = str(my_config.parameters['dither'])
             print("DITHERS 1:", dithers1)
             if ',' in dithers1:
                 dithers2 = dithers1.split(',')
@@ -337,6 +337,7 @@ def process_df_catalog(my_config,my_event,my_job,df):
                 totims = int(total*dithers)
         except Exception as e:
             print("No dithers found, setting to 1", e)
+            skdjf
             dithers = 1
         if dithers > 1:
             for dither in range(dithers):

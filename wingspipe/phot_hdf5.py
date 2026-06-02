@@ -638,10 +638,10 @@ if __name__ == '__main__':
         options={"dp_id": hd5_dp.dp_id, "memory": "200G","detname": this_event.options["detname"], 'submission_type':'scheduler'}
         )  # next event
         next_event.fire()
-        #next_event = my_job.child_event(
-        #name="start",value="split_fakestars.py",
-        #options={"target_id": my_target.target_id,"phot_dp_id":this_dp_id}
-        #)  # next event
-        #next_event.fire()
+        next_event = my_job.child_event(
+        name="start",value="split_fakestars.py",
+        options={"target_id": my_target.target_id,"phot_dp_id":this_dp_id}
+        )  # next event
+        next_event.fire()
         time.sleep(150)
 

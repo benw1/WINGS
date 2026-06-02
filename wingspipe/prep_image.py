@@ -226,7 +226,8 @@ if __name__ == '__main__':
         try:
             dithers1 = this_conf.parameters['dither']
             print("DITHERS 1:", dithers1)
-            if ',' in dithers1:
+            #if ',' in dithers1:
+            if isinstance(dithers1, str):
                 dithers2 = dithers1.split(',')
                 dither = int(dithers2[0][1:])
             else:
