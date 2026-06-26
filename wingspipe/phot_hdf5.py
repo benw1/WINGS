@@ -426,9 +426,75 @@ def add_wcs(df, photfile, my_config, detname):
         elif len(drzfiles) > 1:
             my_job.logprint('Multiple drizzled files found: {}'.format(drzfiles))
             ref_detector = detname
-            for cand_ref in drzfiles:
-                if ref_detector in cand_ref.filename:
-                    drzfile = my_config.procpath+"/"+str(cand_ref.filename).strip()
+            try:
+                for cand_ref in drzfiles:
+                    if ref_detector in cand_ref.filename:
+                        drzfile = my_config.procpath+"/"+str(cand_ref.filename).strip()
+                my_job.logprint('Using {} as astrometric reference'.format(drzfile))
+            except:
+                print('No drizzled files found; looking for reference')
+                datadp = wp.DataProduct.select(config_id=str(my_config.config_id), subtype='dolphot_data')
+                datadpid = [_dp.dp_id for _dp in datadp]
+                dataname = [_dp.filename for _dp in datadp]
+                print("DATANAME ",dataname)
+                rinds = []
+                zinds = []
+                yinds = []
+                jinds = []
+                hinds = []
+                finds = []
+                kinds = []
+                count = 0
+                chipname = "chip1"
+                for dp in datadp:
+                    dp_id = dp.dp_id
+                    filt = str(dp.filtername)
+                    fname = dp.filename
+                    if chipname not in fname:
+                       thisjob.logprint(''.join([chipname, " not in ",fname,"\n"]))
+                       continue
+                    #print('fname = ', fname)
+                    if "F062" in filt and detname in fname:
+                        rinds.append(dp_id)
+                        count += 1
+                        print('rinds = ', rinds)
+                    if "F087" in filt and detname in fname:
+                        zinds.append(dp_id)
+                        count += 1
+                        print('zinds = ', zinds)
+                    if "F106" in filt and detname in fname:
+                        yinds.append(dp_id)
+                        count += 1
+                        print('yinds = ', yinds)
+                    if "F129" in filt and detname in fname:
+                        jinds.append(dp_id)
+                        count += 1
+                        print('jinds = ', jinds)
+                    if "F158" in filt and detname in fname:
+                        hinds.append(dp_id)
+                        count += 1
+                        print('hinds = ', hinds)
+                    if "F184" in filt and detname in fname:
+                        finds.append(dp_id)
+                        count += 1
+                        print('finds = ', finds)
+                    if "F213" in filt and detname in fname:
+                        finds.append(dp_id)
+                        count += 1
+                        print('kinds = ', kinds)
+
+                print("INDS ", rinds, zinds, yinds, jinds, hinds, hinds, finds, kinds, datadpid)
+                nimg = count
+                # my_params = config.parameters
+                # refimage = my_params['refimage']  #will make this more flexible later
+                refdp = wp.DataProduct(hinds[0]) #hinds[0] is empty because there is no F158
+                refimage = str(refdp.filename)
+                if "sim" in refimage:
+                    refimage = target.name + '_' + detname + '_' + str(refdp.dp_id) + '_' + refdp.filtername + ".fits"
+                else:
+                    print("No sim")
+                drzfile = my_config.procpath+"/"+str(refdp.filename).strip()
+
             my_job.logprint('Using {} as astrometric reference'.format(drzfile))
             ra, dec = WCS(drzfile).all_pix2world(df.x.values, df.y.values, 0) #0-based coord system matches dolphot
             my_job.logprint(f"{df.x.values}, {df.y.values},{ra},{dec}")

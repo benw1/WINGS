@@ -232,7 +232,7 @@ if __name__ == '__main__':
                 dither = int(dithers2[0][1:])
             else:
                 dither = int(dithers1)
-                totims = int(total*dithers)
+                #totims = int(total*dithers)
         except Exception as e:
             print("No dithers found, setting to 1", e)
             dither = 1
