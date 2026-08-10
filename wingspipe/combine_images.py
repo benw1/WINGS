@@ -4,14 +4,131 @@ import wpipe as wp
 import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS
+import astropy.coordinates as ac
+import astropy.table as at
+from astropy.io import fits
+from astropy.time import Time
+from astropy.wcs import WCS
+from astropy import units as u
 from reproject import reproject_interp
 from reproject.mosaicking import find_optimal_celestial_wcs, reproject_and_coadd
+from romancal.associations import asn_from_list
+from romancal.pipeline import MosaicPipeline
+import asdf
+import crds
+import os
 import warnings
 
 def register(task):
     _temp = task.mask(source="*", name="start", value=task.name)
     _temp = task.mask(source="*", name="multi_dither_prepped", value="*")
+    _temp = task.mask(source="*", name="isim_exposures_prepped", value="*")
 
+
+def make_level3_image(file_list,outname):
+    asn = asn_from_list.asn_from_list([(im, 'science') for im in l2_list],
+                                      product_name=product_name,
+                                      with_exptype=True,
+                                      target='none')
+    result = MosaicPipeline.call(asn,
+                                 configure_log=False,
+                                 on_disk=True,
+                                 save_results=True,
+                                 steps={'skymatch':{'skip': True},
+                                        'outlier_detection':{'skip':True},
+                                        'source_catalog':{'skip':True}})
+    level3_path = outname+"_coadd.asdf"
+    return level3_path
+
+def asdf_to_fits(im, json_file):
+    '''Convert Roman L2 image datamodel asdf format to FITS.
+    
+    Inputs
+    ------
+    im : roman datamodel
+        Roman L2 image or romanisim output
+    json_file : path-like
+        Path to JSON file with mapping of metadata to FITS keywords.
+        
+    Returns
+    -------
+    hdulist : fits.HDUList
+        FITS HDUList in dolphot-ready format (equivalent to romanmask output).
+    '''
+    # asdf to fits keywords
+    with open(json_file, 'r') as f:
+        key_map = json.load(f) 
+    ny, nx = im.data.shape
+    sip_header = im.meta.wcs.to_fits_sip(bounding_box=((-0.5, nx - 0.5), (-0.5, ny - 0.5)))
+    img_hdu = fits.PrimaryHDU(header=sip_header, data=im.data)
+    img_hdu.header.set('EXTNAME', 'DATA')
+    img_hdu.header.set('BUNIT', 'DN', 'Image units')
+    pri_hdu = img_hdu
+    # pri_hdu = fits.PrimaryHDU()
+    # relevant metadata
+    for key in key_map.keys():
+        if hasattr(im.meta, key):
+            pri_hdu.header = update_fits_header_from_meta(key_map[key], pri_hdu.header, getattr(im.meta, key))
+    # JANKY
+    if hasattr(im.meta, 'ref_file'):
+        if 'crds://' in im.meta.ref_file.gain:
+            gainfile = os.path.join(os.environ['CRDS_PATH'], 'references/roman/wfi', 
+                                    im.meta.ref_file.gain.split('crds://')[-1])
+            with rdm.open(gainfile) as gn:
+                # gn_mean = np.nanmean(gn.data[4:-4, 4:-4])
+                # img_hdu.data *= gn.data[4:-4, 4:-4] / gn_mean
+                img_hdu.header.set('GAIN', np.nanmean(gn.data[4:-4, 4:-4]))
+        else:
+            img_hdu.header.set('GAIN', rparam.reference_data['gain'])
+        # img_hdu.header.set('GAIN', 1.0)
+        if 'crds://' in im.meta.ref_file.readnoise:
+            rnfile = os.path.join(os.environ['CRDS_PATH'], 'references/roman/wfi', 
+                                im.meta.ref_file.readnoise.split('crds://')[-1])
+            with rdm.open(rnfile) as rn:
+                img_hdu.header.set('RDNOISE', np.nanmean(rn.data[4:-4, 4:-4]))
+        else:
+            img_hdu.header.set('RDNOISE', rparam.reference_data['readnoise'])
+        
+        crds_param = {'ROMAN.META.INSTRUMENT.DETECTOR': im.meta.instrument.detector,
+                    'ROMAN.META.INSTRUMENT.NAME': im.meta.instrument.name,
+                    'ROMAN.META.INSTRUMENT.OPTICAL_ELEMENT' : im.meta.instrument.optical_element,
+                    'ROMAN.META.EXPOSURE.TYPE' : im.meta.exposure.type,
+                    'ROMAN.META.EXPOSURE.START_TIME': im.meta.exposure.start_time.isot}
+        area_ref = None
+        try:
+            reffiles = crds.getreferences(crds_param, observatory='roman', 
+                                        reftypes=['area'], # , 'readnoise', 'gain'
+                                        context=im.meta.ref_file.crds.context,
+                                        ignore_cache=False, fast=True)
+            area_ref = reffiles['area']
+        except Exception:
+            print('Failed to acquire reference file(s).')
+        if area_ref is not None:
+            pamfile = rdm.open(area_ref)
+            pam = pamfile.data
+        else:
+            pam = calc_pix_area(WCS(img_hdu.header))
+        img_hdu.data *= pam * img_hdu.header['EFFTIME']
+    if hasattr(im, 'dq'):
+        mask_sat = (im.dq & 2) > 0
+        mask_bad = (im.dq & 1+8+1024) > 0
+        bad_val = min(img_hdu.data[~(mask_bad | mask_sat)].min() * 1.1, -100.)
+        sat_val = max(img_hdu.data[~(mask_sat | mask_bad)].max() * 1.1, 65536.)
+        img_hdu.data[mask_bad] = bad_val
+        img_hdu.data[mask_sat] = sat_val
+        pri_hdu.header.set('BADPIX', bad_val)
+        pri_hdu.header.set('SATURATE', sat_val)
+        pri_hdu.header.set('MJD-OBS', pri_hdu.header['MID_TIME'])
+        pri_hdu.header.set('AIRMASS', 0.0)
+        pri_hdu.header.set('EXPTIME0', pri_hdu.header['EFFTIME'])
+    if ('PHOTMJSR' in pri_hdu.header.keys()) and ('PIXAREA' in pri_hdu.header.keys()):
+        cps_to_mjy = pri_hdu.header['PHOTMJSR'] * pri_hdu.header['PIXAREA'] * 1e6
+        pri_hdu.header.set('DOL_C2JY', -2.5 * np.log10(cps_to_mjy))
+    else:
+        pri_hdu.header.set('DOL_C2JY', 0)
+    pri_hdu.header.set('DOL_ROMN', 0)
+    hdulist = fits.HDUList([pri_hdu])
+    return hdulist
 
 def combine_average_fits_images(file_list):
     """
@@ -133,14 +250,28 @@ if __name__ == '__main__':
     fits_files = him
     this_job.logprint(f"FITS FILES ARE {fits_files}")
 
-    combined_data_avg, combined_header = combine_average_fits_images(fits_files)
-
-    output_filepath = this_config.procpath + "/" + str(detname)+"_reference.fits"
-    output_filename =  str(detname)+"_reference.fits"
-    fits.writeto(output_filepath, combined_data_avg, header=combined_header, overwrite=True)
-    this_job.logprint(f"Successfully combined images and saved to {output_filepath}")
-    reference_dp = this_config.dataproduct(filename=output_filename, relativepath=this_config.procpath,
+    if ("dither" in this_event.name):  
+        output_filename =  str(detname)+"_reference.fits"
+        output_filepath = this_config.procpath + "/" + str(detname)+"_reference.fits"
+        combined_data_avg, combined_header = combine_average_fits_images(fits_files)
+        fits.writeto(output_filepath, combined_data_avg, header=combined_header, overwrite=True)
+        this_job.logprint(f"Successfully combined images and saved to {output_filepath}")
+        reference_dp = this_config.dataproduct(filename=output_filename, relativepath=this_config.procpath,
                              subtype="reference_image", group='proc')
+    else:
+        output_filename =  str(detname)+"_coadd.fits"
+        output_filepath =  this_config.procpath + "/" + str(detname)+"_coadd.fits"
+        output_fitsname =  str(detname)+"_reference.fits"
+        output_fitspath =  this_config.procpath + "/" + str(detname)+"_reference.fits"
+        level3_outname = this_config.procpath + "/" + str(detname)
+        level3_path = make_level3_image(fits_files,level3_outname)
+        fits_hdu = asdf_to_fits(level3_path, this_config.parameters['asdf_to_fits_json'])
+        fits_hdu.writeto(output_fitspath, overwrite=True)
+        
+        this_job.logprint(f"Successfully combined images and saved to {level3_path}")
+        reference_dp = this_config.dataproduct(filename=output_fitsname, relativepath=this_config.procpath,
+                             subtype="reference_image", group='proc')
+
 
     dpid = int(reference_dp.dp_id)
     this_job.logprint(''.join(["Reference file DPID ", str(dpid), "\n"]))
