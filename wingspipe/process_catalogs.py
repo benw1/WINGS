@@ -73,13 +73,13 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
     i = 0
     options = {comp_name: 0}
     my_job.options = options
-    data = run_hyakalloc_and_process_output()
-    result = find_partition_with_most_available_cpus(data)
-    if result:
-        partition, cpus = result
-        print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
-    else:
-        print("Could not parse resource data or find free CPUs information.")
+    #data = run_hyakalloc_and_process_output()
+    #result = find_partition_with_most_available_cpus(data)
+    #if result:
+    #    partition, cpus = result
+    #    print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
+    #else:
+    #    print("Could not parse resource data or find free CPUs information.")
 
     for stips_cat in stips_files:
         filtname = filters[i]
@@ -111,16 +111,22 @@ def process_fixed_catalog(my_job_id, my_dp_id, racent, deccent, detname):
                 tag = filtname + "_" + str(dither)
                 ra_dither = 0.935 * e + np.floor(i/4)
                 dec_dither = 0.935 * e2 + np.floor(i/4)
+                #new_event = my_job.child_event('new_stips_catalog', tag=tag,
+                #        options={'dp_id': dpid, 'detname': detname, 'to_run': totims, 'name': comp_name,'ra_dither': ra_dither,
+                #            'dec_dither': dec_dither,'submission_type' : 'scheduler', 'partition': partition})
                 new_event = my_job.child_event('new_stips_catalog', tag=tag,
                         options={'dp_id': dpid, 'detname': detname, 'to_run': totims, 'name': comp_name,'ra_dither': ra_dither,
-                            'dec_dither': dec_dither,'submission_type' : 'scheduler', 'partition': partition})
+                            'dec_dither': dec_dither,'submission_type' : 'scheduler'})
                 my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
                 new_event.fire()
             i += 1
         else:
+            #new_event = my_job.child_event('new_stips_catalog', tag=filtname,
+            #    options={'dp_id': dpid, 'detname': detname, 'to_run': total, 'name': comp_name,'ra_dither': 0.0,
+            #        'dec_dither': 0.0,'submission_type' : 'scheduler', 'partition': partition})
             new_event = my_job.child_event('new_stips_catalog', tag=filtname,
                 options={'dp_id': dpid, 'detname': detname, 'to_run': total, 'name': comp_name,'ra_dither': 0.0,
-                    'dec_dither': 0.0,'submission_type' : 'scheduler', 'partition': partition})
+                    'dec_dither': 0.0,'submission_type' : 'scheduler'})
             my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
             new_event.fire()
             i += 1
@@ -242,21 +248,24 @@ def process_match_catalog(my_job_id, my_dp_id):
     my_job.options = options
     total = len(stips_files)
     i = 0
-    data = run_hyakalloc_and_process_output()
-    result = find_partition_with_most_available_cpus(data)
-    if result:
-        partition, cpus = result
-        print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
-    else:
-        print("Could not parse resource data or find free CPUs information.")
+    #data = run_hyakalloc_and_process_output()
+    #result = find_partition_with_most_available_cpus(data)
+    #if result:
+    #    partition, cpus = result
+    #    print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
+    #else:
+    #    print("Could not parse resource data or find free CPUs information.")
     for stips_cat in stips_files:
         filtname = filters[i]
         _dp = my_config.dataproduct(filename=stips_cat, relativepath=my_config.procpath, group='proc',
                                     filtername=filtname, subtype='stips_input_catalog')
         dpid = _dp.dp_id
+        #new_event = my_job.child_event('new_stips_catalog', tag=filtname,
+        #                               options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'ra_dither': 0.0, 
+        #                                   'dec_dither': 0.0,'submission_type' : 'scheduler', 'partition': partition})
         new_event = my_job.child_event('new_stips_catalog', tag=filtname,
                                        options={'dp_id': dpid, 'to_run': total, 'name': comp_name,'ra_dither': 0.0, 
-                                           'dec_dither': 0.0,'submission_type' : 'scheduler', 'partition': partition})
+                                           'dec_dither': 0.0,'submission_type' : 'scheduler'})
         my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
         new_event.fire()
         i += 1
@@ -310,13 +319,13 @@ def process_df_catalog(my_config,my_event,my_job,df):
     my_job.options = options
     total = len(stips_files)
     i = 0    
-    data = run_hyakalloc_and_process_output()
-    result = find_partition_with_most_available_cpus(data)
-    if result:
-        partition, cpus = result
-        print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
-    else:
-        print("Could not parse resource data or find free CPUs information.")
+    #data = run_hyakalloc_and_process_output()
+    #result = find_partition_with_most_available_cpus(data)
+    #if result:
+    #    partition, cpus = result
+    #    print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
+    #else:
+    #    print("Could not parse resource data or find free CPUs information.")
     for stips_cat in stips_files:
         filtname = filters[i]
         _dp = my_config.dataproduct(filename=stips_cat, relativepath=my_config.procpath, group='proc',
@@ -346,16 +355,22 @@ def process_df_catalog(my_config,my_event,my_job,df):
                 tag = filtname + "_" + str(dither)
                 ra_dither = 0.935 * e + np.floor(i/4)
                 dec_dither = 0.935 * e2 + np.floor(i/4)
+                #new_event = my_job.child_event('new_stips_catalog', tag=tag,
+                #        options={'dp_id': dpid, 'detname': detname, 'to_run': totims, 'name': comp_name,'ra_dither': ra_dither,
+                #            'dec_dither': dec_dither,'submission_type' : 'scheduler', 'partition': partition})
                 new_event = my_job.child_event('new_stips_catalog', tag=tag,
                         options={'dp_id': dpid, 'detname': detname, 'to_run': totims, 'name': comp_name,'ra_dither': ra_dither,
-                            'dec_dither': dec_dither,'submission_type' : 'scheduler', 'partition': partition})
+                            'dec_dither': dec_dither,'submission_type' : 'scheduler'})
                 my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
                 new_event.fire()
             i += 1
         else:
+            #new_event = my_job.child_event('new_stips_catalog', tag=filtname,
+            #    options={'dp_id': dpid, 'detname': detname, 'to_run': total, 'name': comp_name,'ra_dither': 0.0,
+            #        'dec_dither': 0.0,'submission_type' : 'scheduler', 'partition': partition})
             new_event = my_job.child_event('new_stips_catalog', tag=filtname,
                 options={'dp_id': dpid, 'detname': detname, 'to_run': total, 'name': comp_name,'ra_dither': 0.0,
-                    'dec_dither': 0.0,'submission_type' : 'scheduler', 'partition': partition})
+                    'dec_dither': 0.0,'submission_type' : 'scheduler'})
             my_job.logprint(''.join(["Firing event ", str(new_event.event_id), "  new_stips_catalog"]))
             new_event.fire()
             i += 1
@@ -550,13 +565,13 @@ def link_stips_catalogs(my_config):
     options = {comp_name: 0}
     my_job.options = options
     print("DPS0 :", stips_input.dp_id[0])
-    data = run_hyakalloc_and_process_output()
-    result = find_partition_with_most_available_cpus(data)
-    if result:
-        partition, cpus = result
-        print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
-    else:
-        print("Could not parse resource data or find free CPUs information.")
+    #data = run_hyakalloc_and_process_output()
+    #result = find_partition_with_most_available_cpus(data)
+    #if result:
+    #    partition, cpus = result
+    #    print(f"The partition with the most free CPUs is '{partition}' with {cpus} CPUs available.")
+    #else:
+    #    print("Could not parse resource data or find free CPUs information.")
     for i in range(len(stips_input)):
         print("DP ", stips_input.dp_id[i])
         dp = stips_input[i]
@@ -581,17 +596,23 @@ def link_stips_catalogs(my_config):
                 for j in range(int(dec_dithers)):
                     dec_dither = dither_size * (int(j))
                     eventtag = filtname+'_ra:'+str(k)+'/'+str(ra_dithers)+'_dec:'+str(j)+'/'+str(dec_dithers)
+                    #my_event = my_job.child_event('new_stips_catalog', tag=eventtag,
+                    #                              options={'dp_id': dpid, 'to_run': total, 'name': comp_name,
+                    #                                       'submission_type':'scheduler', 'ra_dither': ra_dither, 
+                    #                                       'dec_dither': dec_dither, 'partition': partition})
                     my_event = my_job.child_event('new_stips_catalog', tag=eventtag,
                                                   options={'dp_id': dpid, 'to_run': total, 'name': comp_name,
                                                            'submission_type':'scheduler', 'ra_dither': ra_dither, 
-                                                           'dec_dither': dec_dither, 'partition': partition})
+                                                           'dec_dither': dec_dither})
                     #Should there be a detname key here (line above)?
                     my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
                     my_event.fire()
 
         except KeyError:
+            #my_event = my_job.child_event('new_stips_catalog', tag=filtname,
+            #        options={'dp_id': dpid, 'to_run': total, 'ra_dither': 0.0, 'dec_dither': 0.0, 'name': comp_name,'submission_type':'scheduler', 'partition': partition})
             my_event = my_job.child_event('new_stips_catalog', tag=filtname,
-                    options={'dp_id': dpid, 'to_run': total, 'ra_dither': 0.0, 'dec_dither': 0.0, 'name': comp_name,'submission_type':'scheduler', 'partition': partition})
+                    options={'dp_id': dpid, 'to_run': total, 'ra_dither': 0.0, 'dec_dither': 0.0, 'name': comp_name,'submission_type':'scheduler'})
             my_job.logprint(''.join(["Firing event ", str(my_event.event_id), "  new_stips_catalog"]))
             my_event.fire()
 
@@ -643,7 +664,7 @@ def run_hyakalloc_and_process_output():
     """
     Runs the 'hyakalloc' command using subprocess and sends its
     stdout to the find_cpus function.
-    """
+
     command_name = "hyakalloc"
 
     try:
@@ -667,6 +688,8 @@ def run_hyakalloc_and_process_output():
         # Mocking the output from your prompt:
 
 
+    """
+    return(0)
 
 def parse_all():
     parser = wp.PARSER
